@@ -1,0 +1,20 @@
+# ---------------------------
+# Ignore Folders
+# ---------------------------
+build
+settings
+
+# ---------------------------
+# Ignore File Types
+# ---------------------------
+*.uvguix.*
+*.uvgui.*
+*.uvgui_*
+*.dep
+*.ewt
+
+# ---------------------------
+# Ignore Files
+# ---------------------------
+JLinkLog.txt
+JLinkSettings.ini
