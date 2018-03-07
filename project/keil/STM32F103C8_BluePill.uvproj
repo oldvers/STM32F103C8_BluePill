@@ -373,7 +373,7 @@
               <MiscControls>--c99</MiscControls>
               <Define>STM32F103xB,STM32F10X_MD</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\src\;..\..\src\lib\cmsis\Include;..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include;..\..\src\lib\freertos;..\..\src\lib\freertos\Source\include;..\..\src\lib\freertos\Source\portable\Keil\ARM_CM3;..\..\src\system</IncludePath>
+              <IncludePath>..\..\src\;..\..\src\lib\cmsis\Include;..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include;..\..\src\lib\freertos;..\..\src\lib\freertos\Source\include;..\..\src\lib\freertos\Source\portable\Keil\ARM_CM3;..\..\src\hw</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -494,47 +494,47 @@
             <File>
               <FileName>types.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\src\system\types.h</FilePath>
+              <FilePath>..\..\src\hw\types.h</FilePath>
             </File>
             <File>
               <FileName>uniquedevid.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\src\system\uniquedevid.h</FilePath>
+              <FilePath>..\..\src\hw\uniquedevid.h</FilePath>
             </File>
             <File>
               <FileName>interrupts.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\src\system\interrupts.h</FilePath>
+              <FilePath>..\..\src\hw\interrupts.h</FilePath>
             </File>
             <File>
               <FileName>interrupts.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\src\system\interrupts.c</FilePath>
+              <FilePath>..\..\src\hw\interrupts.c</FilePath>
             </File>
             <File>
               <FileName>system.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\src\system\system.h</FilePath>
+              <FilePath>..\..\src\hw\system.h</FilePath>
             </File>
             <File>
               <FileName>system.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\src\system\system.c</FilePath>
+              <FilePath>..\..\src\hw\system.c</FilePath>
             </File>
             <File>
               <FileName>gpio.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\src\system\gpio.h</FilePath>
+              <FilePath>..\..\src\hw\gpio.h</FilePath>
             </File>
             <File>
               <FileName>debug.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\src\system\debug.h</FilePath>
+              <FilePath>..\..\src\hw\debug.h</FilePath>
             </File>
             <File>
               <FileName>debug.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\src\system\debug.c</FilePath>
+              <FilePath>..\..\src\hw\debug.c</FilePath>
             </File>
           </Files>
         </Group>

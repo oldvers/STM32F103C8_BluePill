@@ -320,7 +320,7 @@
           <state>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include</state>
           <state>$PROJ_DIR$\..\..\src\lib\freertos</state>
           <state>$PROJ_DIR$\..\..\src\lib\freertos\Source\include</state>
-          <state>$PROJ_DIR$\..\..\src\system</state>
+          <state>$PROJ_DIR$\..\..\src\hw</state>
           <state>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3</state>
         </option>
         <option>
@@ -992,31 +992,31 @@
   <group>
     <name>Hardware</name>
     <file>
-      <name>$PROJ_DIR$\..\..\src\system\debug.c</name>
+      <name>$PROJ_DIR$\..\..\src\hw\debug.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\src\system\debug.h</name>
+      <name>$PROJ_DIR$\..\..\src\hw\debug.h</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\src\system\gpio.h</name>
+      <name>$PROJ_DIR$\..\..\src\hw\gpio.h</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\src\system\interrupts.c</name>
+      <name>$PROJ_DIR$\..\..\src\hw\interrupts.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\src\system\interrupts.h</name>
+      <name>$PROJ_DIR$\..\..\src\hw\interrupts.h</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\src\system\system.c</name>
+      <name>$PROJ_DIR$\..\..\src\hw\system.c</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\src\system\system.h</name>
+      <name>$PROJ_DIR$\..\..\src\hw\system.h</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\src\system\types.h</name>
+      <name>$PROJ_DIR$\..\..\src\hw\types.h</name>
     </file>
     <file>
-      <name>$PROJ_DIR$\..\..\src\system\uniquedevid.h</name>
+      <name>$PROJ_DIR$\..\..\src\hw\uniquedevid.h</name>
     </file>
   </group>
   <group>
