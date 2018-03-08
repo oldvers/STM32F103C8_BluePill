@@ -322,7 +322,7 @@ void USB_Configure(U32 aConfig)
  *  @param aAttributes - Endpoint attributes
  *  @return None
  */
-void USB_EpConfigure(U8 aAddress, U16 aMaxPacketSize, U8 aAttributes)
+void USB_EpConfigure(U8 aAddress, U16 aMaxPacketSize, USB_EP_TYPE aType)
 {
   /* Double Buffering is not yet supported */
   U32 num, val;
@@ -331,7 +331,7 @@ void USB_EpConfigure(U8 aAddress, U16 aMaxPacketSize, U8 aAttributes)
 
   val = aMaxPacketSize;
   /* Check endpoint direction (IN - 0x80 Mask) */
-  if (aAddress & USB_ADDR_EP_DIR_MASK)
+  if (aAddress & USB_EP_ADDR_DIR_MASK)
   {
     /* IN */
     (pEpBuffDscr + num)->ADDR_TX = gEpFreeBuffAddr;
@@ -354,22 +354,7 @@ void USB_EpConfigure(U8 aAddress, U16 aMaxPacketSize, U8 aAttributes)
   }
   gEpFreeBuffAddr += val;
 
-  switch (aAttributes & USB_ATTR_EP_TYPE_MASK)
-  {
-    case USB_ATTR_EP_TYPE_CONTROL:
-      val = USB_EP_CONTROL;
-      break;
-    case USB_ATTR_EP_TYPE_ISOCHRONOUS:
-      val = USB_EP_ISOCHRONOUS;
-      break;
-    case USB_ATTR_EP_TYPE_BULK:
-      val = USB_EP_BULK;
-      //if (USB_DBL_BUF_EP & (1 << num)) val |= USB_EP_KIND;
-      break;
-    case USB_ATTR_EP_TYPE_INTERRUPT:
-      val = USB_EP_INTERRUPT;
-      break;
-  }
+  val = (aType << USB_EP_TYPE_MASK_Pos) & USB_EP_TYPE_MASK;
   val |= num;
   EPREG(num) = val;
 }

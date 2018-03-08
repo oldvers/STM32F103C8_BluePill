@@ -2,13 +2,16 @@
 #define __USB_H__
 
 /* Endpoint Direction */
-#define USB_ADDR_EP_DIR_MASK             (0x80)
+#define USB_EP_ADDR_DIR_MASK             (0x80)
 /* Endpoint Type */
-#define USB_ATTR_EP_TYPE_MASK            (0x03)
-#define USB_ATTR_EP_TYPE_CONTROL         (0x00)
-#define USB_ATTR_EP_TYPE_ISOCHRONOUS     (0x01)
-#define USB_ATTR_EP_TYPE_BULK            (0x02)
-#define USB_ATTR_EP_TYPE_INTERRUPT       (0x03)
+typedef enum USB_EP_TYPE_E
+{
+  USB_EP_TYPE_BULK        = 0,
+  USB_EP_TYPE_CONTROL     = 1,
+  USB_EP_TYPE_ISOCHRONOUS = 2,
+  USB_EP_TYPE_INTERRUPT   = 3,
+} USB_EP_TYPE;
+
 ///* Endpoint Callback Events */
 //#define USB_EVNT_EP_SETUP                (1)
 //#define USB_EVNT_EP_OUT                  (2)
@@ -62,7 +65,7 @@ void USB_WakeUp         (void);
 void USB_WakeUpConfigure(U32 aConfig);
 void USB_SetAddress     (U32 aAddress);
 void USB_Configure      (U32 aConfig);
-void USB_EpConfigure    (U8 aAddress, U16 aMaxPacketSize, U8 aAttributes);
+void USB_EpConfigure    (U8 aAddress, U16 aMaxPacketSize, USB_EP_TYPE aType);
 void USB_EpDirCtrl      (U32 aDirection);
 void USB_EpEnable       (U32 aNumber);
 void USB_EpDisable      (U32 aNumber);
