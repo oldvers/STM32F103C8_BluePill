@@ -1,27 +1,26 @@
-/*----------------------------------------------------------------------------
- *      U S B  -  K e r n e l
- *----------------------------------------------------------------------------
- *      Name:    USBCORE.H
- *      Purpose: USB Core Definitions
- *      Version: V1.10
- *----------------------------------------------------------------------------
- *      This file is part of the uVision/ARM development tools.
- *      This software may only be used under the terms of a valid, current,
- *      end user licence from KEIL for a compatible version of KEIL software
- *      development tools. Nothing else gives you the right to use it.
- *
- *      Copyright (c) 2005-2007 Keil Software.
- *---------------------------------------------------------------------------*/
-
 #ifndef __USB_CORE_H__
 #define __USB_CORE_H__
 
-/* USB Endpoint Data Structure */
-typedef struct _USB_EP_DATA
+///* USB Endpoint Data Structure */
+//typedef struct _USB_EP_DATA
+//{
+//  U8 *pData;
+//  U16 Count;
+//} USB_EP_DATA;
+
+/* Endpoint Processing Result */
+typedef enum _USB_CTRL_EP_RESULT
 {
-  U8 *pData;
-  U16 Count;
-} USB_EP_DATA;
+  USB_CTRL_EP_RESULT_NONE = 0,
+  USB_CTRL_EP_RESULT_I_STALL,
+  USB_CTRL_EP_RESULT_O_STALL,
+  USB_CTRL_EP_RESULT_I_DATA,
+  USB_CTRL_EP_RESULT_O_DATA,
+  USB_CTRL_EP_RESULT_I_STATUS,
+  USB_CTRL_EP_RESULT_O_STATUS,
+} USB_CTRL_EP_RESULT;
+
+//typedef void (*USBC_CbGeneric)(void);
 
 /* USB Core Global Variables */
 //extern WORD  USB_DeviceStatus;
@@ -42,5 +41,7 @@ typedef struct _USB_EP_DATA
 
 /* USB Core Functions */
 //extern void  USB_ResetCore (void);
+void USB_ResetCore(void);
+void USB_EndPoint0(U32 aEvent);
 
 #endif  /* __USB_CORE_H__ */

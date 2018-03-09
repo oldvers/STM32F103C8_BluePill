@@ -373,7 +373,7 @@
               <MiscControls>--c99</MiscControls>
               <Define>STM32F103xB,STM32F10X_MD</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\src\;..\..\src\lib\cmsis\Include;..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include;..\..\src\lib\freertos;..\..\src\lib\freertos\Source\include;..\..\src\lib\freertos\Source\portable\Keil\ARM_CM3;..\..\src\hw</IncludePath>
+              <IncludePath>..\..\src\;..\..\src\lib\cmsis\Include;..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include;..\..\src\lib\freertos;..\..\src\lib\freertos\Source\include;..\..\src\lib\freertos\Source\portable\Keil\ARM_CM3;..\..\src\hw;..\..\src\lib\usb\msc;..\..\src\lib\usb</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -545,6 +545,66 @@
               <FileName>usb.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\src\hw\usb.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>USB</GroupName>
+          <Files>
+            <File>
+              <FileName>usb_cfg.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\usb\usb_cfg.h</FilePath>
+            </File>
+            <File>
+              <FileName>usb_defs.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\usb\usb_defs.h</FilePath>
+            </File>
+            <File>
+              <FileName>usb_descr.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\usb\usb_descr.h</FilePath>
+            </File>
+            <File>
+              <FileName>usb_descr.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\src\lib\usb\usb_descr.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_core.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\usb\usb_core.h</FilePath>
+            </File>
+            <File>
+              <FileName>usb_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\src\lib\usb\usb_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_device.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\usb\usb_device.h</FilePath>
+            </File>
+            <File>
+              <FileName>usb_device.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\src\lib\usb\usb_device.c</FilePath>
+            </File>
+            <File>
+              <FileName>msc_defs.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\usb\msc\msc_defs.h</FilePath>
+            </File>
+            <File>
+              <FileName>msc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\usb\msc\msc.h</FilePath>
+            </File>
+            <File>
+              <FileName>msc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\src\lib\usb\msc\msc.c</FilePath>
             </File>
           </Files>
         </Group>

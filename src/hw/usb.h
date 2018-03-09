@@ -45,7 +45,7 @@ typedef enum USB_EP_TYPE_E
 /* DMA  IN EP - Error */
 #define USB_EVNT_EP_IN_DMA_ERR           (13)
 
-/* Callback Function Prototypes */
+/* Callback Function Declarations */
 typedef void (*USB_CbGeneric)(void);
 typedef void (*USB_CbError)(U32 aError);
 typedef void (*USB_CbEp)(U32 aEvent);
@@ -75,5 +75,7 @@ void USB_EpClrStall     (U32 aNumber);
 U32  USB_EpRead         (U32 aNumber, U8 *pData);
 U32  USB_EpWrite        (U32 aNumber, U8 *pData, U32 aSize);
 U32  USB_GetFrame       (void);
+/* Interrupt Handler Declaration */
+void USB_IRQHandler  (void);
 
 #endif  /* __USBHW_H__ */

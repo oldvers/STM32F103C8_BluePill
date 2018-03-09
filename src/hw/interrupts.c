@@ -1,4 +1,6 @@
+#include "types.h"
 #include "interrupts.h"
+#include "usb.h"
 
 void NMI_Handler(void)
 {
@@ -83,3 +85,8 @@ void TIM1_CC_IRQHandler(void)
 /*void PPP_IRQHandler(void)
 {
 }*/
+
+void USB_LP_CAN1_RX0_IRQHandler(void)
+{
+  USB_IRQHandler();
+}

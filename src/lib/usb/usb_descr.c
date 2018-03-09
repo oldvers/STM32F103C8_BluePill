@@ -1,28 +1,12 @@
-/*----------------------------------------------------------------------------
- *      U S B  -  K e r n e l
- *----------------------------------------------------------------------------
- *      Name:    USBDESC.C
- *      Purpose: USB Descriptors
- *      Version: V1.10
- *----------------------------------------------------------------------------
- *      This file is part of the uVision/ARM development tools.
- *      This software may only be used under the terms of a valid, current,
- *      end user licence from KEIL for a compatible version of KEIL software
- *      development tools. Nothing else gives you the right to use it.
- *
- *      Copyright (c) 2005-2007 Keil Software.
- *---------------------------------------------------------------------------*/
-
 #include "types.h"
-
 #include "usb_cfg.h"
 //#include "msc.h"
 #include "usb_defs.h"
 #include "usb_descr.h"
 
-
+//-----------------------------------------------------------------------------
 /* USB Standard Device Descriptor */
-const U8 USB_DeviceDescriptor[] =
+static const U8 USB_DeviceDescriptor[] =
 {
   USB_DEVICE_DESC_SIZE,              /* bLength */
   USB_DEVICE_DESCRIPTOR_TYPE,        /* bDescriptorType */
@@ -40,9 +24,10 @@ const U8 USB_DeviceDescriptor[] =
   0x01                               /* bNumConfigurations */
 };
 
+//-----------------------------------------------------------------------------
 /* USB Configuration Descriptor */
 /*   All Descriptors (Configuration, Interface, Endpoint, Class, Vendor */
-const U8 USB_ConfigDescriptor[] =
+static const U8 USB_ConfigDescriptor[] =
 {
 /* Configuration 1 */
   USB_CONFIGUARTION_DESC_SIZE,       /* bLength */
@@ -86,8 +71,9 @@ const U8 USB_ConfigDescriptor[] =
   0                                  /* bLength */
 };
 
+//-----------------------------------------------------------------------------
 /* USB String Descriptor (optional) */
-const U8 USB_StringDescriptor[] =
+static const U8 USB_StringDescriptor[] =
 {
 /* Index 0x00: LANGID Codes */
   0x04,                              /* bLength */
@@ -157,3 +143,55 @@ const U8 USB_StringDescriptor[] =
   'r',0,
   'y',0,
 };
+
+//-----------------------------------------------------------------------------
+U8 *USB_GetDeviceDescriptor(void)
+{
+  return (U8 *)USB_DeviceDescriptor;
+};
+
+//-----------------------------------------------------------------------------
+U8 *USB_GetConfigDescriptor(void)
+{
+  return (U8 *)USB_ConfigDescriptor;
+};
+
+//-----------------------------------------------------------------------------
+U8 *USB_GetStringDescriptor(void)
+{
+  return (U8 *)USB_StringDescriptor;
+}
+
+//-----------------------------------------------------------------------------
+U32 USB_GetItrfaceDescriptor(U8 aItrface, U8 aType, U8 *pData, U32 *pSize)
+{
+  U32 result = FALSE;
+
+  switch (aType)
+  {
+#if USB_HID
+    case HID_HID_DESCRIPTOR_TYPE:
+      if (aInterface == USB_HID_IF_NUM)
+      {
+        pData = (U8 *)USB_ConfigDescriptor + HID_DESC_OFFSET;
+        *pSize = HID_DESC_SIZE;
+        result = TRUE;
+      }
+      break;
+    case HID_REPORT_DESCRIPTOR_TYPE:
+      if (aInterface == USB_HID_IF_NUM)
+      {
+        pData = (U8 *)HID_ReportDescriptor;
+        *pSize = HID_ReportDescSize;
+        result = TRUE;
+      }
+      break;
+    case HID_PHYSICAL_DESCRIPTOR_TYPE:
+      break;
+#endif
+    default:
+      break;
+  }
+
+  return result;
+}

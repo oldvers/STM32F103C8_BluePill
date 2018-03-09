@@ -2,6 +2,7 @@
 #include "types.h"
 #include "interrupts.h"
 #include "usb.h"
+#include "debug.h"
 
 /* Address Mask */
 #define USB_EP_ADDR_MASK    (0xFFFE)
@@ -166,7 +167,7 @@ void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
   gEpFreeBuffAddr = gMaxEpCount * sizeof(EpBuffDescription_t);
 
   /* Setup USB clock prescaler */
-  if (48000000 < SystemCoreClock)
+  if (72000000 > SystemCoreClock)
   {
     RCC->CFGR |= RCC_CFGR_USBPRE;
   }
@@ -290,7 +291,7 @@ void USB_WakeUp(void)
  *  @param aConfig - Enable/Disable
  *  @return None
  */
-void USB_WakeUpCfg(U32 aConfig)
+void USB_WakeUpConfigure(U32 aConfig)
 {
   /* Not needed */
 }
@@ -492,7 +493,7 @@ U32 USB_GetFrame(void)
  *  @param None
  *  @return None
  */
-void USB_LP_IRQHandler(void)
+void USB_IRQHandler(void)
 {
   U32 istr, num, val;
 
@@ -539,6 +540,7 @@ void USB_LP_IRQHandler(void)
   /* Error: No Answer, CRC Error, Bit Stuff Error, Frame Format Error */
   if (istr & USB_ISTR_ERR)
   {
+    LOG("Error %08X\r\n", istr);
     if (NULL != pUSB_CbError) pUSB_CbError(0);
     USB->ISTR = (U16)~(USB_ISTR_ERR);
   }
