@@ -14,7 +14,7 @@ static const U8 USB_DeviceDescriptor[] =
   0x00,                              /* bDeviceClass */
   0x00,                              /* bDeviceSubClass */
   0x00,                              /* bDeviceProtocol */
-  USB_MAX_PACKET0,                   /* bMaxPacketSize0 */
+  USB_CTRL_PACKET_SIZE,              /* bMaxPacketSize0 */
   WBVAL(0xC251),                     /* idVendor */
   WBVAL(0x1C03),                     /* idProduct */
   WBVAL(0x0100), /* 1.00 */          /* bcdDevice */
@@ -169,26 +169,26 @@ U32 USB_GetItrfaceDescriptor(USB_SETUP_PACKET * pSetup, U8 **pData, U16 *pSize)
 
   switch (pSetup->wValue.WB.H)
   {
-#if USB_HID
-    case HID_HID_DESCRIPTOR_TYPE:
-      if (pSetup.wIndex.WB.L == USB_HID_IF_NUM)
-      {
-        *pData = (U8 *)USB_ConfigDescriptor + HID_DESC_OFFSET;
-        *pSize = HID_DESC_SIZE;
-        result = TRUE;
-      }
-      break;
-    case HID_REPORT_DESCRIPTOR_TYPE:
-      if (pSetup.wIndex.WB.L == USB_HID_IF_NUM)
-      {
-        *pData = (U8 *)HID_ReportDescriptor;
-        *pSize = HID_ReportDescSize;
-        result = TRUE;
-      }
-      break;
-    case HID_PHYSICAL_DESCRIPTOR_TYPE:
-      break;
-#endif
+//#if USB_HID
+//    case HID_HID_DESCRIPTOR_TYPE:
+//      if (pSetup.wIndex.WB.L == USB_HID_IF_NUM)
+//      {
+//        *pData = (U8 *)USB_ConfigDescriptor + HID_DESC_OFFSET;
+//        *pSize = HID_DESC_SIZE;
+//        result = TRUE;
+//      }
+//      break;
+//    case HID_REPORT_DESCRIPTOR_TYPE:
+//      if (pSetup.wIndex.WB.L == USB_HID_IF_NUM)
+//      {
+//        *pData = (U8 *)HID_ReportDescriptor;
+//        *pSize = HID_ReportDescSize;
+//        result = TRUE;
+//      }
+//      break;
+//    case HID_PHYSICAL_DESCRIPTOR_TYPE:
+//      break;
+//#endif
     default:
       break;
   }
