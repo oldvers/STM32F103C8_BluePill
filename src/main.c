@@ -38,6 +38,11 @@ int main(void)
   
   USBD_Init();
   
+//  GPIO_Init(GPIOB, 6, GPIO_TYPE_OUT_PP_2MHZ);
+//  GPIO_Lo(GPIOB, 6);
+//  GPIO_Init(GPIOB, 8, GPIO_TYPE_OUT_PP_2MHZ);
+//  GPIO_Hi(GPIOB, 8);
+  
   xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 
   vTaskStartScheduler();

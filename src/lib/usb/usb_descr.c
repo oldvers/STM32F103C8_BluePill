@@ -163,25 +163,25 @@ U8 *USB_GetStringDescriptor(void)
 }
 
 //-----------------------------------------------------------------------------
-U32 USB_GetItrfaceDescriptor(U8 aItrface, U8 aType, U8 *pData, U32 *pSize)
+U32 USB_GetItrfaceDescriptor(USB_SETUP_PACKET * pSetup, U8 **pData, U16 *pSize)
 {
   U32 result = FALSE;
 
-  switch (aType)
+  switch (pSetup->wValue.WB.H)
   {
 #if USB_HID
     case HID_HID_DESCRIPTOR_TYPE:
-      if (aInterface == USB_HID_IF_NUM)
+      if (pSetup.wIndex.WB.L == USB_HID_IF_NUM)
       {
-        pData = (U8 *)USB_ConfigDescriptor + HID_DESC_OFFSET;
+        *pData = (U8 *)USB_ConfigDescriptor + HID_DESC_OFFSET;
         *pSize = HID_DESC_SIZE;
         result = TRUE;
       }
       break;
     case HID_REPORT_DESCRIPTOR_TYPE:
-      if (aInterface == USB_HID_IF_NUM)
+      if (pSetup.wIndex.WB.L == USB_HID_IF_NUM)
       {
-        pData = (U8 *)HID_ReportDescriptor;
+        *pData = (U8 *)HID_ReportDescriptor;
         *pSize = HID_ReportDescSize;
         result = TRUE;
       }

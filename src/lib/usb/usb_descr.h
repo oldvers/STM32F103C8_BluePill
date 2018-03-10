@@ -11,6 +11,6 @@
 U8 *USB_GetDeviceDescriptor(void);
 U8 *USB_GetConfigDescriptor(void);
 U8 *USB_GetStringDescriptor(void);
-U32 USB_GetItrfaceDescriptor(U8 aItrface, U8 aType, U8 *pData, U32 *pSize);
+U32 USB_GetItrfaceDescriptor(USB_SETUP_PACKET * pSetup, U8 **pData, U16 *pSize);
 
 #endif  /* __USB_DESCR_H__ */

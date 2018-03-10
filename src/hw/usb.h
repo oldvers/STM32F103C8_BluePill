@@ -12,11 +12,6 @@ typedef enum USB_EP_TYPE_E
   USB_EP_TYPE_INTERRUPT   = 3,
 } USB_EP_TYPE;
 
-///* Endpoint Callback Events */
-//#define USB_EVNT_EP_SETUP                (1)
-//#define USB_EVNT_EP_OUT                  (2)
-//#define USB_EVNT_EP_IN                   (3)
-
 /* Endpoint Callback Events */
 /* Setup Packet */
 #define USB_EVNT_EP_SETUP                (1)
@@ -76,6 +71,6 @@ U32  USB_EpRead         (U32 aNumber, U8 *pData);
 U32  USB_EpWrite        (U32 aNumber, U8 *pData, U32 aSize);
 U32  USB_GetFrame       (void);
 /* Interrupt Handler Declaration */
-void USB_IRQHandler  (void);
+void USB_IRQHandler     (void);
 
 #endif  /* __USBHW_H__ */

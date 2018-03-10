@@ -39,22 +39,27 @@ static U8  gUSB_Configuration;
 static U32 gUSB_EndPointMask;
 static U32 gUSB_EndPointHalt;
 static U8  gUSB_NumInterfaces;
-static U8  gUSB_AltSetting[16]; //USB_IF_NUM];
+static U8  gUSB_AltSetting[USB_IF_NUM];
 
-static U8  EP0Buffer[8]; //USB_MAX_PACKET0];
-USB_EP_DATA EP0Data;
-USB_SETUP_PACKET SetupPacket;
+static U8                     EP0Buffer[USB_MAX_PACKET0];
+static USB_EP_DATA            EP0Data;
+static USB_SETUP_PACKET       SetupPacket;
+static const USB_CORE_EVENTS *EP0Events = NULL;
 
 //static USBC_CbGeneric gUSB_CbFeature   = NULL;
 //static USBC_CbGeneric gUSB_CbConfigure = NULL;
 //static USBC_CbGeneric gUSB_CbInterface = NULL;
 
+void USBC_Init(const USB_CORE_EVENTS *pEvents)
+{
+  EP0Events = pEvents;
+}
 
 /** @brief Resets USB Core
  *  @param None
  *  @return None
  */
-void USB_ResetCore(void)
+void USBC_Reset(void)
 {
   gUSB_DeviceStatus  = USB_POWER;
   gUSB_DeviceAddress = 0;
@@ -258,8 +263,8 @@ U32 usb_CtrlSetupReqStdSetClrFeature(U32 aSetClear)
   if (TRUE == result)
   {
     USB_StatusInStage();
-    //if (NULL != gUSB_CbFeature) gUSB_CbFeature();
-    USB_CbFeature();
+    if (NULL != EP0Events->CbFeature) EP0Events->CbFeature();
+    //USB_CbFeature();
   }
 //  return (TRUE);
   return result;
@@ -315,8 +320,8 @@ U32 usb_CtrlSetupReqStdGetDescriptor(void)
       }
       break;
     case REQUEST_TO_INTERFACE:
-      result = USB_GetItrfaceDescriptor(SetupPacket.wIndex.WB.L,
-                 SetupPacket.wValue.WB.H, EP0Data.pData, &len);
+      result = USB_GetItrfaceDescriptor(&SetupPacket, 
+                 &EP0Data.pData, (U16 *)&len);
 //      switch (SetupPacket.wValue.WB.H)
 //      {
 //#if USB_HID
@@ -536,8 +541,11 @@ U32 usb_CtrlSetupReqStdSetConfiguration(void)
     {
 //      return (TRUE);
       USB_StatusInStage();
-      //if (NULL != gUSB_CbConfigure) gUSB_CbConfigure();
-      USB_CbConfigure(gUSB_Configuration);
+      if (NULL != EP0Events->CbConfigure)
+      {
+        EP0Events->CbConfigure(gUSB_Configuration);
+      }
+      //USB_CbConfigure(gUSB_Configuration);
       result = TRUE;
     }
 //    else
@@ -636,8 +644,8 @@ U32 usb_CtrlSetupReqStdSetInterface(void)
   if (TRUE == result)
   {
     USB_StatusInStage();
-    //if (NULL != gUSB_CbInterface) gUSB_CbInterface();
-    USB_CbInterface();
+    if (NULL != EP0Events->CbInterface) EP0Events->CbInterface();
+    //USB_CbInterface();
   }
   
   return result;
@@ -758,17 +766,41 @@ U32 usb_CtrlSetupReqStdGetInterface(void)
 //}
 
 
-
+U32 usb_CheckInStage(USB_CTRL_STAGE stage)
+{
+  switch (stage)
+  {
+    case USB_CTRL_STAGE_WAIT:
+      //EP0Data.pData = EP0Buffer;
+      return (TRUE);
+    case USB_CTRL_STAGE_DATA:
+      USB_DataInStage();
+      return (TRUE);
+    case USB_CTRL_STAGE_STATUS:
+      USB_StatusInStage();
+      return (TRUE);
+    case USB_CTRL_STAGE_ERROR:
+    default:
+      return (FALSE);
+  }
+}
+  
 //-----------------------------------------------------------------------------
 U32 usb_CtrlSetupReqClass(void)
 {
-  U32 result = FALSE;
+  //U32 result = TRUE;
+  //U16 len;
+  USB_CTRL_STAGE stage = USB_CTRL_STAGE_ERROR;
   
-  switch (SetupPacket.bmRequestType.BM.Recipient)
+  if (NULL != EP0Events->CtrlSetupReq)
   {
-    case REQUEST_TO_INTERFACE:
-      result = USB_CtrlSetupReqItrface(SetupPacket.wIndex.WB.L,
-                 SetupPacket.wIndex.WB.L, EP0Data.pData, EP0Data.Count);
+    stage = EP0Events->CtrlSetupReq(&SetupPacket, &EP0Data.pData, &EP0Data.Count);
+  }
+  
+//  switch (SetupPacket.bmRequestType.BM.Recipient)
+//  {
+//    case REQUEST_TO_INTERFACE:
+      
 //#if USB_HID
 //      if (SetupPacket.wIndex.WB.L == USB_HID_IF_NUM)
 //      {
@@ -872,11 +904,10 @@ U32 usb_CtrlSetupReqClass(void)
 //        }
 //      }
 //#endif  /* USB_AUDIO */
-      break;
+//      break;
       
-    case REQUEST_TO_ENDPOINT:
-      result = USB_CtrlSetupReqEndpoint(SetupPacket.bmRequestType.BM.Dir,
-                 EP0Data.pData, EP0Data.Count);
+//    case REQUEST_TO_ENDPOINT:
+//      stage = USB_CtrlSetupReqEndpoint(&SetupPacket, &EP0Data.pData, &EP0Data.Count);
 //#if USB_AUDIO
 //      if (SetupPacket.bmRequestType.BM.Dir)
 //      {
@@ -896,13 +927,29 @@ U32 usb_CtrlSetupReqClass(void)
 //      }
 //    //  stall = TRUE; //goto stall_i;
 //#endif
-      break;
-      
-    default:
-      break;
-  }
+//      break;
+//      
+//    default:
+//      break;
+//  }
 //  stall = TRUE; //goto stall_i;
-  return result;
+//  switch (stage)
+//  {
+//    case USB_CTRL_STAGE_WAIT:
+//      EP0Data.pData = EP0Buffer;
+//      return (TRUE);
+//    case USB_CTRL_STAGE_DATA:
+//      if (EP0Data.Count > len) EP0Data.Count = len;
+//      USB_DataInStage();
+//      return (TRUE);
+//    case USB_CTRL_STAGE_STATUS:
+//      USB_StatusInStage();
+//      return (TRUE);
+//    case USB_CTRL_STAGE_ERROR:
+//    default:
+//      return (FALSE);
+//  }
+  return usb_CheckInStage(stage);
 }
 
 //-----------------------------------------------------------------------------
@@ -934,51 +981,79 @@ U32 usb_CtrlSetupReqClass(void)
 //-----------------------------------------------------------------------------
 U32 usb_CtrlOutReqClass(void)
 {
-  U32 result = FALSE;
+  //U32 result = FALSE
+  //U16 len;
+  USB_CTRL_STAGE stage;
   
-  switch (SetupPacket.bmRequestType.BM.Recipient)
+  if (NULL != EP0Events->CtrlOutReq)
   {
-    case REQUEST_TO_INTERFACE:
-#if USB_HID
-      if (SetupPacket.wIndex.WB.L == USB_HID_IF_NUM)
-      {
-        result = HID_SetReport();
-    //    if (!HID_SetReport())
-    //    {
-    //      stall = TRUE; //goto stall_i;
-    //      break;
-    //    }
-        break;
-      }
-#endif
-#if USB_AUDIO
-      if ((SetupPacket.wIndex.WB.L == USB_ADC_CIF_NUM)  ||
-          (SetupPacket.wIndex.WB.L == USB_ADC_SIF1_NUM) ||
-          (SetupPacket.wIndex.WB.L == USB_ADC_SIF2_NUM))
-      {
-        result = ADC_IF_SetRequest();
-    //    if (!ADC_IF_SetRequest())
-    //    {
-    //      stall = TRUE; //goto stall_i;
-    //      break;
-    //    }
-        break;
-      }
-#endif
-      break;
-      
-    case REQUEST_TO_ENDPOINT:
-#if USB_AUDIO
-      result = ADC_EP_SetRequest();
-#endif
-      break;
-      
-    default:
-      break;
+    stage = EP0Events->CtrlOutReq(&SetupPacket, &EP0Data.pData, &EP0Data.Count);
   }
+  
+//  switch (SetupPacket.bmRequestType.BM.Recipient)
+//  {
+//    case REQUEST_TO_INTERFACE:
+//      stage = USB_CtrlOutReqClassItrface(&SetupPacket, &EP0Data.pData, &len);
+//#if USB_HID
+//      if (SetupPacket.wIndex.WB.L == USB_HID_IF_NUM)
+//      {
+//        result = HID_SetReport();
+//    //    if (!HID_SetReport())
+//    //    {
+//    //      stall = TRUE; //goto stall_i;
+//    //      break;
+//    //    }
+//        break;
+//      }
+//#endif
+//#if USB_AUDIO
+//      if ((SetupPacket.wIndex.WB.L == USB_ADC_CIF_NUM)  ||
+//          (SetupPacket.wIndex.WB.L == USB_ADC_SIF1_NUM) ||
+//          (SetupPacket.wIndex.WB.L == USB_ADC_SIF2_NUM))
+//      {
+//        result = ADC_IF_SetRequest();
+//    //    if (!ADC_IF_SetRequest())
+//    //    {
+//    //      stall = TRUE; //goto stall_i;
+//    //      break;
+//    //    }
+//        break;
+//      }
+//#endif
+//      break;
+//      
+//    case REQUEST_TO_ENDPOINT:
+//      stage = USB_CtrlOutReqClassEndpoint(&SetupPacket, &EP0Data.pData, &len);
+//#if USB_AUDIO
+//      result = ADC_EP_SetRequest();
+//#endif
+//      break;
+//      
+//    default:
+//      break;
+//  }
+  
+//  if (TRUE == result) USB_StatusInStage();
     
 //  stall = TRUE; //goto stall_i;
-  return result;
+//  return result;
+//  switch (stage)
+//  {
+//    case USB_CTRL_STAGE_WAIT:
+//      EP0Data.pData = EP0Buffer;
+//      return (TRUE);
+//    case USB_CTRL_STAGE_DATA:
+//      if (EP0Data.Count > len) EP0Data.Count = len;
+//      USB_DataInStage();
+//      return (TRUE);
+//    case USB_CTRL_STAGE_STATUS:
+//      USB_StatusInStage();
+//      return (TRUE);
+//    case USB_CTRL_STAGE_ERROR:
+//    default:
+//      return (FALSE);
+//  }
+  return usb_CheckInStage(stage);
 }
 
 //-----------------------------------------------------------------------------
@@ -997,7 +1072,7 @@ U32 usb_CtrlOutReqClass(void)
  *  @param aEvent
  *  @return None
  */
-void USB_EndPoint0(U32 aEvent)
+void USBC_ControlInOut(U32 aEvent)
 {
   U32 result = FALSE;
 
@@ -1303,7 +1378,7 @@ void USB_EndPoint0(U32 aEvent)
       }
       if (TRUE != result)
       {
-        USB_EpSetStall(0x00);
+        USB_EpSetStall(0x80);
         EP0Data.Count = 0;
       }
       break;
@@ -1324,6 +1399,7 @@ void USB_EndPoint0(U32 aEvent)
                 break;
 //#if (USB_CLASS)
               case REQUEST_CLASS:
+                /* Called when all the DATA packets have been already collected */
                 result = usb_CtrlOutReqClass();
                 // switch (SetupPacket.bmRequestType.BM.Recipient)
                 // {
@@ -1373,11 +1449,11 @@ void USB_EndPoint0(U32 aEvent)
 //                stall = TRUE; //goto stall_i;
                 break;
             }
-            if (TRUE == result)
-            {
-              USB_StatusInStage();
-            }
-            else
+            if (TRUE != result)
+//            {
+//              USB_StatusInStage();
+//            }
+//            else
             {
               USB_EpSetStall(0x00);
               EP0Data.Count = 0;

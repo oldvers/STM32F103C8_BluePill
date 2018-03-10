@@ -4,7 +4,7 @@
 #include "msc_defs.h"
 #include "usb_cfg.h"
 //#include "usb_hw.h"
-#include "usb_core.h"
+//#include "usb_core.h"
 #include "msc.h"
 
 const U8 FlashDiskImage[MSC_ImageSize] =
@@ -178,6 +178,7 @@ U32 Length;                  /* R/W Length */
 U8  BulkStage;               /* Bulk Stage */
 U8  BulkBuf[MSC_MAX_PACKET]; /* Bulk In/Out Buffer */
 U8  BulkLen;                 /* Bulk In/Out Length */
+U8  LUN = 0;
 
 MSC_CBW CBW;                   /* Command Block Wrapper */
 MSC_CSW CSW;                   /* Command Status Wrapper */
@@ -189,24 +190,74 @@ MSC_CSW CSW;                   /* Command Status Wrapper */
  *    Return Value:    TRUE - Success, FALSE - Error
  */
 
-U32 MSC_Reset(void)
-{
-  //GPIOB->ODR &= ~(LED_RD | LED_WR);     /* Turn Off R/W LED */
-  BulkStage = MSC_BS_CBW;
-  return (TRUE);
-}
+//U32 MSC_Reset(void)
+//{
+//  //GPIOB->ODR &= ~(LED_RD | LED_WR);     /* Turn Off R/W LED */
+//  BulkStage = MSC_BS_CBW;
+//  return (TRUE);
+//}
 
-/*
- *  MSC Get Max LUN Request Callback
- *   Called automatically on Get Max LUN Request
- *    Parameters:      None (global SetupPacket and EP0Buf)
- *    Return Value:    TRUE - Success, FALSE - Error
- */
-U32 MSC_GetMaxLUN(U8 * pData, U32 aSize)
+///*
+// *  MSC Get Max LUN Request Callback
+// *   Called automatically on Get Max LUN Request
+// *    Parameters:      None (global SetupPacket and EP0Buf)
+// *    Return Value:    TRUE - Success, FALSE - Error
+// */
+//U32 MSC_GetMaxLUN(U8 * pData, U32 aSize)
+//{
+//  /* No LUN associated with this device */
+//  pData[0] = 0;
+//  return (TRUE);
+//}
+
+USB_CTRL_STAGE MSC_CtrlSetupReq(USB_SETUP_PACKET * pSetup, U8 **pData, U16 *pSize)
 {
-  /* No LUN associated with this device */
-  pData[0] = 0;
-  return (TRUE);
+  USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
+  
+  switch (pSetup->bmRequestType.BM.Recipient)
+  {
+    case REQUEST_TO_INTERFACE:
+      if (pSetup->wIndex.WB.L == USB_MSC_IF_NUM)
+      {
+        switch (pSetup->bRequest)
+        {
+          case MSC_REQUEST_RESET:
+            /* Turn Off R/W LED */
+            //GPIOB->ODR &= ~(LED_RD | LED_WR);
+            BulkStage = MSC_BS_CBW;
+            *pData = NULL;
+            *pSize = 0;
+            result = USB_CTRL_STAGE_STATUS;
+      //            if (MSC_Reset())
+      //            {
+      ////              USB_StatusInStage();
+      ////    //          break; //goto class_ok;
+      ////              result = TRUE;
+      //            }
+            break;
+          case MSC_REQUEST_GET_MAX_LUN:
+            /* No LUN associated with this device */
+            *pData = &LUN;
+            *pSize = 1;
+            result = USB_CTRL_STAGE_DATA;
+      //            if (MSC_GetMaxLUN(pData, *pSize))
+      //            {
+      ////              EP0Data.pData = EP0Buffer;
+      ////              USB_DataInStage();
+      ////    //          break; //goto class_ok;
+      ////              result = TRUE;
+      //            }
+            break;
+        }
+      }
+      break;
+    
+    case REQUEST_TO_ENDPOINT:
+      break;
+    
+  }
+  
+  return result;
 }
 
 /*

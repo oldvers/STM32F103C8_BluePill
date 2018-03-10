@@ -540,7 +540,6 @@ void USB_IRQHandler(void)
   /* Error: No Answer, CRC Error, Bit Stuff Error, Frame Format Error */
   if (istr & USB_ISTR_ERR)
   {
-    LOG("Error %08X\r\n", istr);
     if (NULL != pUSB_CbError) pUSB_CbError(0);
     USB->ISTR = (U16)~(USB_ISTR_ERR);
   }

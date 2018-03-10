@@ -8,140 +8,153 @@
 #include "msc.h"
 #include "msc_defs.h"
 //#include "memory.h"
-
-U32 USB_CtrlSetupReqItrface(U8 aItrface, U8 aReq, U8 * pData, U32 aSize)
-{
-  U32 result = FALSE;
-#if USB_HID
-      if (SetupPacket.wIndex.WB.L == USB_HID_IF_NUM)
-      {
-        switch (SetupPacket.bRequest)
-        {
-          case HID_REQUEST_GET_REPORT:
-            if (HID_GetReport())
-            {
-              EP0Data.pData = EP0Buffer;
-              USB_DataInStage();
-    //          break; //goto class_ok;
-              result = TRUE;
-            }
-            break;
-          case HID_REQUEST_SET_REPORT:
-            EP0Data.pData = EP0Buf;
-    //        break; //goto class_ok;
-            result = TRUE;
-          case HID_REQUEST_GET_IDLE:
-            if (HID_GetIdle())
-            {
-              EP0Data.pData = EP0Buf;
-              USB_DataInStage();
-    //          break; //goto class_ok;
-              result = TRUE;
-            }
-            break;
-          case HID_REQUEST_SET_IDLE:
-            if (HID_SetIdle())
-            {
-              USB_StatusInStage();
-    //          break; //goto class_ok;
-              result = TRUE;
-            }
-            break;
-          case HID_REQUEST_GET_PROTOCOL:
-            if (HID_GetProtocol())
-            {
-              EP0Data.pData = EP0Buf;
-              USB_DataInStage();
-    //          break; //goto class_ok;
-              result = TRUE;
-            }
-            break;
-          case HID_REQUEST_SET_PROTOCOL:
-            if (HID_SetProtocol())
-            {
-              USB_StatusInStage();
-    //          break; //goto class_ok;
-              result = TRUE;
-            }
-            break;
-        }
-      }
-#endif  /* USB_HID */
-#if USB_MSC
-      if (aItrface == USB_MSC_IF_NUM)
-      {
-        switch (aReq)
-        {
-          case MSC_REQUEST_RESET:
-            if (MSC_Reset())
-            {
-//              USB_StatusInStage();
-//    //          break; //goto class_ok;
-//              result = TRUE;
-            }
-            break;
-          case MSC_REQUEST_GET_MAX_LUN:
-            if (MSC_GetMaxLUN(pData, aSize))
-            {
+  
+//USB_CTRL_STAGE USB_CtrlSetupReqItrface(USB_SETUP_PACKET * pSetup, U8 **pData, U16 *pSize)
+//{
+//  //U32 result = FALSE;
+//#if USB_HID
+//      if (SetupPacket.wIndex.WB.L == USB_HID_IF_NUM)
+//      {
+//        switch (SetupPacket.bRequest)
+//        {
+//          case HID_REQUEST_GET_REPORT:
+//            if (HID_GetReport())
+//            {
 //              EP0Data.pData = EP0Buffer;
 //              USB_DataInStage();
 //    //          break; //goto class_ok;
 //              result = TRUE;
-            }
-            break;
-        }
-      }
-#endif  /* USB_MSC */
-#if USB_AUDIO
-      if ((SetupPacket.wIndex.WB.L == USB_ADC_CIF_NUM)  ||
-          (SetupPacket.wIndex.WB.L == USB_ADC_SIF1_NUM) ||
-          (SetupPacket.wIndex.WB.L == USB_ADC_SIF2_NUM))
-      {
-        if (SetupPacket.bmRequestType.BM.Dir)
-        {
-          if (ADC_IF_GetRequest())
-          {
-            EP0Data.pData = EP0Buf;
-            USB_DataInStage();
-    //        break; //goto class_ok;
-            result = TRUE;
-          }
-        }
-        else
-        {
-          EP0Data.pData = EP0Buf;
-    //      break; //goto class_ok;
-          result = TRUE;
-        }
-      }
-#endif  /* USB_AUDIO */
-  return result;
-}
+//            }
+//            break;
+//          case HID_REQUEST_SET_REPORT:
+//            EP0Data.pData = EP0Buf;
+//    //        break; //goto class_ok;
+//            result = TRUE;
+//          case HID_REQUEST_GET_IDLE:
+//            if (HID_GetIdle())
+//            {
+//              EP0Data.pData = EP0Buf;
+//              USB_DataInStage();
+//    //          break; //goto class_ok;
+//              result = TRUE;
+//            }
+//            break;
+//          case HID_REQUEST_SET_IDLE:
+//            if (HID_SetIdle())
+//            {
+//              USB_StatusInStage();
+//    //          break; //goto class_ok;
+//              result = TRUE;
+//            }
+//            break;
+//          case HID_REQUEST_GET_PROTOCOL:
+//            if (HID_GetProtocol())
+//            {
+//              EP0Data.pData = EP0Buf;
+//              USB_DataInStage();
+//    //          break; //goto class_ok;
+//              result = TRUE;
+//            }
+//            break;
+//          case HID_REQUEST_SET_PROTOCOL:
+//            if (HID_SetProtocol())
+//            {
+//              USB_StatusInStage();
+//    //          break; //goto class_ok;
+//              result = TRUE;
+//            }
+//            break;
+//        }
+//      }
+//#endif  /* USB_HID */
+//#if USB_MSC
+////  if (pSetup->wIndex.WB.L == USB_MSC_IF_NUM)
+////  {
+//    return MSC_CtrlSetupReqItrface(pSetup, pData, pSize);
+////    switch (aReq)
+////        {
+////          case MSC_REQUEST_RESET:
+////            if (MSC_Reset())
+////            {
+//////              USB_StatusInStage();
+//////    //          break; //goto class_ok;
+//////              result = TRUE;
+////            }
+////            break;
+////          case MSC_REQUEST_GET_MAX_LUN:
+////            if (MSC_GetMaxLUN(pData, *pSize))
+////            {
+//////              EP0Data.pData = EP0Buffer;
+//////              USB_DataInStage();
+//////    //          break; //goto class_ok;
+//////              result = TRUE;
+////            }
+////            break;
+////        }
+////      }
+////  }
+//#endif  /* USB_MSC */
+//#if USB_AUDIO
+//      if ((SetupPacket.wIndex.WB.L == USB_ADC_CIF_NUM)  ||
+//          (SetupPacket.wIndex.WB.L == USB_ADC_SIF1_NUM) ||
+//          (SetupPacket.wIndex.WB.L == USB_ADC_SIF2_NUM))
+//      {
+//        if (SetupPacket.bmRequestType.BM.Dir)
+//        {
+//          if (ADC_IF_GetRequest())
+//          {
+//            EP0Data.pData = EP0Buf;
+//            USB_DataInStage();
+//    //        break; //goto class_ok;
+//            result = TRUE;
+//          }
+//        }
+//        else
+//        {
+//          EP0Data.pData = EP0Buf;
+//    //      break; //goto class_ok;
+//          result = TRUE;
+//        }
+//      }
+//#endif  /* USB_AUDIO */
+////  return result;
+////  return USB_CTRL_STAGE_ERROR;
+//}
 
-U32 USB_CtrlSetupReqEndpoint(U8 aDir, U8 * pData, U32 aSize)
-{
-  U32 result = FALSE;
-#if USB_AUDIO
-      if (SetupPacket.bmRequestType.BM.Dir)
-      {
-        if (ADC_EP_GetRequest())
-        {
-          EP0Data.pData = EP0Buffer;
-          USB_DataInStage();
-    //      break; //goto class_ok;
-          result = TRUE;
-        }
-      }
-      else
-      {
-        EP0Data.pData = EP0Buffer;
-    //    break; //goto class_ok;
-        result = TRUE;
-      }
-    //  stall = TRUE; //goto stall_i;
-#endif
-  return result;
-}
+//USB_CTRL_STAGE USB_CtrlSetupReqEndpoint(USB_SETUP_PACKET * pSetup, U8 **pData, U16 *pSize)
+//{
+//  //U32 result = FALSE;
+//#if USB_AUDIO
+//      if (SetupPacket.bmRequestType.BM.Dir)
+//      {
+//        if (ADC_EP_GetRequest())
+//        {
+//          EP0Data.pData = EP0Buffer;
+//          USB_DataInStage();
+//    //      break; //goto class_ok;
+//          result = TRUE;
+//        }
+//      }
+//      else
+//      {
+//        EP0Data.pData = EP0Buffer;
+//    //    break; //goto class_ok;
+//        result = TRUE;
+//      }
+//    //  stall = TRUE; //goto stall_i;
+//#endif
+//  return USB_CTRL_STAGE_ERROR;
+//}
+
+//USB_CTRL_STAGE USB_CtrlOutReqClassItrface(USB_SETUP_PACKET *pSetup, U8 **pData, U16 *pSize)
+//{
+//  return USB_CTRL_STAGE_ERROR;
+//}
+
+//USB_CTRL_STAGE USB_CtrlOutReqClassEndpoint(USB_SETUP_PACKET *pSetup, U8 **pData, U16 *pSize)
+//{
+//  return USB_CTRL_STAGE_ERROR;
+//}
 
 /*
  *  USB Power Event Callback
@@ -162,7 +175,7 @@ U32 USB_CtrlSetupReqEndpoint(U8 aDir, U8 * pData, U32 aSize)
 #if USB_RESET_EVENT
 static void usb_CbReset(void)
 {
-  USB_ResetCore();
+  USBC_Reset();
 //  GPIOB->ODR &= ~LED_CFG;	        /* Turn Off Cfg LED */
 }
 #endif
@@ -290,6 +303,15 @@ void USB_CbFeature(void)
 //  //MSC_BulkOut();
 //}
 
+const USB_CORE_EVENTS USBC_Events =
+{
+  USB_CbFeature,
+  USB_CbConfigure,
+  USB_CbInterface,
+  MSC_CtrlSetupReq,
+  NULL,
+};
+
 void USBD_Init(void)
 {
 #if USB_RESET_EVENT
@@ -313,11 +335,13 @@ void USBD_Init(void)
   /* Init Hardware */
   USB_Init(3, USB_MAX_PACKET0);
   /* Register Callback for Control Endpoint */
-  USB_SetCb_Ep(0, USB_EndPoint0);
+  USB_SetCb_Ep(0, USBC_ControlInOut);
   /* Init Mass Storage Device */
   MSC_Init();
   USB_SetCb_Ep(MSC_EP_IN,  MSC_BulkIn);
   USB_SetCb_Ep(MSC_EP_OUT, MSC_BulkOut);
+  /* Init Core */
+  USBC_Init(&USBC_Events);
   /* Connect USB */
   USB_Connect(TRUE);
 }
