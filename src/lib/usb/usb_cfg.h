@@ -5,48 +5,54 @@
 
 /* USB Device Event Handlers */
 /* Power Event */
-#define USB_POWER_EVENT        (0)
+#define USB_POWER_EVENT           (0)
 /* Reset Event */
-#define USB_RESET_EVENT        (1)
+#define USB_RESET_EVENT           (1)
 /* Suspend Event */
-#define USB_SUSPEND_EVENT      (1)
+#define USB_SUSPEND_EVENT         (1)
 /* Resume Event */
-#define USB_RESUME_EVENT       (0)
+#define USB_RESUME_EVENT          (0)
 /* Remote Wakeup Event */
-#define USB_WAKEUP_EVENT       (1)
+#define USB_WAKEUP_EVENT          (1)
 /* Start of Frame Event */
-#define USB_SOF_EVENT          (0)
+#define USB_SOF_EVENT             (0)
 /* Error Event */
-#define USB_ERROR_EVENT        (0)
+#define USB_ERROR_EVENT           (0)
 
 /* USB Core Events */
 /* Set Configuration Event */
-#define USB_CONFIGURE_EVENT    (1)
+#define USB_CONFIGURE_EVENT       (1)
 /* Set Interface Event */
-#define USB_INTERFACE_EVENT    (0)
+#define USB_INTERFACE_EVENT       (0)
 /* Set/Clear Feature Event */
-#define USB_FEATURE_EVENT      (0)
+#define USB_FEATURE_EVENT         (0)
 
 /* USB Power - Default Power Setting (0 - Bus-powered, 1 - Self-powered) */
-#define USB_POWER              (0)
+#define USB_POWER                 (0)
 
 /* Max Control Endpoint Packet Size (8, 16, 32 or 64 Bytes) */
-#define USB_CTRL_PACKET_SIZE   (8)
-/* Max MSC In/Out Endpoint Packet Size */
-#define USB_MSC_PACKET_SIZE    (64)
+#define USB_CTRL_PACKET_SIZE      (8)
+/* Max MSC Bulk In/Out Endpoint Packet Size */
+#define USB_MSC_PACKET_SIZE       (64)
+/* Max CDC Interrupt Endpoint Packet Size */
+#define USB_CDC_IRQ_PACKET_SIZE   (8)
+/* Max CDC Bulk In/Out Endpoint Packet Size */
+#define USB_CDC_PACKET_SIZE       (64)
 /* Max HID Endpoint Packet Size */
-#define USB_HID_PACKET_SIZE    (4)
+#define USB_HID_PACKET_SIZE       (4)
 
-/* HID IRQ Endpoint Polling Interval (ms) */
-#define USB_HID_IRQ_INTERVAL   (32)
+/* HID Interrupt Endpoint Polling Interval (ms) */
+#define USB_HID_IRQ_INTERVAL      (32)
+/* CDC Interrupt Endpoint Polling Interval (ms) */
+#define USB_CDC_IRQ_INTERVAL      (16)
 
 /* USB Class Support */
 /* Mass Storage Device Class (MSC) (0 - Disabled, 1 - Enabled) */
-#define USB_MSC                (1)
+#define USB_MSC                   (1)
 /* Communication Device Class (CDC) (0 - Disabled, 1 - Enabled) */
-#define USB_CDC                (0)
+#define USB_CDC                   (1)
 /* Human Interface Device (HID) (0 - Disabled, 1 - Enabled) */
-#define USB_HID                (1)
+#define USB_HID                   (1)
 
 /* --- Calculations -------------------------------------------------------- */
 
@@ -92,5 +98,9 @@
 #define USB_EP_CNT             (USB_MSC * USB_MSC_EP_CNT + \
                                 USB_CDC * USB_CDC_EP_CNT + \
                                 USB_HID * USB_HID_EP_CNT + 1)
+
+#if (0 == (USB_MSC + USB_CDC + USB_HID))
+#  error "At least one USB Device class should be selected!"
+#endif
 
 #endif  /* __USB_CFG_H__ */
