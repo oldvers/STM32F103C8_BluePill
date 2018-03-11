@@ -5,7 +5,10 @@
 #include "usb_defs.h"
 #include "usb_core.h"
 #include "msc.h"
+#include "cdc.h"
 #include "hid.h"
+
+#include "debug.h"
 
 //-----------------------------------------------------------------------------
 /** @brief USB Device Reset Event Callback
@@ -170,6 +173,12 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
         result = MSC_CtrlSetupReq(pSetup, pData, pSize);
       }
 #endif
+#if USB_CDC
+      if (USB_CDC_IF_NUM0 == pSetup->wIndex.WB.L)
+      {
+        result = CDC_CtrlSetupReq(pSetup, pData, pSize);
+      }
+#endif
 #if USB_HID
       if (USB_HID_IF_NUM == pSetup->wIndex.WB.L)
       {
@@ -205,6 +214,12 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
   switch (pSetup->bmRequestType.BM.Recipient)
   {
     case REQUEST_TO_INTERFACE:
+#if USB_CDC
+      if (USB_CDC_IF_NUM0 == pSetup->wIndex.WB.L)
+      {
+         result = CDC_CtrlOutReq(pSetup, pData, pSize);
+      }
+#endif
 #if USB_HID
       if (USB_HID_IF_NUM == pSetup->wIndex.WB.L)
       {
@@ -268,6 +283,14 @@ void USBD_Init(void)
   MSC_Init();
   USB_SetCb_Ep(USB_MSC_EP_BULK_IN,  MSC_BulkIn);
   USB_SetCb_Ep(USB_MSC_EP_BULK_OUT, MSC_BulkOut);
+#endif
+
+#if (USB_CDC)
+  /* Init Communication Device Class */
+  CDC_Init();
+  USB_SetCb_Ep(USB_CDC_EP_IRQ_IN,   CDC_InterruptIn);
+  USB_SetCb_Ep(USB_CDC_EP_BULK_IN,  CDC_BulkIn);
+  USB_SetCb_Ep(USB_CDC_EP_BULK_OUT, CDC_BulkOut);
 #endif
 
 #if (USB_HID)
