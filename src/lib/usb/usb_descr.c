@@ -55,9 +55,9 @@ static const U8 USB_DeviceDescriptor[] =
   USB_DEVICE_DESC_SIZE,              /* bLength */
   USB_DEVICE_DESCRIPTOR_TYPE,        /* bDescriptorType */
   WBVAL(0x0110), /* 1.10 */          /* bcdUSB */
-  0x00,                              /* bDeviceClass */
-  0x00,                              /* bDeviceSubClass */
-  0x00,                              /* bDeviceProtocol */
+  USB_DEVICE_CLASS_MISCELLANEOUS,    /* bDeviceClass */
+  0x02,                              /* bDeviceSubClass */
+  0x01,                              /* bDeviceProtocol */
   USB_CTRL_PACKET_SIZE,              /* bMaxPacketSize0 */
   WBVAL(0xC251),                     /* idVendor */
   WBVAL(0x1C03),                     /* idProduct */
@@ -80,12 +80,13 @@ static const U8 USB_ConfigDescriptor[] =
   USB_CONFIGUARTION_DESC_SIZE,       /* bLength */
   USB_CONFIGURATION_DESCRIPTOR_TYPE, /* bDescriptorType */
   WBVAL((                            /* wTotalLength */  //1*9+2*9+3*7+1*9
-   1 * USB_CONFIGUARTION_DESC_SIZE           +
+   1 * USB_CONFIGUARTION_DESC_SIZE            +
 // 1*USB_INTERFACE_DESC_SIZE     +
-   USB_IF_CNT * USB_INTERFACE_DESC_SIZE      +
+   USB_IF_CNT * USB_INTERFACE_DESC_SIZE       +
 // 2*USB_ENDPOINT_DESC_SIZE
-   (USB_EP_CNT - 1) * USB_ENDPOINT_DESC_SIZE +
-   USB_HID * USB_HID_DESC_SIZE
+   (USB_EP_CNT - 1) * USB_ENDPOINT_DESC_SIZE  +
+   USB_HID * USB_HID_DESC_SIZE                +
+   USB_MSC * USB_HID * USB_IF_ASSOC_DESC_SIZE
   )),
 //0x01,                              /* bNumInterfaces */
   USB_IF_CNT,                        /* bNumInterfaces */
@@ -126,7 +127,19 @@ static const U8 USB_ConfigDescriptor[] =
 //WBVAL(0x0040),                     /* wMaxPacketSize */
   WBVAL(USB_MSC_PACKET_SIZE),        /* wMaxPacketSize */
   0,                                 /* bInterval */
+#if (USB_HID)
+  USB_IF_ASSOC_DESC_SIZE,            /* bLength */
+	USB_IF_ASSOC_DESCRIPTOR_TYPE,      /* bDescriptorType */
+	USB_HID_IF_NUM,                    /* bFirstInterface */
+	0x01,                              /* bInterfaceCount */
+	USB_DEVICE_CLASS_HUMAN_INTERFACE,  /* bFunctionClass */
+	HID_SUBCLASS_NONE,                 /* bFunctionSubClass */
+	HID_PROTOCOL_NONE,                 /* bFunctionProtocol */
+	0x00,                              /* iFunction (String descriptor index) */
 #endif
+#endif
+
+
 
 #if (USB_HID)
 /* Interface x, Alternate Setting 0, HID Class */

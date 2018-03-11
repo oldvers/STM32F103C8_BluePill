@@ -72,14 +72,15 @@ typedef __packed struct _USB_SETUP_PACKET
 } USB_SETUP_PACKET;
 
 /* USB Descriptor Types */
-#define USB_DEVICE_DESCRIPTOR_TYPE             1
-#define USB_CONFIGURATION_DESCRIPTOR_TYPE      2
-#define USB_STRING_DESCRIPTOR_TYPE             3
-#define USB_INTERFACE_DESCRIPTOR_TYPE          4
-#define USB_ENDPOINT_DESCRIPTOR_TYPE           5
-#define USB_DEVICE_QUALIFIER_DESCRIPTOR_TYPE   6
-#define USB_OTHER_SPEED_CONFIG_DESCRIPTOR_TYPE 7
-#define USB_INTERFACE_POWER_DESCRIPTOR_TYPE    8
+#define USB_DEVICE_DESCRIPTOR_TYPE             0x01
+#define USB_CONFIGURATION_DESCRIPTOR_TYPE      0x02
+#define USB_STRING_DESCRIPTOR_TYPE             0x03
+#define USB_INTERFACE_DESCRIPTOR_TYPE          0x04
+#define USB_ENDPOINT_DESCRIPTOR_TYPE           0x05
+#define USB_DEVICE_QUALIFIER_DESCRIPTOR_TYPE   0x06
+#define USB_OTHER_SPEED_CONFIG_DESCRIPTOR_TYPE 0x07
+#define USB_INTERFACE_POWER_DESCRIPTOR_TYPE    0x08
+#define USB_IF_ASSOC_DESCRIPTOR_TYPE           0x0B
 
 /* USB Device Classes */
 #define USB_DEVICE_CLASS_RESERVED              0x00
@@ -92,6 +93,7 @@ typedef __packed struct _USB_SETUP_PACKET
 #define USB_DEVICE_CLASS_PRINTER               0x07
 #define USB_DEVICE_CLASS_STORAGE               0x08
 #define USB_DEVICE_CLASS_HUB                   0x09
+#define USB_DEVICE_CLASS_MISCELLANEOUS         0xEF
 #define USB_DEVICE_CLASS_VENDOR_SPECIFIC       0xFF
 
 /* bmAttributes in Configuration Descriptor */
@@ -203,6 +205,19 @@ typedef __packed struct _USB_STRING_DESCRIPTOR
   U8   bDescriptorType;
   U16  bString/*[]*/;
 } USB_STRING_DESCRIPTOR;
+
+/* USB Interface Association Descriptor */
+typedef __packed struct _USB_INTERFACE_ASSOCIATION_DESCRIPTOR
+{
+	U8 bLength;           /* 8 Bytes */
+	U8 bDescriptorType;
+	U8 bFirstInterface;
+	U8 bInterfaceCount;
+	U8 bFunctionClass;
+	U8 bFunctionSubClass;
+	U8 bFunctionProtocol;
+	U8 iFunction;
+} USB_IF_ASSOC_DESCRIPTOR;
 
 /* USB Common Descriptor */
 typedef __packed struct _USB_COMMON_DESCRIPTOR

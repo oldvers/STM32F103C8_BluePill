@@ -97,7 +97,6 @@ USB_CTRL_STAGE HID_CtrlOutReq
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
 
-  LOG("Class Out Req\r\n");
   switch (pSetup->bRequest)
   {
     case HID_REQUEST_SET_REPORT:
