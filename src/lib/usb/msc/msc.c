@@ -217,32 +217,21 @@ USB_CTRL_STAGE MSC_CtrlSetupReq
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
   
-  switch (pSetup->bmRequestType.BM.Recipient)
+  switch (pSetup->bRequest)
   {
-    case REQUEST_TO_INTERFACE:
-      if (pSetup->wIndex.WB.L == USB_MSC_IF_NUM)
-      {
-        switch (pSetup->bRequest)
-        {
-          case MSC_REQUEST_RESET:
-            /* MSC Mass Storage Reset Request */
-            /* Turn Off R/W LED */
-            //GPIOB->ODR &= ~(LED_RD | LED_WR);
-            gBulkStage = MSC_BS_CBW;
-            *pSize = 0;
-            result = USB_CTRL_STAGE_STATUS;
-            break;
-          case MSC_REQUEST_GET_MAX_LUN:
-            /* No LUN associated with this device */
-            *pData[0] = 0;
-            *pSize = 1;
-            result = USB_CTRL_STAGE_DATA;
-            break;
-        }
-      }
+    case MSC_REQUEST_RESET:
+      /* MSC Mass Storage Reset Request */
+      /* Turn Off R/W LED */
+      //GPIOB->ODR &= ~(LED_RD | LED_WR);
+      gBulkStage = MSC_BS_CBW;
+      *pSize = 0;
+      result = USB_CTRL_STAGE_STATUS;
       break;
-    
-    case REQUEST_TO_ENDPOINT:
+    case MSC_REQUEST_GET_MAX_LUN:
+      /* No LUN associated with this device */
+      *pData[0] = 0;
+      *pSize = 1;
+      result = USB_CTRL_STAGE_DATA;
       break;
   }
   
@@ -809,7 +798,7 @@ void MSC_BulkIn(U32 aEvent)
 
 //-----------------------------------------------------------------------------
 /** @brief MSC Bulk Out Callback
- *  @param None (global variables)
+ *  @param aEvent - Event (global variables)
  *  @return None
  */
 void MSC_BulkOut(U32 aEvent)
@@ -841,7 +830,7 @@ void MSC_BulkOut(U32 aEvent)
 
 //-----------------------------------------------------------------------------
 /** @brief Initializes MSC Memory Image
- *  @param None (global variables)
+ *  @param aEvent - Event (global variables)
  *  @return None
  */
 void MSC_Init(void)

@@ -34,14 +34,19 @@
 #define USB_CTRL_PACKET_SIZE   (8)
 /* Max MSC In/Out Endpoint Packet Size */
 #define USB_MSC_PACKET_SIZE    (64)
+/* Max HID Endpoint Packet Size */
+#define USB_HID_PACKET_SIZE    (4)
+
+/* HID IRQ Endpoint Polling Interval (ms) */
+#define USB_HID_IRQ_INTERVAL   (32)
 
 /* USB Class Support */
 /* Mass Storage Device Class (MSC) (0 - Disabled, 1 - Enabled) */
-#define USB_MSC                (1)
+#define USB_MSC                (0)
 /* Communication Device Class (CDC) (0 - Disabled, 1 - Enabled) */
 #define USB_CDC                (0)
 /* Human Interface Device (HID) (0 - Disabled, 1 - Enabled) */
-#define USB_HID                (0)
+#define USB_HID                (1)
 
 /* --- Calculations -------------------------------------------------------- */
 
@@ -87,6 +92,5 @@
 #define USB_EP_CNT             (USB_MSC * USB_MSC_EP_CNT + \
                                 USB_CDC * USB_CDC_EP_CNT + \
                                 USB_HID * USB_HID_EP_CNT + 1)
-
 
 #endif  /* __USB_CFG_H__ */

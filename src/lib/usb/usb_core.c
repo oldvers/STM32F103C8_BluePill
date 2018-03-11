@@ -262,7 +262,7 @@ U32 usbc_CtrlSetupReqStdGetDescriptor(void)
           }
           break;
         case USB_STRING_DESCRIPTOR_TYPE:
-          gCData.pData = USB_GetStringDescriptor() + gCSetupPkt.wValue.WB.L;
+          gCData.pData = USB_GetStringDescriptor(gCSetupPkt.wValue.WB.L);
           len = ((USB_STRING_DESCRIPTOR *)gCData.pData)->bLength;
           result = TRUE;
           break;
@@ -617,7 +617,7 @@ U32 usbc_CtrlSetupReqClass(void)
  */
 U32 usbc_CtrlOutReqClass(void)
 {
-  USB_CTRL_STAGE stage;
+  USB_CTRL_STAGE stage = USB_CTRL_STAGE_ERROR;
   
   gCData.pData = gCBuffer;
   if (NULL != gCEvents->CtrlOutReq)
@@ -630,7 +630,7 @@ U32 usbc_CtrlOutReqClass(void)
 
 //-----------------------------------------------------------------------------
 /** @brief Processes USB Control Endpoint Events
- *  @param aEvent
+ *  @param aEvent - Event
  *  @return None
  */
 void USBC_ControlInOut(U32 aEvent)
