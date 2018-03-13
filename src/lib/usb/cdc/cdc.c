@@ -27,6 +27,8 @@ typedef __packed struct _CDC_LINE_CODING
 
 /* Global Variables */
 static CDC_LINE_CODING gLineCoding = {115200, 0, 0, 8};
+static U8              gOBuffer[USB_CDC_PACKET_SIZE];
+static U8              gIBuffer[USB_CDC_PACKET_SIZE];
 
 //-----------------------------------------------------------------------------
 /** @brief HID Control Setup USB Request
@@ -170,7 +172,11 @@ void CDC_BulkIn(U32 aEvent)
  */
 void CDC_BulkOut(U32 aEvent)
 {
-  LOG("CDC BULK OUT\r\n");
+  U32 count;
+  
+  count = USB_EpRead(USB_CDC_EP_BULK_OUT, gOBuffer);
+  LOG("CDC BULK OUT: Cnt = %d\r\n", count);
+  USB_EpWrite(USB_CDC_EP_BULK_IN, gOBuffer, count);
 }
 
 //-----------------------------------------------------------------------------

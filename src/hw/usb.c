@@ -570,7 +570,7 @@ void USB_IRQHandler(void)
     if (val & USB_EP_CTR_TX)
     {
       EPREG(num) = val & ~USB_EP_CTR_TX & USB_EPREG_MASK;
-      if (pUSB_CbEp[num])
+      if (NULL != pUSB_CbEp[num])
       {
         pUSB_CbEp[num](USB_EVNT_EP_IN);
       }
