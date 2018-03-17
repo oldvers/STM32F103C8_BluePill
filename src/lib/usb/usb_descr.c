@@ -55,12 +55,16 @@ static const U8 USB_DeviceDescriptor[] =
 {
   USB_DEVICE_DESC_SIZE,              /* bLength */
   USB_DEVICE_DESCRIPTOR_TYPE,        /* bDescriptorType */
-  WBVAL(0x0110), /* 1.10 */          /* bcdUSB */
+  WBVAL(0x0200), /* 2.00 */          /* bcdUSB */
 
 #if ((USB_MSC + USB_CDC + USB_HID) > 1)
   USB_DEVICE_CLASS_MISCELLANEOUS,    /* bDeviceClass */
   0x02,                              /* bDeviceSubClass */
   0x01,                              /* bDeviceProtocol */
+#elif (USB_CDC)
+  USB_DEVICE_CLASS_COMMUNICATIONS,   /* bDeviceClass */
+  CDC_IF_SUBCLASS_ACM,               /* bDeviceSubClass */
+  CDC_IF_PROTOCOL_AT_CMD,            /* bDeviceProtocol */
 #else
   USB_DEVICE_CLASS_RESERVED,         /* bDeviceClass */
   0x00,                              /* bDeviceSubClass */
@@ -69,13 +73,14 @@ static const U8 USB_DeviceDescriptor[] =
 
   USB_CTRL_PACKET_SIZE,              /* bMaxPacketSize0 */
   WBVAL(0xC251),                     /* idVendor */
+#if (0 == (USB_MSC + USB_HID))
+  WBVAL(0x1C04),                     /* idProduct */
+#else
   WBVAL(0x1C03),                     /* idProduct */
+#endif
   WBVAL(0x0100), /* 1.00 */          /* bcdDevice */
-//0x04,                              /* iManufacturer */
   STR_DESC_IDX_MANUFACTURER,         /* iManufacturer */
-//0x20,                              /* iProduct */
   STR_DESC_IDX_PRODUCT,              /* iProduct */
-//0x4A,                              /* iSerialNumber */
   STR_DESC_IDX_SERIAL_NUMBER,        /* iSerialNumber */
   0x01                               /* bNumConfigurations */
 };
@@ -190,18 +195,18 @@ static const U8 USB_ConfigDescriptor[] =
   CDC_IF_CLASS_CDC,                  /* bInterfaceClass */
   CDC_IF_SUBCLASS_NONE,              /* bInterfaceSubClass */
   CDC_IF_PROTOCOL_NONE,              /* bInterfaceProtocol */
-  STR_DESC_IDX_CDC,                  /* iInterface */
-/* Bulk In Endpoint */
-  USB_ENDPOINT_DESC_SIZE,            /* bLength */
-  USB_ENDPOINT_DESCRIPTOR_TYPE,      /* bDescriptorType */
-  USB_CDC_EP_BULK_IN,                /* bEndpointAddress */
-  USB_ENDPOINT_TYPE_BULK,            /* bmAttributes */
-  WBVAL(USB_CDC_PACKET_SIZE),        /* wMaxPacketSize */
-  0,                                 /* bInterval */
+  0, /*STR_DESC_IDX_CDC,*/                  /* iInterface */
 /* Bulk Out Endpoint */
   USB_ENDPOINT_DESC_SIZE,            /* bLength */
   USB_ENDPOINT_DESCRIPTOR_TYPE,      /* bDescriptorType */
   USB_CDC_EP_BULK_OUT,               /* bEndpointAddress */
+  USB_ENDPOINT_TYPE_BULK,            /* bmAttributes */
+  WBVAL(USB_CDC_PACKET_SIZE),        /* wMaxPacketSize */
+  0,                                 /* bInterval */
+/* Bulk In Endpoint */
+  USB_ENDPOINT_DESC_SIZE,            /* bLength */
+  USB_ENDPOINT_DESCRIPTOR_TYPE,      /* bDescriptorType */
+  USB_CDC_EP_BULK_IN,                /* bEndpointAddress */
   USB_ENDPOINT_TYPE_BULK,            /* bmAttributes */
   WBVAL(USB_CDC_PACKET_SIZE),        /* wMaxPacketSize */
   0,                                 /* bInterval */

@@ -122,21 +122,22 @@ USB_CTRL_STAGE HID_CtrlOutReq
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Initializes HID
- *  @param None
- *  @return None
- */
-void HID_Init(void)
-{
-  //
-}
-
-//-----------------------------------------------------------------------------
 /** @brief HID IRQ In Callback
  *  @param aEvent - Event
  *  @return None
  */
 void HID_InterruptIn(U32 aEvent)
 {
-  USB_EpWrite(USB_HID_EP_IRQ_IN, &gIReport, sizeof(gIReport));
+  //USB_EpWrite(USB_HID_EP_IRQ_IN, &gIReport, sizeof(gIReport));
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Initializes HID
+ *  @param None
+ *  @return None
+ */
+void HID_Init(void)
+{
+  /* Register appropriate EP callbacks */
+  USB_SetCb_Ep(USB_HID_EP_IRQ_IN, HID_InterruptIn);
 }

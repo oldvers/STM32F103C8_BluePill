@@ -378,7 +378,7 @@ void USB_EpDirCtrl(U32 aDirection)
  */
 void USB_EpEnable(U32 aNumber)
 {
-  usb_EpSetStatus(aNumber, USB_EP_TX_VALID | USB_EP_RX_VALID);
+  usb_EpSetStatus(aNumber, USB_EP_TX_NAK | USB_EP_RX_VALID);
 }
 
 //-----------------------------------------------------------------------------

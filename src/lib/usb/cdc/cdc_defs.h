@@ -32,4 +32,7 @@
 #define CDC_REQ_SEND_BREAK                 (0x23)
 #define CDC_REQ_NO_CMD                     (0xFF)
 
+/* CDC Class Notifications */
+#define CDC_NTF_SERIAL_STATE               (0x20)
+
 #endif /* __CDC_DEFS_H__ */

@@ -105,9 +105,6 @@ void usbc_CbConfigure(U8 aConfig)
   /* Check if USB is configured */
   if (aConfig)
   {
-#if (USB_HID)
-    HID_InterruptIn(0);
-#endif
     /* Turn On Cfg LED */
     //GPIOB->ODR |=  LED_CFG;
   }
@@ -164,31 +161,32 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
 
-  switch (pSetup->bmRequestType.BM.Recipient)
+  if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
   {
-    case REQUEST_TO_INTERFACE:
+    switch (pSetup->wIndex.WB.L)
+    {
 #if (USB_MSC)
-      if (USB_MSC_IF_NUM == pSetup->wIndex.WB.L)
-      {
+      case USB_MSC_IF_NUM:
         result = MSC_CtrlSetupReq(pSetup, pData, pSize);
-      }
+        break;
 #endif
 #if USB_CDC
-      if (USB_CDC_IF_NUM0 == pSetup->wIndex.WB.L)
-      {
+      case USB_CDC_IF_NUM0:
         result = CDC_CtrlSetupReq(pSetup, pData, pSize);
-      }
+        break;
 #endif
 #if USB_HID
-      if (USB_HID_IF_NUM == pSetup->wIndex.WB.L)
-      {
+      case USB_HID_IF_NUM:
         result = HID_CtrlSetupReq(pSetup, pData, pSize);
-      }
+        break;
 #endif
-      break;
-
-    case REQUEST_TO_ENDPOINT:
-      break;
+      default:
+        break;
+    }
+  }
+  else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
+  {
+    //
   }
   
   return result;
@@ -211,25 +209,27 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
 
-  switch (pSetup->bmRequestType.BM.Recipient)
+  if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
   {
-    case REQUEST_TO_INTERFACE:
+    switch (pSetup->wIndex.WB.L)
+    {
 #if USB_CDC
-      if (USB_CDC_IF_NUM0 == pSetup->wIndex.WB.L)
-      {
-         result = CDC_CtrlOutReq(pSetup, pData, pSize);
-      }
+      case USB_CDC_IF_NUM0:
+        result = CDC_CtrlOutReq(pSetup, pData, pSize);
+        break;
 #endif
 #if USB_HID
-      if (USB_HID_IF_NUM == pSetup->wIndex.WB.L)
-      {
-         result = HID_CtrlOutReq(pSetup, pData, pSize);
-      }
+      case USB_HID_IF_NUM:
+        result = HID_CtrlOutReq(pSetup, pData, pSize);
+        break;
 #endif
-      break;
-
-    case REQUEST_TO_ENDPOINT:
-      break;
+      default:
+        break;
+    }
+  }
+  else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
+  {
+    //
   }
 
   return result;
@@ -273,6 +273,7 @@ void USBD_Init(void)
 #if USB_ERROR_EVENT
   USB_SetCb_Error(usbd_CbError);
 #endif
+
   /* Init Hardware */
   USB_Init(USB_EP_CNT, USB_CTRL_PACKET_SIZE);
   /* Register Callback for Control Endpoint */
@@ -281,22 +282,16 @@ void USBD_Init(void)
 #if (USB_MSC)
   /* Init Mass Storage Device */
   MSC_Init();
-  USB_SetCb_Ep(USB_MSC_EP_BULK_IN,  MSC_BulkIn);
-  USB_SetCb_Ep(USB_MSC_EP_BULK_OUT, MSC_BulkOut);
 #endif
 
 #if (USB_CDC)
   /* Init Communication Device Class */
   CDC_Init();
-  USB_SetCb_Ep(USB_CDC_EP_IRQ_IN,   CDC_InterruptIn);
-  USB_SetCb_Ep(USB_CDC_EP_BULK_IN,  CDC_BulkIn);
-  USB_SetCb_Ep(USB_CDC_EP_BULK_OUT, CDC_BulkOut);
 #endif
 
 #if (USB_HID)
   /* Init Human Interface Device */
   HID_Init();
-  USB_SetCb_Ep(USB_HID_EP_IRQ_IN, HID_InterruptIn);
 #endif
 
   /* Init Core */

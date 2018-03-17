@@ -841,4 +841,7 @@ void MSC_Init(void)
   {
     gMemory[n] = FlashDiskImage[n];
   }
+  
+  USB_SetCb_Ep(USB_MSC_EP_BULK_IN,  MSC_BulkIn);
+  USB_SetCb_Ep(USB_MSC_EP_BULK_OUT, MSC_BulkOut);
 }
