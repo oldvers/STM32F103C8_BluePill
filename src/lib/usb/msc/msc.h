@@ -13,7 +13,5 @@ USB_CTRL_STAGE MSC_CtrlSetupReq
   U8 **pData,
   U16 *pSize
 );
-void MSC_BulkIn (U32 aEvent);
-void MSC_BulkOut(U32 aEvent);
 
 #endif  /* __MSC_H__ */

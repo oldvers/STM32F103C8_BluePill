@@ -771,7 +771,7 @@ void MSC_GetCBW(void)
  *  @param None (global variables)
  *  @return None
  */
-void MSC_BulkIn(U32 aEvent)
+void msc_BulkIn(U32 aEvent)
 {
   switch (gBulkStage)
   {
@@ -801,7 +801,7 @@ void MSC_BulkIn(U32 aEvent)
  *  @param aEvent - Event (global variables)
  *  @return None
  */
-void MSC_BulkOut(U32 aEvent)
+void msc_BulkOut(U32 aEvent)
 {
   gBulkRwLength = USB_EpRead(USB_MSC_EP_BULK_OUT, gBulkBuf);
   switch (gBulkStage)
@@ -842,6 +842,6 @@ void MSC_Init(void)
     gMemory[n] = FlashDiskImage[n];
   }
   
-  USB_SetCb_Ep(USB_MSC_EP_BULK_IN,  MSC_BulkIn);
-  USB_SetCb_Ep(USB_MSC_EP_BULK_OUT, MSC_BulkOut);
+  USB_SetCb_Ep(USB_MSC_EP_BULK_IN,  msc_BulkIn);
+  USB_SetCb_Ep(USB_MSC_EP_BULK_OUT, msc_BulkOut);
 }

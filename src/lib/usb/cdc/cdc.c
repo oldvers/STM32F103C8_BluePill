@@ -106,15 +106,9 @@ void cdc_IrqInStage(void)
  */
 void cdc_NotifyState(U16 aState)
 {
-  LOG("CDC Ntf RqType B= %02X\r\n", gNotification.bmRequestType.B);
-  LOG("CDC Ntf RqData B= %02X\r\n", gNotification.Data.Raw);
-  
   gNotification.Data.Raw = aState;
   gIrqBuff = (U8 *)&gNotification;
   gIrqBuffLen = sizeof(gNotification);
-  
-  LOG("CDC Ntf RqType A= %02X\r\n", gNotification.bmRequestType.B);
-  LOG("CDC Ntf RqData A= %02X\r\n", gNotification.Data.Raw);
   
   cdc_IrqInStage();
 }
@@ -157,8 +151,6 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
       break;
     case CDC_REQ_SET_LINE_CODING:
       LOG("CDC Setup: Set Line Coding: Len = %d\r\n", *pSize);
-      LOG("CDC Ntf RqType = %02X\r\n", gNotification.bmRequestType.B);
-      LOG("CDC Ntf RqData = %02X\r\n", gNotification.Data.Raw);
       *pData = (U8 *)&gLineCoding;
       result = USB_CTRL_STAGE_WAIT;
       break;
@@ -217,17 +209,11 @@ USB_CTRL_STAGE CDC_CtrlOutReq
       break;
     case CDC_REQ_SET_LINE_CODING:
       LOG("CDC Out: Set Line Coding: Baud = %d, Len = %d\r\n", gLineCoding.dwBaudRate, *pSize);
-      LOG("CDC Ntf RqType = %02X\r\n", gNotification.bmRequestType.B);
-      LOG("CDC Ntf RqData = %02X\r\n", gNotification.Data.Raw);
       result = USB_CTRL_STAGE_STATUS;
       break;
     case CDC_REQ_GET_LINE_CODING:
       LOG("CDC Out: Get Line Coding\r\n");
       break;
-//    case CDC_REQ_SET_CONTROL_LINE_STATE:
-//      LOG("CDC Out: Set Ctrl Line State\r\n");
-//      result = USB_CTRL_STAGE_STATUS;
-//      break;
     case CDC_REQ_SEND_BREAK:
       LOG("CDC Out: Send Break\r\n");
       break;
@@ -243,26 +229,8 @@ USB_CTRL_STAGE CDC_CtrlOutReq
  *  @param aEvent - Event
  *  @return None
  */
-void CDC_InterruptIn(U32 aEvent)
+void cdc_InterruptIn(U32 aEvent)
 {
-//  U8 len = 0;
-
-//  if (0 == gIrqBuffLen) return;
-
-//  if (USB_CDC_IRQ_PACKET_SIZE < gIrqBuffLen)
-//  {
-//    len = USB_CDC_IRQ_PACKET_SIZE;
-//  }
-//  else
-//  {
-//    len = gIrqBuffLen;
-//  }
-
-//  LOG("CDC IRQ IN: len = %d\r\n", len);
-//  USB_EpWrite(USB_CDC_EP_IRQ_IN, gIrqBuff, len);
-
-//  gIrqBuff += len;
-//  gIrqBuffLen -= len;
   cdc_IrqInStage();
 }
 
@@ -271,7 +239,7 @@ void CDC_InterruptIn(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
-void CDC_BulkIn(U32 aEvent)
+void cdc_BulkIn(U32 aEvent)
 {
   LOG("CDC BULK IN\r\n");
   cdc_NotifyState(3);
@@ -284,7 +252,7 @@ void CDC_BulkIn(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
-void CDC_BulkOut(U32 aEvent)
+void cdc_BulkOut(U32 aEvent)
 {
   U32 count;
   
@@ -300,10 +268,8 @@ void CDC_BulkOut(U32 aEvent)
  */
 void CDC_Init(void)
 {
-  LOG("CDC Ntf RqType = %02X\r\n", gNotification.bmRequestType.B);
-  LOG("CDC Ntf RqData = %02X\r\n", gNotification.Data.Raw);
   /* Register appropriate EP callbacks */
-  USB_SetCb_Ep(USB_CDC_EP_BULK_OUT, CDC_BulkOut);
-  USB_SetCb_Ep(USB_CDC_EP_BULK_IN,  CDC_BulkIn);
-  USB_SetCb_Ep(USB_CDC_EP_IRQ_IN,   CDC_InterruptIn);
+  USB_SetCb_Ep(USB_CDC_EP_BULK_OUT, cdc_BulkOut);
+  USB_SetCb_Ep(USB_CDC_EP_BULK_IN,  cdc_BulkIn);
+  USB_SetCb_Ep(USB_CDC_EP_IRQ_IN,   cdc_InterruptIn);
 }

@@ -126,7 +126,7 @@ USB_CTRL_STAGE HID_CtrlOutReq
  *  @param aEvent - Event
  *  @return None
  */
-void HID_InterruptIn(U32 aEvent)
+void hid_InterruptIn(U32 aEvent)
 {
   //USB_EpWrite(USB_HID_EP_IRQ_IN, &gIReport, sizeof(gIReport));
 }
@@ -139,5 +139,5 @@ void HID_InterruptIn(U32 aEvent)
 void HID_Init(void)
 {
   /* Register appropriate EP callbacks */
-  USB_SetCb_Ep(USB_HID_EP_IRQ_IN, HID_InterruptIn);
+  USB_SetCb_Ep(USB_HID_EP_IRQ_IN, hid_InterruptIn);
 }
