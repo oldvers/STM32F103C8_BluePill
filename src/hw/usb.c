@@ -436,15 +436,22 @@ U32 USB_EpRead(U32 aNumber, U8 *pData)
 {
   /* Double Buffering is not yet supported */
   U32 num, cnt, *pv, n;
+  U16 data;
 
   num = aNumber & 0x0F;
 
   pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_RX));
   cnt = (pEpBuffDscr + num)->COUNT_RX & USB_EP_COUNT_MASK;
-  for (n = 0; n < (cnt + 1) / 2; n++)
+  for (n = 0; n < (cnt >> 1); n++)
   {
     *((__packed U16 *)pData) = *pv++;
     pData += 2;
+  }
+  if (1 == (cnt % 1))
+  {
+    *((__packed U16 *)&data) = *pv++;
+    *pData = (U8)data;
+    pData++;
   }
   usb_EpSetStatus(aNumber, USB_EP_RX_VALID);
 
