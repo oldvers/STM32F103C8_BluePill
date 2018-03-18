@@ -333,6 +333,7 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
     if (gCSetupPkt.wValue.WB.L)
     {
       pD = (USB_COMMON_DESCRIPTOR *)USB_GetConfigDescriptor();
+      USB_PreapareReConfig();
       while (pD->bLength)
       {
         switch (pD->bDescriptorType)
@@ -447,6 +448,7 @@ U32 usbc_CtrlSetupReqStdSetInterface(void)
   if (REQUEST_TO_INTERFACE == gCSetupPkt.bmRequestType.BM.Recipient)
   {
     pD  = (USB_COMMON_DESCRIPTOR *)USB_GetConfigDescriptor();
+    USB_PreapareReConfig();
     while (pD->bLength)
     {
       switch (pD->bDescriptorType)

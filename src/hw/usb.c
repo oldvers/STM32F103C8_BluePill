@@ -12,7 +12,7 @@
 #define EPREG(num)          (*((volatile U32 *)(USB_BASE + 4 * (num))))
 
 /* Endpoint Buffer Descriptor */
-typedef struct EpBuffDescription_s
+typedef __packed struct EpBuffDescription_s
 {
   U32 ADDR_TX;
   U32 COUNT_TX;
@@ -250,6 +250,19 @@ void USB_Reset(void)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Prepares internal variables for EP reconfiguration
+ *  @param None
+ *  @return None
+ *  @note Should be called when EP0 IN/OUT has been already initialized
+ */
+void USB_PreapareReConfig(void)
+{
+  /* Recalculate Free EP Buffer pointer */
+  gEpFreeBuffAddr = gMaxEpCount * sizeof(EpBuffDescription_t);
+  gEpFreeBuffAddr += (gCtrlEpMaxPacketSize << 1);
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Suspends USB peripheral
  *  @param None
  *  @return None
@@ -354,7 +367,7 @@ void USB_EpConfigure(U8 aAddress, U16 aMaxPacketSize, USB_EP_TYPE aType)
     }
   }
   gEpFreeBuffAddr += val;
-
+  
   val = (aType << USB_EP_TYPE_MASK_Pos) & USB_EP_TYPE_MASK;
   val |= num;
   EPREG(num) = val;
@@ -474,7 +487,7 @@ U32 USB_EpWrite(U32 aNumber, U8 *pData, U32 aSize)
   num = aNumber & 0x0F;
 
   pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_TX));
-  for (n = 0; n < (aSize + 1) / 2; n++)
+  for (n = 0; n < ((aSize + 1) >> 1); n++)
   {
     *pv++ = *((__packed U16 *)pData);
     pData += 2;
