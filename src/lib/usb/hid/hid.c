@@ -108,7 +108,10 @@ USB_CTRL_STAGE HID_CtrlOutReq
           break;
         case HID_REPORT_OUTPUT:
           gOReport = *pData[0];
+          LOG("HID OReport = %02X\r\n", gOReport);
           gIReport = gOReport;
+          LOG("HID IReport = %02X\r\n", gIReport);
+          USB_EpWrite(USB_HID_EP_IRQ_IN, &gIReport, sizeof(gIReport));
           result = USB_CTRL_STAGE_STATUS;
           break;
         case HID_REPORT_FEATURE:
@@ -129,6 +132,7 @@ USB_CTRL_STAGE HID_CtrlOutReq
 void hid_InterruptIn(U32 aEvent)
 {
   //USB_EpWrite(USB_HID_EP_IRQ_IN, &gIReport, sizeof(gIReport));
+  LOG("HID IRQ IN\r\n");
 }
 
 //-----------------------------------------------------------------------------

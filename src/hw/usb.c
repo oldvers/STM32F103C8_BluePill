@@ -447,7 +447,7 @@ U32 USB_EpRead(U32 aNumber, U8 *pData)
     *((__packed U16 *)pData) = *pv++;
     pData += 2;
   }
-  if (1 == (cnt % 1))
+  if (1 == (cnt % 2))
   {
     *((__packed U16 *)&data) = *pv++;
     *pData = (U8)data;

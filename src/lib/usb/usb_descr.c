@@ -61,6 +61,10 @@ static const U8 USB_DeviceDescriptor[] =
   USB_DEVICE_CLASS_MISCELLANEOUS,    /* bDeviceClass */
   0x02,                              /* bDeviceSubClass */
   0x01,                              /* bDeviceProtocol */
+#elif (USB_CDC)
+  USB_DEVICE_CLASS_COMMUNICATIONS,   /* bDeviceClass */
+  CDC_IF_SUBCLASS_ACM,               /* bDeviceSubClass */
+  CDC_IF_PROTOCOL_AT_CMD,            /* bDeviceProtocol */
 #else
   USB_DEVICE_CLASS_RESERVED,         /* bDeviceClass */
   0x00,                              /* bDeviceSubClass */
@@ -69,7 +73,7 @@ static const U8 USB_DeviceDescriptor[] =
 
   USB_CTRL_PACKET_SIZE,              /* bMaxPacketSize0 */
   WBVAL(0xC251),                     /* idVendor */
-  WBVAL(0x1C04),                     /* idProduct */
+  WBVAL(0x1C03),                     /* idProduct */
   WBVAL(0x0100), /* 1.00 */          /* bcdDevice */
   STR_DESC_IDX_MANUFACTURER,         /* iManufacturer */
   STR_DESC_IDX_PRODUCT,              /* iProduct */
