@@ -28,12 +28,12 @@ void ApplicationInit( void )
     - SYSCLK              - 72000000 Hz
     - HCLK                - 72000000 Hz
     - AHB Prescaler       - 1
-    - APB1 Prescaler      - 1
+    - APB1 Prescaler      - 2
     - APB2 Prescaler      - 1
     - HSE Frequency       - 8000000 Hz
     - PLL MUL             - 9
     - VDD                 - 3.3 V
-    - Flash Latency       - 1 WS                                                                  */
+    - Flash Latency       - 2 WS                                                                  */
 
 void SystemClockConfig( void )
 {
@@ -66,7 +66,7 @@ void SystemClockConfig( void )
 
     /* Flash 2 wait state */
     FLASH->ACR &= (U32)((U32)~FLASH_ACR_LATENCY);
-    FLASH->ACR |= (U32)FLASH_ACR_LATENCY_2;    
+    FLASH->ACR |= (U32)FLASH_ACR_LATENCY_1;    
  
     /* HCLK = SYSCLK */
     RCC->CFGR |= (U32)RCC_CFGR_HPRE_DIV1;
