@@ -6,8 +6,15 @@
 #include "usb_core.h"
 #include "cdc_defs.h"
 #include "cdc.h"
+
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "east.h"
+
 #include "debug.h"
 
+//-----------------------------------------------------------------------------
+/* Private Types definitions */
 /* Line Coding Structure */
 typedef __packed struct _CDC_LINE_CODING
 {
@@ -49,15 +56,16 @@ typedef __packed struct _CDC_SERIAL_STATE
   } Data;
 } CDC_SERIAL_STATE;
 
+//-----------------------------------------------------------------------------
 /* Global Variables */
-static CDC_LINE_CODING  gLineCoding =
+static CDC_LINE_CODING   gLineCoding =
 {
   115200, /* dwBaudRate */
   0,      /* bCharFormat */
   0,      /* bParityType */
   8,      /* bDataBits */
 };
-static CDC_SERIAL_STATE gNotification =
+static CDC_SERIAL_STATE  gNotification =
 {
   /* bmRequestType */
   {REQUEST_TO_INTERFACE, REQUEST_CLASS, REQUEST_DEVICE_TO_HOST},
@@ -67,10 +75,20 @@ static CDC_SERIAL_STATE gNotification =
   2,                    /* wLength */
   0,                    /* Data */
 };
-static U8               gOBuffer[USB_CDC_PACKET_SIZE];
-static U8               gIBuffer[USB_CDC_PACKET_SIZE];
-static U8              *gIrqBuff = NULL;
-static U8               gIrqBuffLen = 0;
+static U8                gOBuffer[USB_CDC_PACKET_SIZE];
+static U8                gIBuffer[USB_CDC_PACKET_SIZE];
+static U8               *gIrqBuff = NULL;
+static U8                gIrqBuffLen = 0;
+static SemaphoreHandle_t gVcpSemRx = NULL;
+static SemaphoreHandle_t gVcpSemTx = NULL;
+static U8                gVcpReading = FALSE;
+static EAST_STATE        gVcpRxState;
+static EAST_STATE        gVcpTxState;
+
+//-----------------------------------------------------------------------------
+/* Private Functions declarations */
+void cdc_InStage(void);
+void cdc_OutStage(void);
 
 //-----------------------------------------------------------------------------
 /** @brief Processes IRQ EP data
@@ -134,21 +152,6 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
   
   switch (pSetup->bRequest)
   {
-    case CDC_REQ_SEND_ENCAPSULATED_COMMAND:
-      LOG("CDC Setup: Send Enc Cmd\r\n");
-      break;
-    case CDC_REQ_GET_ENCAPSULATED_RESPONSE:
-      LOG("CDC Setup: Get Enc Rsp\r\n");
-      break;
-    case CDC_REQ_SET_COMM_FEATURE:
-      LOG("CDC Setup: Set Comm Feature\r\n");
-      break;
-    case CDC_REQ_GET_COMM_FEATURE:
-      LOG("CDC Setup: Get Comm Feature\r\n");
-      break;
-    case CDC_REQ_CLEAR_COMM_FEATURE:
-      LOG("CDC Setup: Clear Comm Feature\r\n");
-      break;
     case CDC_REQ_SET_LINE_CODING:
       LOG("CDC Setup: Set Line Coding: Len = %d\r\n", *pSize);
       *pData = (U8 *)&gLineCoding;
@@ -162,11 +165,6 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
     case CDC_REQ_SET_CONTROL_LINE_STATE:
       LOG("CDC Setup: Set Ctrl Line State\r\n");
       result = USB_CTRL_STAGE_STATUS;
-      break;
-    case CDC_REQ_SEND_BREAK:
-      LOG("CDC Setup: Send Break\r\n");
-      break;
-    case CDC_REQ_NO_CMD:
       break;
   }
   
@@ -192,32 +190,9 @@ USB_CTRL_STAGE CDC_CtrlOutReq
   
   switch (pSetup->bRequest)
   {
-    case CDC_REQ_SEND_ENCAPSULATED_COMMAND:
-      LOG("CDC Out: Send Enc Cmd\r\n");
-      break;
-    case CDC_REQ_GET_ENCAPSULATED_RESPONSE:
-      LOG("CDC Out: Get Enc Rsp\r\n");
-      break;
-    case CDC_REQ_SET_COMM_FEATURE:
-      LOG("CDC Out: Set Comm Feature\r\n");
-      break;
-    case CDC_REQ_GET_COMM_FEATURE:
-      LOG("CDC Out: Get Comm Feature\r\n");
-      break;
-    case CDC_REQ_CLEAR_COMM_FEATURE:
-      LOG("CDC Out: Clear Comm Feature\r\n");
-      break;
     case CDC_REQ_SET_LINE_CODING:
       LOG("CDC Out: Set Line Coding: Baud = %d, Len = %d\r\n", gLineCoding.dwBaudRate, *pSize);
       result = USB_CTRL_STAGE_STATUS;
-      break;
-    case CDC_REQ_GET_LINE_CODING:
-      LOG("CDC Out: Get Line Coding\r\n");
-      break;
-    case CDC_REQ_SEND_BREAK:
-      LOG("CDC Out: Send Break\r\n");
-      break;
-    case CDC_REQ_NO_CMD:
       break;
   }
   
@@ -241,10 +216,7 @@ void cdc_InterruptIn(U32 aEvent)
  */
 void cdc_BulkIn(U32 aEvent)
 {
-  LOG("CDC BULK IN\r\n");
-  cdc_NotifyState(3);
-//  USB_EpWrite(USB_CDC_EP_BULK_IN, NULL, 0);
-//  USB_EpSetStall(USB_CDC_EP_BULK_IN);
+  cdc_InStage();
 }
 
 //-----------------------------------------------------------------------------
@@ -254,11 +226,7 @@ void cdc_BulkIn(U32 aEvent)
  */
 void cdc_BulkOut(U32 aEvent)
 {
-  U32 count;
-  
-  count = USB_EpRead(USB_CDC_EP_BULK_OUT, gOBuffer);
-  LOG("CDC BULK OUT: Cnt = %d\r\n", count);
-  USB_EpWrite(USB_CDC_EP_BULK_IN, gOBuffer, count);
+  cdc_OutStage();
 }
 
 //-----------------------------------------------------------------------------
@@ -272,4 +240,157 @@ void CDC_Init(void)
   USB_SetCb_Ep(USB_CDC_EP_BULK_OUT, cdc_BulkOut);
   USB_SetCb_Ep(USB_CDC_EP_BULK_IN,  cdc_BulkIn);
   USB_SetCb_Ep(USB_CDC_EP_IRQ_IN,   cdc_InterruptIn);
+  
+  /* Create Semaphores for VCP */
+  gVcpSemRx = xSemaphoreCreateBinary();
+  gVcpSemTx = xSemaphoreCreateBinary();
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Opens Virtual COM Port
+ *  @param None
+ *  @return TRUE - Port opened, FALSE - Error
+ */
+U32 VCP_Open(void)
+{
+  /* Check if VCP Semaphore/Mutex were created successfuly */
+  if ((NULL == gVcpSemRx) || (NULL == gVcpSemTx)) return FALSE;
+
+  /* Indicate that there is no reading in progress */
+  gVcpReading = FALSE;
+  
+  return TRUE;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Callback function - VCP read completed
+ *  @param None
+ *  @return None
+ */
+void cdc_OutCompleted(void)
+{
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  gVcpReading = FALSE;
+  xSemaphoreGiveFromISR(gVcpSemRx, &xHigherPriorityTaskWoken);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Processes OUT EP data
+ *  @param None
+ *  @return None
+ */
+void cdc_OutStage(void)
+{
+  U32 len, i = 0;
+
+  /* Read from OUT EP */
+  len = USB_EpRead(USB_CDC_EP_BULK_OUT, gOBuffer);
+  //LOG("CDC OUT: len = %d\r\n", len);
+  
+  /* If there is no reading in progress - ignore */
+  while ((TRUE == gVcpReading) && (i < len))
+  {
+    EAST_PutByte(&gVcpRxState, gOBuffer[i++]);
+  }
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Reads from Vortual COM Port
+ *  @param pData - Buffer for data to be read
+ *  @param aSize - Size of data to be read
+ *  @param aTimeout - Time to waiting a data
+ *  @return Number of bytes read
+ */
+U32 VCP_Read(U8 * pData, U32 aSize, U32 aTimeout)
+{
+  /* Init EAST state for reading */
+  gVcpRxState.MaxSize = aSize;
+  gVcpRxState.ActSize = 0;
+  gVcpRxState.Index = 0;
+  gVcpRxState.Buffer = pData;
+  gVcpRxState.OnComplete = cdc_OutCompleted;
+  
+  /* Indicate VCP reading is in progress */
+  gVcpReading = TRUE;
+
+  /* Wait for Rx Complete */
+  if (pdFALSE == xSemaphoreTake(gVcpSemRx, aTimeout))
+  {
+    /* Timeout occurs */
+    return 0;
+  }
+
+  return gVcpRxState.ActSize;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Callback function - VCP write completed
+ *  @param None
+ *  @return None
+ */
+void cdc_InCompleted(void)
+{
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  xSemaphoreGiveFromISR(gVcpSemTx, &xHigherPriorityTaskWoken);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Processes IN EP data
+ *  @param None
+ *  @return None
+ */
+void cdc_InStage(void)
+{
+  U8 data, len = 0;
+
+  while
+  (
+    (len < USB_CDC_PACKET_SIZE) &&
+    (TRUE == EAST_GetByte(&gVcpTxState, &data))
+  )
+  {
+    gIBuffer[len++] = data;
+  }
+
+  //LOG("CDC IN: len = %d\r\n", len);
+  if (0 < len) USB_EpWrite(USB_CDC_EP_BULK_IN, gIBuffer, len);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Writes to Virtual COM Port
+ *  @param pData - Buffer of data to be written
+ *  @param aSize - Size of data to be written
+ *  @return Number of bytes written
+ */
+U32 VCP_Write(U8 * pData, U32 aSize, U32 aTimeout)
+{
+  /* Init EAST state for writing */
+  gVcpTxState.MaxSize = aSize;
+  gVcpTxState.ActSize = 0;
+  gVcpTxState.Index = 0;
+  gVcpTxState.Buffer = pData;
+  gVcpTxState.OnComplete = cdc_InCompleted;
+
+  /* Process IN EP */
+  cdc_InStage();
+
+  /* Wait for Tx complete */
+  if (pdFALSE == xSemaphoreTake(gVcpSemTx, aTimeout))
+  {
+    /* Timeout occurs */
+    return 0;
+  }
+
+  return gVcpTxState.ActSize;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Closes Virtual COM Port
+ *  @param None
+ *  @return None
+ */
+void VCP_Close(void)
+{
+  /* Indicate that there is no reading in progress */
+  gVcpReading = FALSE;
 }

@@ -11,12 +11,13 @@
 #include "queue.h"
 
 #include "usb_device.h"
+#include "vcp.h"
 
 void vLEDTask(void * pvParameters)
 {
   GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
   
-  while(1)
+  while(TRUE)
   {
     GPIO_Lo(GPIOC, 13);
     vTaskDelay(500);
@@ -24,6 +25,38 @@ void vLEDTask(void * pvParameters)
     vTaskDelay(500);
   }
   //vTaskDelete(NULL);
+}
+
+void vVCPTask(void * pvParameters)
+{
+  U8  Rx[130];
+  U16 RxLen = 0;
+  U32 time;
+  
+  if (TRUE == VCP_Open())
+  {
+    while(TRUE)
+    {
+      RxLen = VCP_Read(Rx, sizeof(Rx), 5000);
+      if (0 < RxLen)
+      {
+        LOG("VCP Rx: len = %d\r\n", RxLen);
+        LOG("VCP Rx: ");
+        for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
+        LOG("\r\n");
+
+        time = xTaskGetTickCount();
+        VCP_Write(Rx, RxLen, 5000);
+        LOG("VCP Tx: time = %d\r\n", xTaskGetTickCount() - time);
+      }
+      else
+      {
+        LOG("VCP Rx: Timout\r\n");
+      }
+    }
+  }
+  VCP_Close();
+  vTaskDelete(NULL);
 }
 
 int main(void)
@@ -44,6 +77,7 @@ int main(void)
 //  GPIO_Hi(GPIOB, 8);
   
   xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+  xTaskCreate(vVCPTask,"VCPTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 
   vTaskStartScheduler();
 
