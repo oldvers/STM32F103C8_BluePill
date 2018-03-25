@@ -80,7 +80,9 @@ static U8                gIBuffer[USB_CDC_PACKET_SIZE];
 static U8               *gIrqBuff = NULL;
 static U8                gIrqBuffLen = 0;
 static SemaphoreHandle_t gVcpSemRx = NULL;
+static SemaphoreHandle_t gVcpMutRx = NULL;
 static SemaphoreHandle_t gVcpSemTx = NULL;
+static SemaphoreHandle_t gVcpMutTx = NULL;
 static U8                gVcpReading = FALSE;
 static EAST_STATE        gVcpRxState;
 static EAST_STATE        gVcpTxState;
@@ -241,9 +243,11 @@ void CDC_Init(void)
   USB_SetCb_Ep(USB_CDC_EP_BULK_IN,  cdc_BulkIn);
   USB_SetCb_Ep(USB_CDC_EP_IRQ_IN,   cdc_InterruptIn);
   
-  /* Create Semaphores for VCP */
+  /* Create Semaphores/Mutex for VCP */
   gVcpSemRx = xSemaphoreCreateBinary();
+  gVcpMutRx = xSemaphoreCreateMutex();
   gVcpSemTx = xSemaphoreCreateBinary();
+  gVcpMutTx = xSemaphoreCreateMutex();
 }
 
 //-----------------------------------------------------------------------------
@@ -254,7 +258,11 @@ void CDC_Init(void)
 U32 VCP_Open(void)
 {
   /* Check if VCP Semaphore/Mutex were created successfuly */
-  if ((NULL == gVcpSemRx) || (NULL == gVcpSemTx)) return FALSE;
+  if ( (NULL == gVcpSemRx) || (NULL == gVcpMutRx) ||
+       (NULL == gVcpSemTx) || (NULL == gVcpMutTx) )
+  {
+    return FALSE;
+  }
 
   /* Indicate that there is no reading in progress */
   gVcpReading = FALSE;
@@ -286,7 +294,7 @@ void cdc_OutStage(void)
   /* Read from OUT EP */
   len = USB_EpRead(USB_CDC_EP_BULK_OUT, gOBuffer);
   //LOG("CDC OUT: len = %d\r\n", len);
-  
+
   /* If there is no reading in progress - ignore */
   while ((TRUE == gVcpReading) && (i < len))
   {
@@ -303,24 +311,36 @@ void cdc_OutStage(void)
  */
 U32 VCP_Read(U8 * pData, U32 aSize, U32 aTimeout)
 {
+  U32 result = 0;
+
+  if (pdFALSE == xSemaphoreTake(gVcpMutRx, portMAX_DELAY))
+  {
+    return 0;
+  }
+
   /* Init EAST state for reading */
   gVcpRxState.MaxSize = aSize;
   gVcpRxState.ActSize = 0;
   gVcpRxState.Index = 0;
   gVcpRxState.Buffer = pData;
   gVcpRxState.OnComplete = cdc_OutCompleted;
-  
+
   /* Indicate VCP reading is in progress */
   gVcpReading = TRUE;
 
   /* Wait for Rx Complete */
-  if (pdFALSE == xSemaphoreTake(gVcpSemRx, aTimeout))
+  if (pdTRUE == xSemaphoreTake(gVcpSemRx, aTimeout))
   {
-    /* Timeout occurs */
-    return 0;
+    result = gVcpRxState.ActSize;
+  }
+  else
+  {
+    result = 0;
   }
 
-  return gVcpRxState.ActSize;
+  xSemaphoreGive(gVcpMutRx);
+
+  return result;
 }
 
 //-----------------------------------------------------------------------------
@@ -364,6 +384,13 @@ void cdc_InStage(void)
  */
 U32 VCP_Write(U8 * pData, U32 aSize, U32 aTimeout)
 {
+  U32 result = 0;
+
+  if (pdFALSE == xSemaphoreTake(gVcpMutTx, portMAX_DELAY))
+  {
+    return 0;
+  }
+
   /* Init EAST state for writing */
   gVcpTxState.MaxSize = aSize;
   gVcpTxState.ActSize = 0;
@@ -375,13 +402,18 @@ U32 VCP_Write(U8 * pData, U32 aSize, U32 aTimeout)
   cdc_InStage();
 
   /* Wait for Tx complete */
-  if (pdFALSE == xSemaphoreTake(gVcpSemTx, aTimeout))
+  if (pdTRUE == xSemaphoreTake(gVcpSemTx, aTimeout))
   {
-    /* Timeout occurs */
-    return 0;
+    result = gVcpTxState.ActSize;
+  }
+  else
+  {
+    result = 0;
   }
 
-  return gVcpTxState.ActSize;
+  xSemaphoreGive(gVcpMutTx);
+
+  return result;
 }
 
 //-----------------------------------------------------------------------------
