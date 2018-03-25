@@ -636,6 +636,21 @@
               <FileType>1</FileType>
               <FilePath>..\..\src\lib\usb\cdc\cdc.c</FilePath>
             </File>
+            <File>
+              <FileName>east.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\usb\cdc\east.h</FilePath>
+            </File>
+            <File>
+              <FileName>east.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\src\lib\usb\cdc\east.c</FilePath>
+            </File>
+            <File>
+              <FileName>vcp.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\usb\cdc\vcp.h</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
