@@ -13,10 +13,10 @@ void ApplicationInit( void )
 {
   /* Setup interrupts priority grouping */
   NVIC_SetPriorityGrouping(5);
-  
+
   /* First of all - Init the system */
   SystemInit();
-  
+
   /* Initialize system clock */
   SystemClockConfig();
 }
@@ -41,7 +41,7 @@ void SystemClockConfig( void )
 
   /* Enable HSE */    
   RCC->CR |= ((U32)RCC_CR_HSEON);
- 
+
   /* Wait till HSE is ready and if Time out is reached exit */
   do
   {
@@ -57,7 +57,7 @@ void SystemClockConfig( void )
   else
   {
     HSEStatus = 0U;
-  }  
+  }
 
   if (1U == HSEStatus)
   {

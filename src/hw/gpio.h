@@ -56,7 +56,7 @@ typedef struct
   RCC->APB2ENR |= \
   (U32)((1 << (((U32)port >> 10) & 0x0F)) | (RCC_APB2ENR_AFIOEN * (U8)(mode > 8))); \
   ((GPIO *)port)->CR[pin / 8] &= ~(GPIO_TYPE_MASK << ((pin % 8) * 4)); \
-	((GPIO *)port)->CR[pin / 8] |= (mode << ((pin % 8) * 4));
+  ((GPIO *)port)->CR[pin / 8] |= (mode << ((pin % 8) * 4));
 
 #define GPIO_Hi(port,pin) \
   (port->BSRR = (1 << pin))

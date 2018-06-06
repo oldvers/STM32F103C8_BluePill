@@ -373,7 +373,7 @@
               <MiscControls>--c99</MiscControls>
               <Define>STM32F103xB,STM32F10X_MD</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\src\;..\..\src\lib\cmsis\Include;..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include;..\..\src\lib\freertos;..\..\src\lib\freertos\Source\include;..\..\src\lib\freertos\Source\portable\Keil\ARM_CM3;..\..\src\hw;..\..\src\lib\usb;..\..\src\lib\usb\msc;..\..\src\lib\usb\hid;..\..\src\lib\usb\cdc</IncludePath>
+              <IncludePath>..\..\src\;..\..\src\lib\cmsis\Include;..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include;..\..\src\lib\freertos;..\..\src\lib\freertos\Source\include;..\..\src\lib\freertos\Source\portable\Keil\ARM_CM3;..\..\src\hw;..\..\src\lib\usb;..\..\src\lib\usb\msc;..\..\src\lib\usb\hid;..\..\src\lib\usb\cdc;..\..\src\lib\nrf</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -502,6 +502,11 @@
               <FilePath>..\..\src\hw\uniquedevid.h</FilePath>
             </File>
             <File>
+              <FileName>hardware.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\hw\hardware.h</FilePath>
+            </File>
+            <File>
               <FileName>interrupts.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\src\hw\interrupts.h</FilePath>
@@ -545,6 +550,16 @@
               <FileName>usb.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\src\hw\usb.c</FilePath>
+            </File>
+            <File>
+              <FileName>nrf24l01p.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\hw\nrf24l01p.h</FilePath>
+            </File>
+            <File>
+              <FileName>nrf24l01p.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\src\hw\nrf24l01p.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -650,6 +665,21 @@
               <FileName>vcp.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\src\lib\usb\cdc\vcp.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>NRF</GroupName>
+          <Files>
+            <File>
+              <FileName>nrf24.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\nrf\nrf24.h</FilePath>
+            </File>
+            <File>
+              <FileName>nrf24.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\src\lib\nrf\nrf24.c</FilePath>
             </File>
           </Files>
         </Group>
