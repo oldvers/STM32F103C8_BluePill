@@ -84,6 +84,7 @@ static SemaphoreHandle_t gVcpMutRx = NULL;
 static SemaphoreHandle_t gVcpSemTx = NULL;
 static SemaphoreHandle_t gVcpMutTx = NULL;
 static U8                gVcpReading = FALSE;
+static U8                gVcpOpened  = FALSE;
 static EAST_STATE        gVcpRxState;
 static EAST_STATE        gVcpTxState;
 
@@ -166,6 +167,15 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
       break;
     case CDC_REQ_SET_CONTROL_LINE_STATE:
       LOG("CDC Setup: Set Ctrl Line State\r\n");
+      gVcpOpened = (1 == (pSetup->wValue.W & 1));
+      if (TRUE == gVcpOpened)
+      {
+        LOG("CDC Setup: OPENED\r\n");
+      }
+      else
+      {
+        LOG("CDC Setup: CLOSED\r\n");
+      }
       result = USB_CTRL_STAGE_STATUS;
       break;
   }
@@ -385,6 +395,11 @@ void cdc_InStage(void)
 U32 VCP_Write(U8 * pData, U32 aSize, U32 aTimeout)
 {
   U32 result = 0;
+
+  if (FALSE == gVcpOpened)
+  {
+    return 0;
+  }
 
   if (pdFALSE == xSemaphoreTake(gVcpMutTx, portMAX_DELAY))
   {

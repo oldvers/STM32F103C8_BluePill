@@ -10,6 +10,8 @@
 
 #include "debug.h"
 
+static U8 gUsbdConfigured = FALSE;
+
 //-----------------------------------------------------------------------------
 /** @brief USB Device Reset Event Callback
  *  @param None
@@ -107,11 +109,13 @@ void usbc_CbConfigure(U8 aConfig)
   {
     /* Turn On Cfg LED */
     //GPIOB->ODR |=  LED_CFG;
+    gUsbdConfigured = TRUE;
   }
   else
   {
     /* Turn Off Cfg LED */
     //GPIOB->ODR &= ~LED_CFG;
+    gUsbdConfigured = FALSE;
   }
 #endif
 }
@@ -249,6 +253,16 @@ const USB_CORE_EVENTS USBC_Events =
   usbc_CbCtrlSetupReqClass,
   usbc_CbCtrlOutReqClass,
 };
+
+//-----------------------------------------------------------------------------
+/** @brief Returns USB Device configuration state
+ *  @param None
+ *  @return TRUE - Configured, FALSE - Not configured
+ */
+U8 USBD_IsConfigured(void)
+{
+  return gUsbdConfigured;
+}
 
 //-----------------------------------------------------------------------------
 /** @brief Initializes USB Device

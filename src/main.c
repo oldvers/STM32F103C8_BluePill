@@ -60,6 +60,7 @@ void vLEDTask(void * pvParameters)
 #endif
 
   nRF24_DumpConfig();
+  VCP_Open();
 
   while(TRUE)
   {
@@ -79,6 +80,7 @@ void vLEDTask(void * pvParameters)
          * Pipe variable holds a number of the pipe which has received the data
          * ... do something with received data ... */
         GPIO_Lo(GPIOC, 13);
+        if (0 != PayloadLen) VCP_Write(Payload, PayloadLen, 50);
         i = 0;
         LOG("Received %d bytes on Pipe Number %d\r\n", PayloadLen, Pipe);
       }
@@ -193,7 +195,7 @@ int main(void)
 
 #ifdef NRF_RX
   USBD_Init();
-  xTaskCreate(vVCPTask,"VCPTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+  //xTaskCreate(vVCPTask,"VCPTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 #endif
   xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 
