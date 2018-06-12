@@ -70,7 +70,6 @@
 // Fake address to test transceiver presence (5 bytes long)
 #define nRF24_TEST_ADDR            "nRF24"
 
-
 // Retransmit delay
 enum
 {
@@ -170,16 +169,16 @@ enum
 };
 
 // Result of RX FIFO reading
-typedef enum
-{
-  nRF24_RX_PIPE0  = (U8)0x00, // Packet received from the PIPE#0
-  nRF24_RX_PIPE1  = (U8)0x01, // Packet received from the PIPE#1
-  nRF24_RX_PIPE2  = (U8)0x02, // Packet received from the PIPE#2
-  nRF24_RX_PIPE3  = (U8)0x03, // Packet received from the PIPE#3
-  nRF24_RX_PIPE4  = (U8)0x04, // Packet received from the PIPE#4
-  nRF24_RX_PIPE5  = (U8)0x05, // Packet received from the PIPE#5
-  nRF24_RX_EMPTY  = (U8)0xff  // The RX FIFO is empty
-} nRF24_RXResult;
+//typedef enum
+//{
+//  nRF24_RX_PIPE0  = (U8)0x00, // Packet received from the PIPE#0
+//  nRF24_RX_PIPE1  = (U8)0x01, // Packet received from the PIPE#1
+//  nRF24_RX_PIPE2  = (U8)0x02, // Packet received from the PIPE#2
+//  nRF24_RX_PIPE3  = (U8)0x03, // Packet received from the PIPE#3
+//  nRF24_RX_PIPE4  = (U8)0x04, // Packet received from the PIPE#4
+//  nRF24_RX_PIPE5  = (U8)0x05, // Packet received from the PIPE#5
+//  nRF24_RX_EMPTY  = (U8)0xff  // The RX FIFO is empty
+//} nRF24_RXResult;
 
 
 // Addresses of the RX_PW_P# registers
@@ -206,8 +205,8 @@ static const U8 nRF24_ADDR_REGS[7] =
 };
 
 // Function prototypes
-void nRF24_Init(void);
-U8 nRF24_Check(void);
+U8 nRF24_Init(void);
+//U8 nRF24_Check(void);
 
 void nRF24_SetPowerMode(U8 aMode);
 void nRF24_SetOperationalMode(U8 aMode);
@@ -233,10 +232,12 @@ U8 nRF24_GetRetransmitCounters(void);
 void nRF24_ResetPlos(void);
 void nRF24_FlushTx(void);
 void nRF24_FlushRx(void);
-void nRF24_ClearIrqFlags(void);
+//void nRF24_ClearIrqFlags(void);
 
 void nRF24_WrPayload(U8 *pBuffer, U8 aSize);
-nRF24_RXResult nRF24_RdPayload(U8 *pBuffer, U8 *pSize);
+U8 nRF24_RdPayload(U8 *pBuffer, U8 *pPipe);
+
+U8 nRF24_Receive(U8 * pBuffer, U8 * pPipe, U32 aTimeout);
 
 void nRF24_DumpConfig(void);
 

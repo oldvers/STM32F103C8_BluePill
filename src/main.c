@@ -18,11 +18,13 @@
 void vLEDTask(void * pvParameters)
 {
 #ifdef NRF_RX
-  U8 i = 0, Pipe;
+  //U8 i = 0,
+  U8 Pipe;
 #else
   U32 timeout;
+  U8 Status;
 #endif
-  U8 Addr[5] = { 'n', 'R', 'F', '2', '4' }, Payload[32], PayloadLen, Status;
+  U8 Addr[5] = { 'n', 'R', 'F', '2', '4' }, Payload[32], PayloadLen;
 
   GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
   GPIO_Hi(GPIOC, 13);
@@ -31,7 +33,7 @@ void vLEDTask(void * pvParameters)
 
 #ifdef NRF_RX
   nRF24_SetPowerMode(nRF24_PWR_UP); // wake-up transceiver (in case if it sleeping)
-  vTaskDelay(5);
+  vTaskDelay(1);
   nRF24_DisableAa(0xFF); // disable ShockBurst
   nRF24_SetRfChannel(90); // set RF channel to 2490MHz
   nRF24_SetDataRate(nRF24_DR_2Mbps); // 2Mbit/s data rate
@@ -40,12 +42,12 @@ void vLEDTask(void * pvParameters)
   nRF24_SetAddr(nRF24_PIPE1, (U8 *)&Addr); // program pipe address
   nRF24_SetRxPipe(nRF24_PIPE1, nRF24_AA_OFF, 10); // enable RX pipe#1 with Auto-ACK: disabled, payload length: 10 bytes
   nRF24_SetOperationalMode(nRF24_MODE_RX); // switch transceiver to the RX mode
-  vTaskDelay(5);
+  vTaskDelay(1);
   // then pull CE pin to HIGH, and the nRF24 will start a receive...
-  nRF24_RxOn();
+  //nRF24_RxOn();
 #else
   nRF24_SetPowerMode(nRF24_PWR_UP); // wake-up transceiver (in case if it sleeping)
-  vTaskDelay(5);
+  vTaskDelay(1);
   nRF24_DisableAa(0xFF); // disable ShockBurst
   nRF24_SetRfChannel(90); // set RF channel to 2490MHz
   nRF24_SetDataRate(nRF24_DR_2Mbps); // 2Mbit/s data rate
@@ -54,7 +56,7 @@ void vLEDTask(void * pvParameters)
   nRF24_SetTxPower(nRF24_TXPWR_0dBm); // configure TX power
   nRF24_SetAddr(nRF24_PIPETX, Addr); // program TX address
   nRF24_SetOperationalMode(nRF24_MODE_TX); // switch transceiver to the TX mode
-  vTaskDelay(5);
+  vTaskDelay(1);
   // the nRF24 is ready for transmission, upload a payload,
   //  then pull CE pin to HIGH and it will transmit a packet...
 #endif
@@ -62,38 +64,50 @@ void vLEDTask(void * pvParameters)
   nRF24_DumpConfig();
   VCP_Open();
 
+#ifdef NRF_RX
+  /* Pull CE pin to HIGH, and the nRF24 will start a receive... */
+  nRF24_RxOn();
+#endif
+
   while(TRUE)
   {
 #ifdef NRF_RX
-    if (0 == GPIO_In(NRF24_IRQ_PORT, NRF24_IRQ_PIN))
+    PayloadLen = nRF24_Receive(Payload, &Pipe, 500);
+    if (0 != PayloadLen)
     {
-      Status = nRF24_GetStatus_RxFifo();
-      /* Constantly poll the status of RX FIFO... */
-      if (Status != nRF24_STATUS_RXFIFO_EMPTY)
-      {
-        /* The RX FIFO have some data, take a note what nRF24 can hold
-         * up to three payloads of 32 bytes... */
-        Pipe = nRF24_RdPayload(Payload, &PayloadLen); // read a payload to buffer
-        nRF24_ClearIrqFlags(); // clear any pending IRQ bits
-        /* Now the nRF24_payload buffer holds received data
-         * PayloadLen variable holds a length of received data
-         * Pipe variable holds a number of the pipe which has received the data
-         * ... do something with received data ... */
-        GPIO_Lo(GPIOC, 13);
-        if (0 != PayloadLen) VCP_Write(Payload, PayloadLen, 50);
-        i = 0;
-        LOG("Received %d bytes on Pipe Number %d\r\n", PayloadLen, Pipe);
-      }
-    }
-    vTaskDelay(5);
-    if (22 > i)
-    {
-      i++;
-    }
-    else
-    {
+      GPIO_Lo(GPIOC, 13);
+    //if (0 == GPIO_In(NRF24_IRQ_PORT, NRF24_IRQ_PIN))
+    //{
+      //Status = nRF24_GetStatus_RxFifo();
+      ///* Constantly poll the status of RX FIFO... */
+      //if (Status != nRF24_STATUS_RXFIFO_EMPTY)
+      //{
+      //  /* The RX FIFO have some data, take a note what nRF24 can hold
+      //   * up to three payloads of 32 bytes... */
+      //  Pipe = nRF24_RdPayload(Payload, &PayloadLen); // read a payload to buffer
+      //  nRF24_ClearIrqFlags(); // clear any pending IRQ bits
+      //  /* Now the nRF24_payload buffer holds received data
+      //   * PayloadLen variable holds a length of received data
+      //   * Pipe variable holds a number of the pipe which has received the data
+      //   * ... do something with received data ... */
+      
+      //if (0 != PayloadLen) 
+      VCP_Write(Payload, PayloadLen, 5);
+      //i = 0;
+      LOG("Received %d bytes on Pipe Number %d\r\n", PayloadLen, Pipe);
+      //}
+      vTaskDelay(5);
       GPIO_Hi(GPIOC, 13);
     }
+    //vTaskDelay(5);
+    //if (22 > i)
+    //{
+    //  i++;
+    //}
+    //else
+    //{
+    //  GPIO_Hi(GPIOC, 13);
+    //}
 #else
     PayloadLen = 10;
     Payload[0] = 'H';
@@ -129,7 +143,7 @@ void vLEDTask(void * pvParameters)
 
       // Successful transmission
       GPIO_Lo(GPIOC, 13);
-      vTaskDelay(100);
+      vTaskDelay(10);
       GPIO_Hi(GPIOC, 13);
       LOG("Transmittion complete\r\n");
     }
@@ -144,7 +158,7 @@ void vLEDTask(void * pvParameters)
 
     // In fact that should not happen
     //return TX_UNKNOWN_ERROR;
-    vTaskDelay(500);
+    vTaskDelay(50);
 #endif
   }
 

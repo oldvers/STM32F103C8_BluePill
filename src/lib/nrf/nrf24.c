@@ -2,11 +2,15 @@
 
 #include "nrf24.h"
 #include "debug.h"
+#include "FreeRTOS.h"
+#include "semphr.h"
+
+static SemaphoreHandle_t gNrfSemIrq = NULL;
 
 //-----------------------------------------------------------------------------
 /** @brief Reads a register
  *  @param Number of register to read
- *  @return Value of register
+ *  @return Register's value
  */
 static U8 nRF24_RdRegister(U8 aNumber)
 {
@@ -57,6 +61,25 @@ static void nRF24_WrRegister(U8 aNumber, U8 aValue)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Clears any pending IRQ flags
+ *  @param None
+ *  @return Current device status
+ */
+static U8 nRF24_ClearIrqFlags(void)
+{
+  U8 result, value = nRF24_CMD_W_REGISTER | nRF24_REG_STATUS;
+
+  nRF24L01P_CSN_Lo();
+  nRF24L01P_Exchange(&value, &result, 1);
+  /* Set RX_DR, TX_DS and MAX_RT bits of the STATUS register to clear them */
+  value = result | nRF24_MASK_STATUS_IRQ;
+  nRF24L01P_Exchange(&value, NULL, 1);
+  nRF24L01P_CSN_Hi();
+
+  return result;
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Reads a multi-byte register
  *  @param Number of register to read
  *  @param Pointer to the buffer for register data
@@ -76,26 +99,65 @@ static void nRF24_RdMultiRegister(U8 aNumber, U8 *pBuffer, U8 aSize)
  *  @param Number of register to write
  *  @param Pointer to the buffer with data to write
  *  @param Number of bytes to write
+ *  @return None
  */
 static void nRF24_WrMultiRegister(U8 aNumber, U8 *pBuffer, U8 aSize)
 {
-    nRF24L01P_CSN_Lo();
-    nRF24L01P_Exchange(&aNumber, NULL, 1);
-    nRF24L01P_Exchange(pBuffer, NULL, aSize);
-    nRF24L01P_CSN_Hi();
+  nRF24L01P_CSN_Lo();
+  nRF24L01P_Exchange(&aNumber, NULL, 1);
+  nRF24L01P_Exchange(pBuffer, NULL, aSize);
+  nRF24L01P_CSN_Hi();
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Checks if the nRF24L01 is present
+ *  @param None
+ *  @return 1 - nRF24L01 is online and responding
+ *          0 - received sequence differs from original
+ */
+static U8 nRF24_Check(void)
+{
+  U8 rxbuf[5], i, *ptr = (U8 *)nRF24_TEST_ADDR;
+
+  /* Write test TX address and read TX_ADDR register */
+  nRF24_WrMultiRegister(nRF24_CMD_W_REGISTER | nRF24_REG_TX_ADDR, ptr, 5);
+  nRF24_RdMultiRegister(nRF24_CMD_R_REGISTER | nRF24_REG_TX_ADDR, rxbuf, 5);
+
+  /* Compare buffers, return error on first mismatch */
+  for ( i = 0; i < 5; i++ )
+  {
+    if (rxbuf[i] != *ptr++) return 0;
+  }
+
+  return 1;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief IRQ pin falling edge callback function
+ *  @param None
+ *  @return None
+ */
+static void nRF24_CbIrqPin(void)
+{
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  xSemaphoreGiveFromISR(gNrfSemIrq, &xHigherPriorityTaskWoken);
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 //-----------------------------------------------------------------------------
 /** @brief Sets transceiver to it's initial state
  *  @param None
- *  @return None
+ *  @return TRUE - init succsess, FALSE - in other cases
  *  @note RX/TX pipe addresses remains untouched
  */
-void nRF24_Init(void)
+U8 nRF24_Init(void)
 {
-  nRF24L01P_Init();
+  /* Create Semaphores/Mutex for VCP */
+  gNrfSemIrq = xSemaphoreCreateBinary();
   
-  if ( 0 == nRF24_Check() ) return;
+  nRF24L01P_Init(nRF24_CbIrqPin);
+  
+  if ( 0 == nRF24_Check() ) return FALSE;
 
   /* Write to registers their initial values */
   nRF24_WrRegister(nRF24_REG_CONFIG, 0x08);
@@ -120,33 +182,12 @@ void nRF24_Init(void)
   nRF24_FlushTx();
 
   /* Clear any pending interrupt flags */
-  nRF24_ClearIrqFlags();
+  (void)nRF24_ClearIrqFlags();
 
   /* Deassert CSN pin (chip release) */
   nRF24L01P_CSN_Hi();
-}
 
-//-----------------------------------------------------------------------------
-/** @brief Checks if the nRF24L01 is present
- *  @param None
- *  @return 1 - nRF24L01 is online and responding
- *          0 - received sequence differs from original
- */
-U8 nRF24_Check(void)
-{
-  U8 rxbuf[5], i, *ptr = (U8 *)nRF24_TEST_ADDR;
-
-  /* Write test TX address and read TX_ADDR register */
-  nRF24_WrMultiRegister(nRF24_CMD_W_REGISTER | nRF24_REG_TX_ADDR, ptr, 5);
-  nRF24_RdMultiRegister(nRF24_CMD_R_REGISTER | nRF24_REG_TX_ADDR, rxbuf, 5);
-
-  /* Compare buffers, return error on first mismatch */
-  for ( i = 0; i < 5; i++ )
-  {
-    if (rxbuf[i] != *ptr++) return 0;
-  }
-
-  return 1;
+  return TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -156,23 +197,21 @@ U8 nRF24_Check(void)
  */
 void nRF24_SetPowerMode(U8 aMode)
 {
-  U8 aRegister;
-
-  aRegister = nRF24_RdRegister(nRF24_REG_CONFIG);
+  U8 value = nRF24_RdRegister(nRF24_REG_CONFIG);
 
   if ( aMode == nRF24_PWR_UP )
   {
     /* Set the PWR_UP bit of CONFIG register to wake the transceiver
      * It goes into Stanby-I mode with consumption about 26uA */
-    aRegister |= nRF24_CONFIG_PWR_UP;
+    value |= nRF24_CONFIG_PWR_UP;
   }
   else
   {
     /* Clear the PWR_UP bit of CONFIG register to put the transceiver
      * into power down mode with consumption about 900nA */
-    aRegister &= ~nRF24_CONFIG_PWR_UP;
+    value &= ~nRF24_CONFIG_PWR_UP;
   }
-  nRF24_WrRegister(nRF24_REG_CONFIG, aRegister);
+  nRF24_WrRegister(nRF24_REG_CONFIG, value);
 }
 
 //-----------------------------------------------------------------------------
@@ -182,13 +221,12 @@ void nRF24_SetPowerMode(U8 aMode)
  */
 void nRF24_SetOperationalMode(U8 aMode)
 {
-  U8 aRegister;
+  U8 value = nRF24_RdRegister(nRF24_REG_CONFIG);
 
   /* Configure PRIM_RX bit of the CONFIG register */
-  aRegister = nRF24_RdRegister(nRF24_REG_CONFIG);
-  aRegister &= ~nRF24_CONFIG_PRIM_RX;
-  aRegister |= (aMode & nRF24_CONFIG_PRIM_RX);
-  nRF24_WrRegister(nRF24_REG_CONFIG, aRegister);
+  value &= ~nRF24_CONFIG_PRIM_RX;
+  value |= (aMode & nRF24_CONFIG_PRIM_RX);
+  nRF24_WrRegister(nRF24_REG_CONFIG, value);
 }
 
 //-----------------------------------------------------------------------------
@@ -200,13 +238,12 @@ void nRF24_SetOperationalMode(U8 aMode)
  */
 void nRF24_SetCrcScheme(U8 aScheme)
 {
-  U8 aRegister;
+  U8 value = nRF24_RdRegister(nRF24_REG_CONFIG);
 
   /* Configure EN_CRC[3] and CRCO[2] bits of the CONFIG register */
-  aRegister = nRF24_RdRegister(nRF24_REG_CONFIG);
-  aRegister &= ~nRF24_MASK_CRC;
-  aRegister |= (aScheme & nRF24_MASK_CRC);
-  nRF24_WrRegister(nRF24_REG_CONFIG, aRegister);
+  value &= ~nRF24_MASK_CRC;
+  value |= (aScheme & nRF24_MASK_CRC);
+  nRF24_WrRegister(nRF24_REG_CONFIG, value);
 }
 
 //-----------------------------------------------------------------------------
@@ -301,13 +338,12 @@ void nRF24_SetAddr(U8 aPipe, const U8 *pAddr)
  */
 void nRF24_SetTxPower(U8 aTxPwr)
 {
-  U8 aRegister;
+  U8 value = nRF24_RdRegister(nRF24_REG_RF_SETUP);
 
   /* Configure RF_PWR[2:1] bits of the RF_SETUP register */
-  aRegister = nRF24_RdRegister(nRF24_REG_RF_SETUP);
-  aRegister &= ~nRF24_MASK_RF_PWR;
-  aRegister |= aTxPwr;
-  nRF24_WrRegister(nRF24_REG_RF_SETUP, aRegister);
+  value &= ~nRF24_MASK_RF_PWR;
+  value |= aTxPwr;
+  nRF24_WrRegister(nRF24_REG_RF_SETUP, value);
 }
 
 //-----------------------------------------------------------------------------
@@ -317,13 +353,12 @@ void nRF24_SetTxPower(U8 aTxPwr)
  */
 void nRF24_SetDataRate(U8 aDataRate)
 {
-  U8 aRegister;
+  U8 value = nRF24_RdRegister(nRF24_REG_RF_SETUP);
 
   /* Configure RF_DR_LOW[5] and RF_DR_HIGH[3] bits of the RF_SETUP register */
-  aRegister = nRF24_RdRegister(nRF24_REG_RF_SETUP);
-  aRegister &= ~nRF24_MASK_DATARATE;
-  aRegister |= aDataRate;
-  nRF24_WrRegister(nRF24_REG_RF_SETUP, aRegister);
+  value &= ~nRF24_MASK_DATARATE;
+  value |= aDataRate;
+  nRF24_WrRegister(nRF24_REG_RF_SETUP, value);
 }
 
 //-----------------------------------------------------------------------------
@@ -335,27 +370,27 @@ void nRF24_SetDataRate(U8 aDataRate)
  */
 void nRF24_SetRxPipe(U8 aPipe, U8 aAaState, U8 aPayloadLen)
 {
-  U8 aRegister;
+  U8 value = nRF24_RdRegister(nRF24_REG_EN_RXADDR);
 
   /* Enable the specified pipe (EN_RXADDR register) */
-  aRegister = nRF24_RdRegister(nRF24_REG_EN_RXADDR) | (1 << aPipe);
-  aRegister &= nRF24_MASK_EN_RX;
-  nRF24_WrRegister(nRF24_REG_EN_RXADDR, aRegister);
+  value |= (1 << aPipe);
+  value &= nRF24_MASK_EN_RX;
+  nRF24_WrRegister(nRF24_REG_EN_RXADDR, value);
 
   /* Set RX payload length (RX_PW_Px register) */
   nRF24_WrRegister(nRF24_RX_PW_PIPE[aPipe], aPayloadLen & nRF24_MASK_RX_PW);
 
   /* Set auto acknowledgment for a specified pipe (EN_AA register) */
-  aRegister = nRF24_RdRegister(nRF24_REG_EN_AA);
+  value = nRF24_RdRegister(nRF24_REG_EN_AA);
   if ( nRF24_AA_ON == aAaState )
   {
-    aRegister |=  (1 << aPipe);
+    value |=  (1 << aPipe);
   }
   else
   {
-    aRegister &= ~(1 << aPipe);
+    value &= ~(1 << aPipe);
   }
-  nRF24_WrRegister(nRF24_REG_EN_AA, aRegister);
+  nRF24_WrRegister(nRF24_REG_EN_AA, value);
 }
 
 //-----------------------------------------------------------------------------
@@ -365,12 +400,10 @@ void nRF24_SetRxPipe(U8 aPipe, U8 aAaState, U8 aPayloadLen)
  */
 void nRF24_ClosePipe(U8 aPipe)
 {
-  U8 aRegister;
-
-  aRegister = nRF24_RdRegister(nRF24_REG_EN_RXADDR);
-  aRegister &= ~(1 << aPipe);
-  aRegister &= nRF24_MASK_EN_RX;
-  nRF24_WrRegister(nRF24_REG_EN_RXADDR, aRegister);
+  U8 value = nRF24_RdRegister(nRF24_REG_EN_RXADDR);
+  value &= ~(1 << aPipe);
+  value &= nRF24_MASK_EN_RX;
+  nRF24_WrRegister(nRF24_REG_EN_RXADDR, value);
 }
 
 //-----------------------------------------------------------------------------
@@ -381,12 +414,9 @@ void nRF24_ClosePipe(U8 aPipe)
  */
 void nRF24_EnableAa(U8 aPipe)
 {
-  U8 aRegister;
-
   /* Set bit in EN_AA register */
-  aRegister = nRF24_RdRegister(nRF24_REG_EN_AA);
-  aRegister |= (1 << aPipe);
-  nRF24_WrRegister(nRF24_REG_EN_AA, aRegister);
+  U8 value = nRF24_RdRegister(nRF24_REG_EN_AA) | (1 << aPipe);
+  nRF24_WrRegister(nRF24_REG_EN_AA, value);
 }
 
 //-----------------------------------------------------------------------------
@@ -398,19 +428,18 @@ void nRF24_EnableAa(U8 aPipe)
  */
 void nRF24_DisableAa(U8 aPipe)
 {
-  U8 aRegister;
+  U8 value;
 
   if ( aPipe > 5)
   {
     /* Disable Auto-ACK for ALL pipes */
-      nRF24_WrRegister(nRF24_REG_EN_AA, 0x00);
+    nRF24_WrRegister(nRF24_REG_EN_AA, 0x00);
   }
   else
   {
     /* Clear bit in the EN_AA register */
-    aRegister = nRF24_RdRegister(nRF24_REG_EN_AA);
-    aRegister &= ~(1 << aPipe);
-    nRF24_WrRegister(nRF24_REG_EN_AA, aRegister);
+    value = nRF24_RdRegister(nRF24_REG_EN_AA) & ~(1 << aPipe);
+    nRF24_WrRegister(nRF24_REG_EN_AA, value);
   }
 }
 
@@ -478,7 +507,7 @@ U8 nRF24_GetRxSource(void)
  */
 U8 nRF24_GetRetransmitCounters(void)
 {
-  return (nRF24_RdRegister(nRF24_REG_OBSERVE_TX));
+  return nRF24_RdRegister(nRF24_REG_OBSERVE_TX);
 }
 
 //-----------------------------------------------------------------------------
@@ -488,11 +517,9 @@ U8 nRF24_GetRetransmitCounters(void)
  */
 void nRF24_ResetPlos(void)
 {
-  U8 aRegister;
-
   /* The PLOS counter is reset after write to RF_CH register */
-  aRegister = nRF24_RdRegister(nRF24_REG_RF_CH);
-  nRF24_WrRegister(nRF24_REG_RF_CH, aRegister);
+  U8 value = nRF24_RdRegister(nRF24_REG_RF_CH);
+  nRF24_WrRegister(nRF24_REG_RF_CH, value);
 }
 
 //-----------------------------------------------------------------------------
@@ -516,21 +543,6 @@ void nRF24_FlushRx(void)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Clears any pending IRQ flags
- *  @param None
- *  @return None
- */
-void nRF24_ClearIrqFlags(void)
-{
-  U8 aRegister;
-
-  /* Clear RX_DR, TX_DS and MAX_RT bits of the STATUS register */
-  aRegister = nRF24_RdRegister(nRF24_REG_STATUS);
-  aRegister |= nRF24_MASK_STATUS_IRQ;
-  nRF24_WrRegister(nRF24_REG_STATUS, aRegister);
-}
-
-//-----------------------------------------------------------------------------
 /** @brief Writes TX payload
  *  @param Pointer to the buffer with payload data
  *  @param Payload length in bytes
@@ -543,37 +555,30 @@ void nRF24_WrPayload(U8 *pBuffer, U8 aSize)
 //-----------------------------------------------------------------------------
 /** @brief Reads top level payload available in the RX FIFO
  *  @param Pointer to the buffer to store a payload data
- *  @param Pointer to variable to store a payload length
- *  @return One of nRF24_RX_xx values
- *          nRF24_RX_PIPEX - packet has been received from the pipe number X
- *          nRF24_RX_EMPTY - the RX FIFO is empty
+ *  @param Pointer to variable to store a pipe number
+ *  @return Number of bytes have been read
  */
-nRF24_RXResult nRF24_RdPayload(U8 *pBuffer, U8 *pSize)
+U8 nRF24_RdPayload(U8 *pBuffer, U8 *pPipe)
 {
-  U8 aPipe;
+  U8 result = 0;
 
   /* Extract a payload pipe number from the STATUS register */
-  aPipe = (nRF24_RdRegister(nRF24_REG_STATUS) & nRF24_MASK_RX_P_NO) >> 1;
+  *pPipe = (nRF24_RdRegister(nRF24_REG_STATUS) & nRF24_MASK_RX_P_NO) >> 1;
 
   /* RX FIFO empty? */
-  if (6 > aPipe)
+  if (6 > *pPipe)
   {
     /* Get payload length */
-    *pSize = nRF24_RdRegister(nRF24_RX_PW_PIPE[aPipe]);
+    result = nRF24_RdRegister(nRF24_RX_PW_PIPE[*pPipe]);
 
     /* Read a payload from the RX FIFO */
-    if ( *pSize )
+    if ( 0 < result )
     {
-      nRF24_RdMultiRegister(nRF24_CMD_R_RX_PAYLOAD, pBuffer, *pSize);
+      nRF24_RdMultiRegister(nRF24_CMD_R_RX_PAYLOAD, pBuffer, result);
     }
-
-    return ((nRF24_RXResult)aPipe);
   }
 
-  /* The RX FIFO is empty */
-  *pSize = 0;
-
-  return nRF24_RX_EMPTY;
+  return result;
 }
 
 //-----------------------------------------------------------------------------
@@ -814,4 +819,36 @@ void nRF24_DumpConfig(void)
   // FEATURE
   i = nRF24_RdRegister(nRF24_REG_FEATURE);
   LOG("[0x%02X] <0x%02X> - FEATURE\r\n", nRF24_REG_FEATURE, i);
+}
+
+
+
+
+
+
+U8 nRF24_Receive(U8 * pBuffer, U8 * pPipe, U32 aTimeout)
+{
+  U8 status, result = 0;
+
+  /* Wait for IRQ */
+  if (pdTRUE == xSemaphoreTake(gNrfSemIrq, aTimeout))
+  {
+    status = nRF24_GetStatus_RxFifo();
+
+    /* Check if Rx FIFO is not empty */
+    if (nRF24_STATUS_RXFIFO_EMPTY != status)
+    {
+      /* The RX FIFO have some data, take a note what nRF24 can hold
+       * up to three payloads of 32 bytes. Read a payload to buffer */
+      result = nRF24_RdPayload(pBuffer, pPipe);
+      /* Now the pBuffer holds received data, result variable holds a length
+       * of received data, pPipe variable holds a number of the pipe which
+       * has received the data. Do something with received data. */
+    }
+  }
+
+  /* Clear any pending IRQ bits */
+  (void)nRF24_ClearIrqFlags();
+
+  return result;
 }

@@ -2,7 +2,7 @@
 #define __GPIO_H__
 
 #include "types.h"
-#include "stm32f1xx.h"
+#include "system.h"
 
 /* PIN MODE ****************************************/
 /* 0b00 = 0 - Input mode (reset state).            */
@@ -23,6 +23,9 @@
 /* 0b11 = 3 - Alternate function output Open-Drain */
 
 #define GPIO_TYPE_MASK                     ((U32)0x0F)
+
+#define GPIO_IRQ_EDGE_FALLING              ((U32)0x01)
+#define GPIO_IRQ_EDGE_RISING               ((U32)0x02)
 
 #define GPIO_TYPE_IN_ANALOG                ((U32)0x00)
 #define GPIO_TYPE_IN_FLOATING              ((U32)0x04)
@@ -51,10 +54,19 @@ typedef struct
   volatile U32 LCKR;
 } GPIO;
 
+#define GPIO_IrqEnable(port,pin,edgemask) \
+  RCC->APB2ENR |= RCC_APB2ENR_AFIOEN; \
+  AFIO->EXTICR[pin / 4] &= ~(GPIO_TYPE_MASK << ((pin % 4) * 4)); \
+  AFIO->EXTICR[pin / 4] |= \
+    ((((U32)port >> 10) & 0x07) - 2) << ((pin % 4) * 4); \
+  SYS_BITBAND_HW(EXTI->IMR,pin) = 1; \
+  SYS_BITBAND_HW(EXTI->FTSR,pin) = edgemask; \
+  SYS_BITBAND_HW(EXTI->RTSR,pin) = (edgemask >> 1);
 
 #define GPIO_Init(port,pin,mode) \
   RCC->APB2ENR |= \
-  (U32)((1 << (((U32)port >> 10) & 0x0F)) | (RCC_APB2ENR_AFIOEN * (U8)(mode > 8))); \
+    (U32)((1 << (((U32)port >> 10) & GPIO_TYPE_MASK)) | \
+    (RCC_APB2ENR_AFIOEN * (U8)(mode > 8))); \
   ((GPIO *)port)->CR[pin / 8] &= ~(GPIO_TYPE_MASK << ((pin % 8) * 4)); \
   ((GPIO *)port)->CR[pin / 8] |= (mode << ((pin % 8) * 4));
 

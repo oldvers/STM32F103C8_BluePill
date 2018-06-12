@@ -1,6 +1,9 @@
+#include "system.h"
 #include "types.h"
 #include "interrupts.h"
+#include "hardware.h"
 #include "usb.h"
+#include "nrf24l01p.h"
 
 void NMI_Handler(void)
 {
@@ -89,4 +92,15 @@ void TIM1_CC_IRQHandler(void)
 void USB_LP_CAN1_RX0_IRQHandler(void)
 {
   USB_IRQHandler();
+}
+
+void EXTI15_10_IRQHandler(void)
+{
+  if (0 != SYS_BITBAND_HW(EXTI->PR, NRF24_IRQ_PIN))
+  {
+    /* Clear pending bit */
+    SYS_BITBAND_HW(EXTI->PR, NRF24_IRQ_PIN) = 1;
+    /* Call IRQ Handler */
+    nRF24L01P_IrqHandler();
+  }
 }

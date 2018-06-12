@@ -1,8 +1,14 @@
 #include "nrf24l01p.h"
+#include "debug.h"
+
+static nRF24L01P_CbIrq pCbIrqPin;
 
 //-----------------------------------------------------------------------------
-void nRF24L01P_Init(void)
+void nRF24L01P_Init(nRF24L01P_CbIrq pCbIrq)
 {
+  /* Setup IRQ Callback */
+  pCbIrqPin = pCbIrq;
+
   /* CE -> GPO, Push-Pull */
   GPIO_Init(NRF24_CE_PORT, NRF24_CE_PIN, GPIO_TYPE_OUT_PP_2MHZ);
 
@@ -11,6 +17,7 @@ void nRF24L01P_Init(void)
 
   /* IRQ -> GPI, Floating */
   GPIO_Init(NRF24_IRQ_PORT, NRF24_IRQ_PIN, GPIO_TYPE_IN_FLOATING);
+  GPIO_IrqEnable(NRF24_IRQ_PORT, NRF24_IRQ_PIN, GPIO_IRQ_EDGE_FALLING);
 
   /* SCK, MOSI, MISO -> AFO, Push-Pull */
   GPIO_Init(NRF24_SCK_PORT,  NRF24_SCK_PIN,  GPIO_TYPE_ALT_PP_50MHZ);
@@ -107,6 +114,10 @@ void nRF24L01P_Init(void)
 
   nRF24L01P_CE_Lo();
   nRF24L01P_CSN_Hi();
+
+  /* Enable nRF24 Interrupts */
+  NVIC_SetPriority(IRQ_NUMBER_NRF24, IRQ_PRIORITY_NRF24);
+  NVIC_EnableIRQ(IRQ_NUMBER_NRF24);
 }
 
 //-----------------------------------------------------------------------------
@@ -168,4 +179,10 @@ void nRF24L01P_Exchange(U8 * txData, U8 * rxData, U32 aSize)
 
   //Wait until not busy (infinite loop here: SPI2_SR = 0x06c3)
   while(NRF24_SPI->SR & SPI_SR_BSY);
+}
+
+//-----------------------------------------------------------------------------
+void nRF24L01P_IrqHandler(void)
+{
+  if (NULL != pCbIrqPin) pCbIrqPin();
 }

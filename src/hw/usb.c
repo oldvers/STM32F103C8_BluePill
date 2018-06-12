@@ -1,6 +1,6 @@
-#include "stm32f1xx.h"
+#include "system.h"
 #include "types.h"
-#include "interrupts.h"
+#include "hardware.h"
 #include "usb.h"
 #include "debug.h"
 
@@ -176,8 +176,8 @@ void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
   RCC->APB1ENR |= RCC_APB1ENR_USBEN;
 
   /* Enable USB Interrupts */
-  NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, IRQ_PRIORITY_USB);
-  NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+  NVIC_SetPriority(IRQ_NUMBER_USB, IRQ_PRIORITY_USB);
+  NVIC_EnableIRQ(IRQ_NUMBER_USB);
 }
 
 //-----------------------------------------------------------------------------

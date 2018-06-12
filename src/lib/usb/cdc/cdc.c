@@ -252,7 +252,7 @@ void CDC_Init(void)
   USB_SetCb_Ep(USB_CDC_EP_BULK_OUT, cdc_BulkOut);
   USB_SetCb_Ep(USB_CDC_EP_BULK_IN,  cdc_BulkIn);
   USB_SetCb_Ep(USB_CDC_EP_IRQ_IN,   cdc_InterruptIn);
-  
+
   /* Create Semaphores/Mutex for VCP */
   gVcpSemRx = xSemaphoreCreateBinary();
   gVcpMutRx = xSemaphoreCreateMutex();
@@ -362,6 +362,7 @@ void cdc_InCompleted(void)
 {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   xSemaphoreGiveFromISR(gVcpSemTx, &xHigherPriorityTaskWoken);
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 //-----------------------------------------------------------------------------
