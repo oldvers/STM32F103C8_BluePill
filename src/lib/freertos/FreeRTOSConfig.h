@@ -166,10 +166,11 @@ NVIC value of 255. */
 #define configLIBRARY_KERNEL_INTERRUPT_PRIORITY  15
 
 
-#define xPortSysTickHandler                      SysTick_Handler
-#define xPortPendSVHandler                       PendSV_Handler
-#define vPortSVCHandler                          SVC_Handler
+#define xPortSysTickHandler      SysTick_Handler
+#define xPortPendSVHandler       PendSV_Handler
+#define vPortSVCHandler          SVC_Handler
 
+#define MsToTicks(ms)            (ms/portTICK_PERIOD_MS)
 
 #endif /* FREERTOS_CONFIG_H */
 

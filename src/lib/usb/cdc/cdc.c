@@ -391,6 +391,7 @@ void cdc_InStage(void)
 /** @brief Writes to Virtual COM Port
  *  @param pData - Buffer of data to be written
  *  @param aSize - Size of data to be written
+ *  @param aTimeout - Time to waiting of writing
  *  @return Number of bytes written
  */
 U32 VCP_Write(U8 * pData, U32 aSize, U32 aTimeout)

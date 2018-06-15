@@ -821,11 +821,13 @@ void nRF24_DumpConfig(void)
   LOG("[0x%02X] <0x%02X> - FEATURE\r\n", nRF24_REG_FEATURE, i);
 }
 
-
-
-
-
-
+//-----------------------------------------------------------------------------
+/** @brief Waits for and reads received packet
+ *  @param Pointer to the buffer to store a data
+ *  @param Pointer to variable to store a pipe number
+ *  @param Waiting timeout
+ *  @return Number of bytes have been received
+ */
 U8 nRF24_Receive(U8 * pBuffer, U8 * pPipe, U32 aTimeout)
 {
   U8 status, result = 0;
@@ -849,6 +851,41 @@ U8 nRF24_Receive(U8 * pBuffer, U8 * pPipe, U32 aTimeout)
 
   /* Clear any pending IRQ bits */
   (void)nRF24_ClearIrqFlags();
+
+  return result;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Transmits a packet for a timeout
+ *  @param Pointer to the buffer of packet data
+ *  @param Size of packet
+ *  @param Waiting timeout
+ *  @return Number of bytes have been transmitted
+ */
+U8 nRF24_Transmit(U8 * pBuffer, U8 aSize, U32 aTimeout)
+{
+  U8 status, result = 0;
+
+  /* Transfer payload data to transceiver */
+  nRF24_WrPayload(pBuffer, aSize);
+
+  /* Assert CE pin (transmission starts) */
+  nRF24_TxOn();
+
+  /* Wait for IRQ */
+  if (pdTRUE == xSemaphoreTake(gNrfSemIrq, aTimeout))
+  {
+    /* Clear any pending IRQ flags */
+    status = nRF24_ClearIrqFlags(); 
+
+    if (0 != (status & nRF24_FLAG_TX_DS))
+    {
+      result = aSize;
+    }
+  }
+
+  /* De-assert CE pin (nRF24 goes to StandBy-I mode) */
+  nRF24_TxOff();
 
   return result;
 }
