@@ -3,6 +3,9 @@
 
 #include "types.h"
 
+#define EAST_START_MARKER              (0x24)
+#define EAST_STOP_MARKER               (0x42)
+
 typedef void (*EAST_Completed)(void);
 
 typedef __packed struct _EAST_STATE
@@ -10,7 +13,7 @@ typedef __packed struct _EAST_STATE
   U16             MaxSize;
   U16             ActSize;
   U16             Index;
-  U8              CS;
+  U16             CS;
   U8              OK;
   U8            * Buffer;
   EAST_Completed  OnComplete;

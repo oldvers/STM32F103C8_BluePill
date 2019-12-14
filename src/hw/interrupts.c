@@ -5,6 +5,7 @@
 #include "debug.h"
 #include "usb.h"
 #include "nrf24l01p.h"
+#include "i2c.h"
 
 void NMI_Handler(void)
 {
@@ -84,12 +85,12 @@ void DebugMon_Handler(void)
 
 void I2C1_EV_IRQHandler(void)
 {
-  //I2C_EV_IRQHandler(I2C1);
+  I2C_EV_IRQHandler(SENS_I2C);
 }
 
 void I2C1_ER_IRQHandler(void)
 {
-  //I2C_ER_IRQHandler(I2C1);
+  I2C_ER_IRQHandler(SENS_I2C);
 }
 
 void I2C2_EV_IRQHandler(void)

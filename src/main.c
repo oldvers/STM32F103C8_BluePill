@@ -14,16 +14,18 @@
 
 #include "usb_device.h"
 #include "vcp.h"
+#include "sensors.h"
 
-void vLEDTask(void * pvParameters)
+void vMainTask(void * pvParameters)
 {
 #ifdef NRF_RX
   U8 Pipe;
 #endif
-  U8 Addr[5] = { 'n', 'R', 'F', '2', '4' }, Payload[32], PayloadLen;
+  U8 Addr[5] = { 'n', 'R', 'F', '2', '4' }, Payload[32];
+  U8 PayloadLen = sizeof(SENS_DATA);
 
-  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
-  GPIO_Hi(GPIOC, 13);
+  GPIO_Init(LEDG_PORT, LEDG_PIN, GPIO_TYPE_OUT_OD_2MHZ);
+  GPIO_Hi(LEDG_PORT, LEDG_PIN);
 
   nRF24_Init();
 
@@ -39,11 +41,14 @@ void vLEDTask(void * pvParameters)
   nRF24_SetCrcScheme(nRF24_CRC_2byte);
   nRF24_SetAddrWidth(5);
   nRF24_SetAddr(nRF24_PIPE1, (U8 *)&Addr);
-  nRF24_SetRxPipe(nRF24_PIPE1, nRF24_AA_OFF, 10);
+  nRF24_SetRxPipe(nRF24_PIPE1, nRF24_AA_OFF, PayloadLen);
   nRF24_SetOperationalMode(nRF24_MODE_RX);
   vTaskDelay(MsToTicks(10));
   /* Then pull CE pin to HIGH, and the nRF24 will start a receive... */
 #else
+  /* Init sensors unit */
+  Sensors_Init();
+
   /* Wake-up transceiver */
   nRF24_SetPowerMode(nRF24_PWR_UP);
   vTaskDelay(MsToTicks(10));
@@ -76,32 +81,23 @@ void vLEDTask(void * pvParameters)
     PayloadLen = nRF24_Receive(Payload, &Pipe, MsToTicks(5000));
     if (0 != PayloadLen)
     {
-      GPIO_Lo(GPIOC, 13);
-      VCP_Write(Payload, PayloadLen, 5);
-      LOG("Received %d bytes on Pipe Number %d\r\n", PayloadLen, Pipe);
-      vTaskDelay(MsToTicks(50));
-      GPIO_Hi(GPIOC, 13);
+      GPIO_Lo(LEDG_PORT, LEDG_PIN);
+      VCP_Write(Payload, PayloadLen, MsToTicks(10));
+      //LOG("Received %d bytes on Pipe Number %d\r\n", PayloadLen, Pipe);
+      //vTaskDelay(MsToTicks(50));
+      GPIO_Hi(LEDG_PORT, LEDG_PIN);
     }
 #else
-    PayloadLen = 10;
-    Payload[0] = 'H';
-    Payload[1] = 'e';
-    Payload[2] = 'l';
-    Payload[3] = 'l';
-    Payload[4] = 'o';
-    Payload[5] = ',';
-    Payload[6] = ' ';
-    Payload[7] = 'C';
-    Payload[8] = 'h';
-    Payload[9] = '!';
-    if (0 != nRF24_Transmit(Payload, PayloadLen, MsToTicks(30)))
+    GPIO_Lo(LEDG_PORT, LEDG_PIN);
+    Sensors_Measure((SENS_DATA *)Payload);
+    if (0 != nRF24_Transmit(Payload, PayloadLen, MsToTicks(10)))
     {
-      GPIO_Lo(GPIOC, 13);
-      LOG("Transmittion complete\r\n");
-      vTaskDelay(MsToTicks(100));
-      GPIO_Hi(GPIOC, 13);
+      //LOG("Transmittion complete\r\n");
+      //vTaskDelay(MsToTicks(100));
+      GPIO_Lo(LEDG_PORT, LEDG_PIN);
     }
-    vTaskDelay(MsToTicks(500));
+    GPIO_Hi(LEDG_PORT, LEDG_PIN);
+    vTaskDelay(MsToTicks(10));
 #endif
   }
   //vTaskDelete(NULL);
@@ -139,6 +135,41 @@ void vVCPTask(void * pvParameters)
   vTaskDelete(NULL);
 }
 
+//void vSensTask(void * pvParameters)
+//{
+////  U8  Rx[130];
+////  U16 RxLen = 0;
+////  U32 time;
+
+//  Sensors_Init();
+
+//  vTaskDelay(MsToTicks(10));
+
+//  while(TRUE)
+//  {
+//    Sensors_Measure();
+//    vTaskDelay(MsToTicks(1000));
+
+////    RxLen = VCP_Read(Rx, sizeof(Rx), 5000);
+////    if (0 < RxLen)
+////    {
+////      LOG("VCP Rx: len = %d\r\n", RxLen);
+////      LOG("VCP Rx: ");
+////      for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
+////      LOG("\r\n");
+
+////      time = xTaskGetTickCount();
+////      VCP_Write(Rx, RxLen, 5000);
+////      LOG("VCP Tx: time = %d\r\n", xTaskGetTickCount() - time);
+////    }
+////    else
+////    {
+////      LOG("VCP Rx: Timout\r\n");
+////    }
+//  }
+
+//}
+
 int main(void)
 {
   LOG("STM32F103C8 Started!\r\n");
@@ -151,9 +182,35 @@ int main(void)
 
 #ifdef NRF_RX
   USBD_Init();
-  //xTaskCreate(vVCPTask,"VCPTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+//  xTaskCreate
+//  (
+//    vVCPTask,
+//    "VCPTask",
+//    configMINIMAL_STACK_SIZE,
+//    NULL,
+//    tskIDLE_PRIORITY + 1,
+//    NULL
+//  );
+#else
+//  xTaskCreate
+//  (
+//    vSensTask,
+//    "SensTask",
+//    configMINIMAL_STACK_SIZE,
+//    NULL,
+//    tskIDLE_PRIORITY + 1,
+//    NULL
+//  );
 #endif
-  xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+  xTaskCreate
+  (
+    vMainTask,
+    "MainTask",
+    configMINIMAL_STACK_SIZE,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  );
 
   vTaskStartScheduler();
 

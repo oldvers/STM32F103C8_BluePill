@@ -55,8 +55,14 @@
 /* B3 - SWOUT */
 /* B4 */
 /* B5 */
-/* B6 */
-/* B7 */
+/* B6 - Sensors I2C1 SCL */
+#define SENS_I2C_SCL_PORT               GPIOB
+#define SENS_I2C_SCL_PIN                6
+
+/* B7 - Sensors I2C1 SDA */
+#define SENS_I2C_SDA_PORT               GPIOB
+#define SENS_I2C_SDA_PIN                7
+
 /* B8 */
 /* B9 */
 /* B10 */
@@ -76,6 +82,8 @@
 
 /*** GPIOC ***/
 /* C13 - LED */
+#define LEDG_PORT                       GPIOC
+#define LEDG_PIN                        13
 /* C14 - OSC32IN */
 /* C15 - OSC32OUT */
 
@@ -107,6 +115,11 @@
 #define NRF24_SPI_DMA_TX_FGL            DMA_IFCR_CGIF5
 
 /*****************************************************************************/
+/*** I2C1 ********************************************************************/
+/*****************************************************************************/
+#define SENS_I2C                        I2C1
+
+/*****************************************************************************/
 /*** IRQ Priorities/Numbers **************************************************/
 /*****************************************************************************/
 /* Interrupt priorities.
@@ -119,6 +132,9 @@
  *  - configMAX_SYSCALL_INTERRUPT_PRIORITY = 191
  *    (Equivalent to 0xB0, or priority 11)
  */
+/* SENS IRQ - No FreeRTOS functions    ( 0, 0x0F,  15) */
+#define IRQ_PRIORITY_SENS_I2C            0
+#define IRQ_PRIORITY_SENS_I2C_ERROR      1
 /* nRF24 IRQ - Uses FreeRTOS functions (11, 0xBF, 175) */
 #define IRQ_PRIORITY_NRF24              11
 /* USB IRQ - Uses FreeRTOS functions   (15, 0xFF, 255) */
@@ -126,8 +142,9 @@
 /*      IRQ_PRIORITY_SYSTICK           (15, 0xFF, 255) */
 /*      IRQ_PRIORITY_PENDSV            (15, 0xFF, 255) */
 
-
 #define IRQ_NUMBER_USB                  USB_LP_CAN1_RX0_IRQn
 #define IRQ_NUMBER_NRF24                EXTI15_10_IRQn
+#define IRQ_NUMBER_SENS_I2C_EVT         I2C1_EV_IRQn 
+#define IRQ_NUMBER_SENS_I2C_ERR         I2C1_ER_IRQn 
 
 #endif /* __HARDWARE__ */

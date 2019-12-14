@@ -27,7 +27,7 @@ void EAST_PutByte(EAST_STATE * pState, U8 aValue)
   /* Packet Start Byte Stage */
   else if (0 == pState->Index)
   {
-    pState->OK = (aValue == 0x24);
+    pState->OK = (aValue == EAST_START_MARKER);
   }
   /* Packet Size Stage */
   else if (1 == pState->Index)
@@ -44,12 +44,16 @@ void EAST_PutByte(EAST_STATE * pState, U8 aValue)
   /* Packet Stop Byte Stage */
   else if (pState->Index == (pState->ActSize + 3))
   {
-    pState->OK = (aValue == 0x42);
+    pState->OK = (aValue == EAST_STOP_MARKER);
   }
   /* Packet Control Sum Stage */
   else if (pState->Index == (pState->ActSize + 4))
   {
-    pState->OK = (aValue == pState->CS);
+    pState->OK = (aValue == (pState->CS & 0xFF));
+  }
+  else if (pState->Index == (pState->ActSize + 5))
+  {
+    pState->OK = (aValue == (pState->CS >> 8));
   }
 
   /* Packet Index Incrementing Stage */
@@ -64,7 +68,7 @@ void EAST_PutByte(EAST_STATE * pState, U8 aValue)
   }
   
   /* Packet Completed Stage */
-  if ((4 < pState->Index) && (pState->Index == (pState->ActSize + 5)))
+  if ((4 < pState->Index) && (pState->Index == (pState->ActSize + 6)))
   {
     /* Call Back */
     if (NULL != pState->OnComplete) pState->OnComplete();
@@ -94,7 +98,7 @@ U32 EAST_GetByte(EAST_STATE * pState, U8 * pValue)
   /* Packet Start Byte Stage */
   else if (0 == pState->Index)
   {
-    *pValue = 0x24;
+    *pValue = EAST_START_MARKER;
     pState->ActSize = pState->MaxSize;
   }
   /* Packet Size Stage */
@@ -110,21 +114,25 @@ U32 EAST_GetByte(EAST_STATE * pState, U8 * pValue)
   /* Packet Stop Byte Stage */
   else if (pState->Index == (pState->ActSize + 3))
   {
-    *pValue = 0x42;
+    *pValue = EAST_STOP_MARKER;
   }
   /* Packet Control Sum Stage */
   else if (pState->Index == (pState->ActSize + 4))
   {
-    *pValue = pState->CS;
+    *pValue = (pState->CS & 0xFF);
+  }
+  else if (pState->Index == (pState->ActSize + 5))
+  {
+    *pValue = (pState->CS >> 8);
   }
   /* Packet Completed Stage */
-  else if (pState->Index == (pState->ActSize + 5))
+  else if (pState->Index == (pState->ActSize + 6))
   {
     /* Increase Index to call OnComplete at next iteration */
     pState->Index++;
     pState->OK = FALSE;
   }
-  else if (pState->Index == (pState->ActSize + 6))
+  else if (pState->Index == (pState->ActSize + 7))
   {
     /* Call Back */
     if (NULL != pState->OnComplete) pState->OnComplete();
