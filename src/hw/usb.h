@@ -2,9 +2,11 @@
 #define __USB_H__
 
 /* Endpoint Direction */
-#define USB_EP_ADDR_DIR_MASK             (0x80)
+#define USB_EP_DIR_MASK                  (0x80)
 /* Endpoint Quantity */
-#define USB_EP_QUANTITY                  (8)
+#define USB_EP_QUANTITY                  (1 << 3)
+#define USB_EP_NUM_MASK                  (USB_EP_QUANTITY - 1)
+
 /* Endpoint Type */
 typedef enum USB_EP_TYPE_E
 {

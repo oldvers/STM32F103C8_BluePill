@@ -6,6 +6,10 @@
 #include "usb_descr.h"
 #include "usb_core.h"
 
+/* Control Endpoints */
+#define EP0_IN                0x80
+#define EP0_OUT               0x00
+
 /* USB Endpoint Data Structure */
 typedef struct _USB_CTRL_DATA
 {
@@ -46,7 +50,7 @@ void USBC_Reset(void)
   gDeviceStatus  = USB_POWER;
   gDeviceAddress = 0;
   gConfiguration = 0;
-  gEndPointMask  = 0x00010001;
+  gEndPointMask  = ((1 << USB_EP_QUANTITY) | 1);
   gEndPointHalt  = 0x00000000;
 }
 
@@ -57,7 +61,7 @@ void USBC_Reset(void)
  */
 void usbc_SetupStage(void)
 {
-  USB_EpRead(0x00, (U8 *)&gCSetupPkt);
+  USB_EpRead(EP0_OUT, (U8 *)&gCSetupPkt);
 }
 
 //-----------------------------------------------------------------------------
@@ -77,7 +81,7 @@ void usbc_DataInStage(void)
   {
     cnt = gCData.Count;
   }
-  cnt = USB_EpWrite(0x80, gCData.pData, cnt);
+  cnt = USB_EpWrite(EP0_IN, gCData.pData, cnt);
   gCData.pData += cnt;
   gCData.Count -= cnt;
 }
@@ -91,7 +95,7 @@ void usbc_DataOutStage(void)
 {
   U32 cnt;
 
-  cnt = USB_EpRead(0x00, gCData.pData);
+  cnt = USB_EpRead(EP0_OUT, gCData.pData);
   gCData.pData += cnt;
   gCData.Count -= cnt;
 }
@@ -103,7 +107,7 @@ void usbc_DataOutStage(void)
  */
 void usbc_StatusInStage(void)
 {
-  USB_EpWrite(0x80, NULL, 0);
+  USB_EpWrite(EP0_IN, NULL, 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -113,7 +117,7 @@ void usbc_StatusInStage(void)
  */
 void usbc_StatusOutStage(void)
 {
-  USB_EpRead(0x00, gCBuffer);
+  USB_EpRead(EP0_OUT, gCBuffer);
 }
 
 //-----------------------------------------------------------------------------
@@ -143,12 +147,12 @@ U32 usbc_CtrlSetupReqStdGetStatus(void)
       }
       break;
     case REQUEST_TO_ENDPOINT:
-      n = gCSetupPkt.wIndex.WB.L & (USB_EP_ADDR_DIR_MASK | 0x07);
-      m = (n & USB_EP_ADDR_DIR_MASK) ?
-            ((1 << USB_EP_QUANTITY) << (n & 0x07)) :
+      n = gCSetupPkt.wIndex.WB.L & (USB_EP_DIR_MASK | USB_EP_NUM_MASK);
+      m = (n & USB_EP_DIR_MASK) ?
+            ((1 << USB_EP_QUANTITY) << (n & USB_EP_NUM_MASK)) :
              (1 << n);
       if (((gConfiguration != 0) ||
-          ((n & 0x07) == 0)) && (gEndPointMask & m))
+          ((n & USB_EP_NUM_MASK) == 0)) && (gEndPointMask & m))
       {
         *((__packed U16 *)gCBuffer) = (gEndPointHalt & m) ? 1 : 0;
         gCData.pData = gCBuffer;
@@ -193,12 +197,12 @@ U32 usbc_CtrlSetupReqStdSetClrFeature(U32 aSetClear)
     case REQUEST_TO_INTERFACE:
       break;
     case REQUEST_TO_ENDPOINT:
-      n = gCSetupPkt.wIndex.WB.L & (USB_EP_ADDR_DIR_MASK | 0x07);
-      m = (n & USB_EP_ADDR_DIR_MASK) ?
-            ((1 << USB_EP_QUANTITY) << (n & 0x07)) :
+      n = gCSetupPkt.wIndex.WB.L & (USB_EP_DIR_MASK | USB_EP_NUM_MASK);
+      m = (n & USB_EP_DIR_MASK) ?
+            ((1 << USB_EP_QUANTITY) << (n & USB_EP_NUM_MASK)) :
              (1 << n);
       if ((gConfiguration != 0) &&
-          ((n & 0x07) != 0) && (gEndPointMask & m))
+          ((n & USB_EP_NUM_MASK) != 0) && (gEndPointMask & m))
       {
         if (gCSetupPkt.wValue.W == USB_FEATURE_ENDPOINT_STALL)
         {
@@ -360,7 +364,7 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
                 }
                 if (gEndPointMask & ((1 << USB_EP_QUANTITY) << n))
                 {
-                  USB_EpDisable(n | USB_EP_ADDR_DIR_MASK);
+                  USB_EpDisable(n | USB_EP_DIR_MASK);
                 }
               }
               gEndPointMask = ((1 << USB_EP_QUANTITY) | 1);
@@ -390,9 +394,9 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
             if (alt == 0)
             {
               n = ((USB_ENDPOINT_DESCRIPTOR *)pD)->bEndpointAddress &
-                   (USB_EP_ADDR_DIR_MASK | 0x07);
-              m = (n & USB_EP_ADDR_DIR_MASK) ?
-                    ((1 << USB_EP_QUANTITY) << (n & 0x07)) :
+                   (USB_EP_DIR_MASK | USB_EP_NUM_MASK);
+              m = (n & USB_EP_DIR_MASK) ?
+                    ((1 << USB_EP_QUANTITY) << (n & USB_EP_NUM_MASK)) :
                      (1 << n);
               gEndPointMask |= m;
               
@@ -416,7 +420,7 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
         }
         if (gEndPointMask & ((1 << USB_EP_QUANTITY) << n))
         {
-          USB_EpDisable(n | USB_EP_ADDR_DIR_MASK);
+          USB_EpDisable(n | USB_EP_DIR_MASK);
         }
       }
       gEndPointMask  = ((1 << USB_EP_QUANTITY) | 1);
@@ -484,9 +488,9 @@ U32 usbc_CtrlSetupReqStdSetInterface(void)
           if (ifn == gCSetupPkt.wIndex.WB.L)
           {
             n = ((USB_ENDPOINT_DESCRIPTOR *)pD)->bEndpointAddress &
-                 (USB_EP_ADDR_DIR_MASK | 0x07);
-            m = (n & USB_EP_ADDR_DIR_MASK) ?
-                  ((1 << USB_EP_QUANTITY) << (n & 0x07)) :
+                 (USB_EP_DIR_MASK | USB_EP_NUM_MASK);
+            m = (n & USB_EP_DIR_MASK) ?
+                  ((1 << USB_EP_QUANTITY) << (n & USB_EP_NUM_MASK)) :
                    (1 << n);
             if (alt == gCSetupPkt.wValue.WB.L)
             {
@@ -530,7 +534,7 @@ U32 usbc_CtrlSetupReqStdSetAddress(void)
   
   if (REQUEST_TO_DEVICE == gCSetupPkt.bmRequestType.BM.Recipient)
   {
-    gDeviceAddress = USB_EP_ADDR_DIR_MASK | gCSetupPkt.wValue.WB.L;
+    gDeviceAddress = USB_EP_DIR_MASK | gCSetupPkt.wValue.WB.L;
     usbc_StatusInStage();
     result = TRUE;
   }
@@ -717,7 +721,7 @@ void USBC_ControlInOut(U32 aEvent)
       }
       if (TRUE != result)
       {
-        USB_EpSetStall(0x80);
+        USB_EpSetStall(EP0_IN);
         gCData.Count = 0;
       }
       break;
@@ -745,7 +749,7 @@ void USBC_ControlInOut(U32 aEvent)
             }
             if (TRUE != result)
             {
-              USB_EpSetStall(0x00);
+              USB_EpSetStall(EP0_OUT);
               gCData.Count = 0;
             }
           }
@@ -764,20 +768,20 @@ void USBC_ControlInOut(U32 aEvent)
       }
       else
       {
-        if (gDeviceAddress & 0x80)
+        if (gDeviceAddress & USB_EP_DIR_MASK)
         {
-          gDeviceAddress &= 0x7F;
+          gDeviceAddress &= (U8)(~USB_EP_DIR_MASK);
           USB_SetAddress(gDeviceAddress);
         }
       }
       break;
 
     case USB_EVNT_EP_IN_STALL:
-      USB_EpClrStall(0x80);
+      USB_EpClrStall(EP0_IN);
       break;
 
     case USB_EVNT_EP_OUT_STALL:
-      USB_EpClrStall(0x00);
+      USB_EpClrStall(EP0_OUT);
       break;
   }
 }

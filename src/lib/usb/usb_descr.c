@@ -43,8 +43,8 @@ static const U8 USB_ConfigDescriptor[] =
   USB_CONFIGUARTION_DESC_SIZE,       /* bLength */
   USB_CONFIGURATION_DESCRIPTOR_TYPE, /* bDescriptorType */
   WBVAL((                            /* wTotalLength */
-   USB_CONFIGUARTION_DESC_SIZE * (1)                               +
-   USB_INTERFACE_DESC_SIZE     * (USB_IF_CNT)                      +
+   USB_CONFIGUARTION_DESC_SIZE * (1)           +
+   USB_INTERFACE_DESC_SIZE     * (USB_IF_CNT)  +
    USB_ENDPOINT_DESC_SIZE      * (USB_EP_CNT - 1)
   )),
   USB_IF_CNT,                        /* bNumInterfaces */

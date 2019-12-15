@@ -4,9 +4,7 @@
 #include "usb_cfg.h"
 #include "usb_defs.h"
 #include "usb_core.h"
-//#include "msc.h"
 #include "icemkii.h"
-//#include "hid.h"
 
 #include "debug.h"
 
@@ -21,8 +19,6 @@ static void usbd_CbReset(void)
 {
   /* Reset Core */
   USBC_Reset();
-  /* Turn Off Cfg LED */
-  //GPIOB->ODR &= ~LED_CFG;
 }
 #endif
 
@@ -35,8 +31,7 @@ static void usbd_CbReset(void)
 #if USB_SUSPEND_EVENT
 static void usbd_CbSuspend(void)
 {
-  /* Turn On Suspend LED */
-  //GPIOB->ODR |= LED_SUSP;
+  //
 }
 #endif
 
@@ -62,8 +57,7 @@ static void usbd_CbResume(void)
 #if USB_WAKEUP_EVENT
 static void usbd_CbWakeUp(void)
 {
-  /* Turn Off Suspend LED */
-  //GPIOB->ODR &= ~LED_SUSP;
+  //
 }
 #endif
 
@@ -105,13 +99,11 @@ void usbc_CbConfigure(U8 aConfig)
   /* Check if USB is configured */
   if (aConfig)
   {
-    /* Turn On Cfg LED */
-    //GPIOB->ODR |=  LED_CFG;
+    //
   }
   else
   {
-    /* Turn Off Cfg LED */
-    //GPIOB->ODR &= ~LED_CFG;
+    //
   }
 #endif
 }

@@ -23,11 +23,11 @@ typedef __packed struct EpBuffDescription_s
 /* Pointer to Endpoint Buffer Descriptors */
 static EpBuffDescription_p pEpBuffDscr = (EpBuffDescription_p)USB_PMAADDR;
 /* Endpoint Free Buffer Address */
-static U16 gEpFreeBuffAddr = 0;
+static U16 gEpFreeBuffAddr                           = 0;
 /* Endpoint Count */
-static U8 gMaxEpCount = 1;
+static U8 gMaxEpCount                                = 1;
 /* Control Endpoint max packet size */
-static U8 gCtrlEpMaxPacketSize = 8;
+static U8 gCtrlEpMaxPacketSize                       = 8;
 /* Callback Functions */
 static USB_CbGeneric pUSB_CbReset                    = NULL;
 static USB_CbGeneric pUSB_CbSuspend                  = NULL;
@@ -49,9 +49,9 @@ static void usb_EpReset(U32 aNumber)
 {
   U32 num, val;
 
-  num = aNumber & 0x07;
+  num = aNumber & USB_EP_NUM_MASK;
   val = EPREG(num);
-  if (aNumber & USB_EP_ADDR_DIR_MASK)
+  if (aNumber & USB_EP_DIR_MASK)
   {
     /* IN Endpoint */
     EPREG(num) = val & (USB_EPREG_MASK | USB_EP_DTOG_TX);
@@ -74,9 +74,9 @@ static void usb_EpSetStatus(U32 aNumber, U32 aStatus)
 {
   U32 num, val;
 
-  num = aNumber & 0x07;
+  num = aNumber & USB_EP_NUM_MASK;
   val = EPREG(num);
-  if (aNumber & USB_EP_ADDR_DIR_MASK)
+  if (aNumber & USB_EP_DIR_MASK)
   {
     /* IN Endpoint */
     EPREG(num) =
@@ -95,7 +95,7 @@ static void usb_EpSetStatus(U32 aNumber, U32 aStatus)
  *  @param aNumber - endpoint number
  *  @param aStatus - new status
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_SetCb_Reset(USB_CbGeneric pCbReset)
 {
@@ -147,11 +147,14 @@ void USB_SetCb_Error(USB_CbError pCbError)
  *  @param aNumber - Number of endpoint
  *  @param pCbEp - Pointer to function
  *  @return None
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_SetCb_Ep(U32 aNumber, USB_CbEp pCbEp)
 {
-  U32 epIndex = ((aNumber >> 4) & 0x08);
-  epIndex |= (aNumber & 0x07);
+  U32 epIndex = (aNumber & USB_EP_NUM_MASK);
+
+  if (0 != (aNumber & USB_EP_DIR_MASK)) epIndex |= USB_EP_QUANTITY;
+  
   pUSB_CbEp[epIndex] = pCbEp;
 }
 
@@ -167,7 +170,7 @@ void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
   for (U32 i = 0; i < USB_EP_QUANTITY; i++)
   {
     pUSB_CbEp[i] = NULL;
-    pUSB_CbEp[i | 0x08] = NULL;
+    pUSB_CbEp[i | USB_EP_QUANTITY] = NULL;
   }
 
   gMaxEpCount = aMaxEpCount;
@@ -349,11 +352,11 @@ void USB_EpConfigure(U8 aAddress, U16 aMaxPacketSize, USB_EP_TYPE aType)
   /* Double Buffering is not yet supported */
   U32 num, val;
 
-  num = aAddress & 0x07;
+  num = aAddress & USB_EP_NUM_MASK;
 
   val = aMaxPacketSize;
   /* Check endpoint direction (IN - 0x80 Mask) */
-  if (aAddress & USB_EP_ADDR_DIR_MASK)
+  if (aAddress & USB_EP_DIR_MASK)
   {
     /* IN */
     (pEpBuffDscr + num)->ADDR_TX = gEpFreeBuffAddr;
@@ -395,7 +398,7 @@ void USB_EpDirCtrl(U32 aDirection)
 /** @brief Enables USB Endpoint
  *  @param aNumber - Endpoint number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_EpEnable(U32 aNumber)
 {
@@ -406,7 +409,7 @@ void USB_EpEnable(U32 aNumber)
 /** @brief Disables USB Endpoint
  *  @param aNumber - Endpoint Number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_EpDisable(U32 aNumber)
 {
@@ -417,7 +420,7 @@ void USB_EpDisable(U32 aNumber)
 /** @brief Resets USB Endpoint
  *  @param aNumber - Endpoint Number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_EpReset(U32 aNumber)
 {
@@ -428,7 +431,7 @@ void USB_EpReset(U32 aNumber)
 /** @brief Sets Stall for USB Endpoint
  *  @param aNumber - Endpoint Number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_EpSetStall(U32 aNumber)
 {
@@ -439,7 +442,7 @@ void USB_EpSetStall(U32 aNumber)
 /** @brief Clear Stall for USB Endpoint
  *  @param aNumber - Endpoint Number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_EpClrStall(U32 aNumber)
 {
@@ -451,7 +454,7 @@ void USB_EpClrStall(U32 aNumber)
  *  @param aNumber - Endpoint Number
  *  @param pData - Pointer to Data Buffer
  *  @return Number of bytes read
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 U32 USB_EpRead(U32 aNumber, U8 *pData)
 {
@@ -459,7 +462,7 @@ U32 USB_EpRead(U32 aNumber, U8 *pData)
   U32 num, cnt, *pv, n;
   U16 data;
 
-  num = aNumber & 0x07;
+  num = aNumber & USB_EP_NUM_MASK;
 
   pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_RX));
   cnt = (pEpBuffDscr + num)->COUNT_RX & USB_EP_COUNT_MASK;
@@ -485,14 +488,14 @@ U32 USB_EpRead(U32 aNumber, U8 *pData)
  *  @param pData - Pointer to Data Buffer
  *  @param aSize - Number of bytes to write
  *  @return Number of bytes written
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 U32 USB_EpWrite(U32 aNumber, U8 *pData, U32 aSize)
 {
   /* Double Buffering is not yet supported */
   U32 num, *pv, n;
 
-  num = aNumber & 0x07;
+  num = aNumber & USB_EP_NUM_MASK;
 
   pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_TX));
   for (n = 0; n < ((aSize + 1) >> 1); n++)
@@ -600,9 +603,9 @@ void USB_IRQHandler(void)
     {
       EPREG(num) = val & ~USB_EP_CTR_TX & USB_EPREG_MASK;
       /* 8..15 items of EP callback table is used */
-      if (NULL != pUSB_CbEp[num | 0x08])
+      if (NULL != pUSB_CbEp[num | USB_EP_QUANTITY])
       {
-        pUSB_CbEp[num | 0x08](USB_EVNT_EP_IN);
+        pUSB_CbEp[num | USB_EP_QUANTITY](USB_EVNT_EP_IN);
       }
     }
   }
