@@ -11,7 +11,7 @@
 #include "queue.h"
 
 #include "usb_device.h"
-#include "vcp.h"
+//#include "vcp.h"
 
 void vLEDTask(void * pvParameters)
 {
@@ -29,33 +29,34 @@ void vLEDTask(void * pvParameters)
 
 void vVCPTask(void * pvParameters)
 {
-  U8  Rx[130];
-  U16 RxLen = 0;
-  U32 time;
+//  U8  Rx[130];
+//  U16 RxLen = 0;
+//  U32 time;
   
-  if (TRUE == VCP_Open())
-  {
+//  if (TRUE == VCP_Open())
+//  {
     while(TRUE)
     {
-      RxLen = VCP_Read(Rx, sizeof(Rx), 5000);
-      if (0 < RxLen)
-      {
-        LOG("VCP Rx: len = %d\r\n", RxLen);
-        LOG("VCP Rx: ");
-        for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
-        LOG("\r\n");
+//      RxLen = VCP_Read(Rx, sizeof(Rx), 5000);
+//      if (0 < RxLen)
+//      {
+//        LOG("VCP Rx: len = %d\r\n", RxLen);
+//        LOG("VCP Rx: ");
+//        for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
+//        LOG("\r\n");
 
-        time = xTaskGetTickCount();
-        VCP_Write(Rx, RxLen, 5000);
-        LOG("VCP Tx: time = %d\r\n", xTaskGetTickCount() - time);
-      }
-      else
-      {
-        LOG("VCP Rx: Timout\r\n");
-      }
+//        time = xTaskGetTickCount();
+//        VCP_Write(Rx, RxLen, 5000);
+//        LOG("VCP Tx: time = %d\r\n", xTaskGetTickCount() - time);
+//      }
+//      else
+//      {
+//        LOG("VCP Rx: Timout\r\n");
+//      }
+      vTaskDelay(5000);
     }
-  }
-  VCP_Close();
+//  }
+//  VCP_Close();
   vTaskDelete(NULL);
 }
 

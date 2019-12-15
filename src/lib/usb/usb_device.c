@@ -4,9 +4,9 @@
 #include "usb_cfg.h"
 #include "usb_defs.h"
 #include "usb_core.h"
-#include "msc.h"
-#include "cdc.h"
-#include "hid.h"
+//#include "msc.h"
+#include "icemkii.h"
+//#include "hid.h"
 
 #include "debug.h"
 
@@ -180,6 +180,11 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
         result = HID_CtrlSetupReq(pSetup, pData, pSize);
         break;
 #endif
+#if USB_ICEMKII
+      case USB_ICEMKII_IF_NUM:
+        result = ICEMKII_CtrlSetupReq(pSetup, pData, pSize);
+        break;
+#endif
       default:
         break;
     }
@@ -221,6 +226,11 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
 #if USB_HID
       case USB_HID_IF_NUM:
         result = HID_CtrlOutReq(pSetup, pData, pSize);
+        break;
+#endif
+#if USB_ICEMKII
+      case USB_ICEMKII_IF_NUM:
+        result = ICEMKII_CtrlOutReq(pSetup, pData, pSize);
         break;
 #endif
       default:
@@ -277,7 +287,8 @@ void USBD_Init(void)
   /* Init Hardware */
   USB_Init(USB_EP_CNT, USB_CTRL_PACKET_SIZE);
   /* Register Callback for Control Endpoint */
-  USB_SetCb_Ep(0, USBC_ControlInOut);
+  USB_SetCb_Ep(0x00, USBC_ControlInOut);
+  USB_SetCb_Ep(0x80, USBC_ControlInOut);
 
 #if (USB_MSC)
   /* Init Mass Storage Device */
@@ -292,6 +303,11 @@ void USBD_Init(void)
 #if (USB_HID)
   /* Init Human Interface Device */
   HID_Init();
+#endif
+
+#if (USB_ICEMKII)
+  /* Init AVR JTAG ICE MKII */
+  ICEMKII_Init();
 #endif
 
   /* Init Core */

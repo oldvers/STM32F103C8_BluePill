@@ -148,7 +148,7 @@
             <RestoreSysVw>1</RestoreSysVw>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
-          <TargetSelection>6</TargetSelection>
+          <TargetSelection>3</TargetSelection>
           <SimDlls>
             <CpuDll></CpuDll>
             <CpuDllArguments></CpuDllArguments>
@@ -373,7 +373,7 @@
               <MiscControls>--c99</MiscControls>
               <Define>STM32F103xB,STM32F10X_MD</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\src\;..\..\src\lib\cmsis\Include;..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include;..\..\src\lib\freertos;..\..\src\lib\freertos\Source\include;..\..\src\lib\freertos\Source\portable\Keil\ARM_CM3;..\..\src\hw;..\..\src\lib\usb;..\..\src\lib\usb\msc;..\..\src\lib\usb\hid;..\..\src\lib\usb\cdc</IncludePath>
+              <IncludePath>..\..\src\;..\..\src\lib\cmsis\Include;..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include;..\..\src\lib\freertos;..\..\src\lib\freertos\Source\include;..\..\src\lib\freertos\Source\portable\Keil\ARM_CM3;..\..\src\hw;..\..\src\lib\usb;..\..\src\lib\usb\icemkii</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -592,64 +592,19 @@
               <FilePath>..\..\src\lib\usb\usb_device.c</FilePath>
             </File>
             <File>
-              <FileName>msc_defs.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\src\lib\usb\msc\msc_defs.h</FilePath>
-            </File>
-            <File>
-              <FileName>msc.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\src\lib\usb\msc\msc.h</FilePath>
-            </File>
-            <File>
-              <FileName>msc.c</FileName>
+              <FileName>icemkii.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\src\lib\usb\msc\msc.c</FilePath>
+              <FilePath>..\..\src\lib\usb\icemkii\icemkii.c</FilePath>
             </File>
             <File>
-              <FileName>hid_defs.h</FileName>
+              <FileName>icemkii.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\src\lib\usb\hid\hid_defs.h</FilePath>
+              <FilePath>..\..\src\lib\usb\icemkii\icemkii.h</FilePath>
             </File>
             <File>
-              <FileName>hid.h</FileName>
+              <FileName>icemkii_defs.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\src\lib\usb\hid\hid.h</FilePath>
-            </File>
-            <File>
-              <FileName>hid.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\src\lib\usb\hid\hid.c</FilePath>
-            </File>
-            <File>
-              <FileName>cdc_defs.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\src\lib\usb\cdc\cdc_defs.h</FilePath>
-            </File>
-            <File>
-              <FileName>cdc.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\src\lib\usb\cdc\cdc.h</FilePath>
-            </File>
-            <File>
-              <FileName>cdc.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\src\lib\usb\cdc\cdc.c</FilePath>
-            </File>
-            <File>
-              <FileName>east.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\src\lib\usb\cdc\east.h</FilePath>
-            </File>
-            <File>
-              <FileName>east.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\src\lib\usb\cdc\east.c</FilePath>
-            </File>
-            <File>
-              <FileName>vcp.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\src\lib\usb\cdc\vcp.h</FilePath>
+              <FilePath>..\..\src\lib\usb\icemkii\icemkii_defs.h</FilePath>
             </File>
           </Files>
         </Group>

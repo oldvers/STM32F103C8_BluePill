@@ -3,6 +3,8 @@
 
 /* Endpoint Direction */
 #define USB_EP_ADDR_DIR_MASK             (0x80)
+/* Endpoint Quantity */
+#define USB_EP_QUANTITY                  (8)
 /* Endpoint Type */
 typedef enum USB_EP_TYPE_E
 {

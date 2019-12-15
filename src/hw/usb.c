@@ -29,26 +29,29 @@ static U8 gMaxEpCount = 1;
 /* Control Endpoint max packet size */
 static U8 gCtrlEpMaxPacketSize = 8;
 /* Callback Functions */
-static USB_CbGeneric pUSB_CbReset   = NULL;
-static USB_CbGeneric pUSB_CbSuspend = NULL;
-static USB_CbGeneric pUSB_CbWakeUp  = NULL;
-static USB_CbGeneric pUSB_CbSOF     = NULL;
-static USB_CbError   pUSB_CbError   = NULL;
-static USB_CbEp      pUSB_CbEp[16]  = {0};
+static USB_CbGeneric pUSB_CbReset                    = NULL;
+static USB_CbGeneric pUSB_CbSuspend                  = NULL;
+static USB_CbGeneric pUSB_CbWakeUp                   = NULL;
+static USB_CbGeneric pUSB_CbSOF                      = NULL;
+static USB_CbError   pUSB_CbError                    = NULL;
+/* The array of EP callbacks */
+/*  in case of OUT EP - bit 3 of array index is clear - 0..7 items */
+/*  in case of IN EP - bit 3 of array index is set - 8..15 items */
+static USB_CbEp      pUSB_CbEp[USB_EP_QUANTITY * 2]  = {0};
 
 //-----------------------------------------------------------------------------
 /** @brief Resets endpoint
  *  @param aNumber - Endpoint Number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 static void usb_EpReset(U32 aNumber)
 {
   U32 num, val;
 
-  num = aNumber & 0x0F;
+  num = aNumber & 0x07;
   val = EPREG(num);
-  if (aNumber & 0x80)
+  if (aNumber & USB_EP_ADDR_DIR_MASK)
   {
     /* IN Endpoint */
     EPREG(num) = val & (USB_EPREG_MASK | USB_EP_DTOG_TX);
@@ -65,15 +68,15 @@ static void usb_EpReset(U32 aNumber)
  *  @param aNumber - endpoint number
  *  @param aStatus - new status
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 static void usb_EpSetStatus(U32 aNumber, U32 aStatus)
 {
   U32 num, val;
 
-  num = aNumber & 0x0F;
+  num = aNumber & 0x07;
   val = EPREG(num);
-  if (aNumber & 0x80)
+  if (aNumber & USB_EP_ADDR_DIR_MASK)
   {
     /* IN Endpoint */
     EPREG(num) =
@@ -147,8 +150,9 @@ void USB_SetCb_Error(USB_CbError pCbError)
  */
 void USB_SetCb_Ep(U32 aNumber, USB_CbEp pCbEp)
 {
-  aNumber &= 0x0000000F;
-  pUSB_CbEp[aNumber] = pCbEp;
+  U32 epIndex = ((aNumber >> 4) & 0x08);
+  epIndex |= (aNumber & 0x07);
+  pUSB_CbEp[epIndex] = pCbEp;
 }
 
 //-----------------------------------------------------------------------------
@@ -160,7 +164,11 @@ void USB_SetCb_Ep(U32 aNumber, USB_CbEp pCbEp)
  */
 void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
 {
-  for (U32 i = 0; i < 16; i++) pUSB_CbEp[i] = NULL;
+  for (U32 i = 0; i < USB_EP_QUANTITY; i++)
+  {
+    pUSB_CbEp[i] = NULL;
+    pUSB_CbEp[i | 0x08] = NULL;
+  }
 
   gMaxEpCount = aMaxEpCount;
   gCtrlEpMaxPacketSize = aCtrlEpMaxPacketSize;
@@ -341,7 +349,7 @@ void USB_EpConfigure(U8 aAddress, U16 aMaxPacketSize, USB_EP_TYPE aType)
   /* Double Buffering is not yet supported */
   U32 num, val;
 
-  num = aAddress & 0x0F;
+  num = aAddress & 0x07;
 
   val = aMaxPacketSize;
   /* Check endpoint direction (IN - 0x80 Mask) */
@@ -451,7 +459,7 @@ U32 USB_EpRead(U32 aNumber, U8 *pData)
   U32 num, cnt, *pv, n;
   U16 data;
 
-  num = aNumber & 0x0F;
+  num = aNumber & 0x07;
 
   pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_RX));
   cnt = (pEpBuffDscr + num)->COUNT_RX & USB_EP_COUNT_MASK;
@@ -484,7 +492,7 @@ U32 USB_EpWrite(U32 aNumber, U8 *pData, U32 aSize)
   /* Double Buffering is not yet supported */
   U32 num, *pv, n;
 
-  num = aNumber & 0x0F;
+  num = aNumber & 0x07;
 
   pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_TX));
   for (n = 0; n < ((aSize + 1) >> 1); n++)
@@ -575,6 +583,7 @@ void USB_IRQHandler(void)
     if (val & USB_EP_CTR_RX)
     {
       EPREG(num) = val & ~USB_EP_CTR_RX & USB_EPREG_MASK;
+      /* 0..7 items of EP callback table is used */
       if (NULL != pUSB_CbEp[num])
       {
         if (val & USB_EP_SETUP)
@@ -590,9 +599,10 @@ void USB_IRQHandler(void)
     if (val & USB_EP_CTR_TX)
     {
       EPREG(num) = val & ~USB_EP_CTR_TX & USB_EPREG_MASK;
-      if (NULL != pUSB_CbEp[num])
+      /* 8..15 items of EP callback table is used */
+      if (NULL != pUSB_CbEp[num | 0x08])
       {
-        pUSB_CbEp[num](USB_EVNT_EP_IN);
+        pUSB_CbEp[num | 0x08](USB_EVNT_EP_IN);
       }
     }
   }

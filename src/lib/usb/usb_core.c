@@ -143,10 +143,12 @@ U32 usbc_CtrlSetupReqStdGetStatus(void)
       }
       break;
     case REQUEST_TO_ENDPOINT:
-      n = gCSetupPkt.wIndex.WB.L & 0x8F;
-      m = (n & 0x80) ? ((1 << 16) << (n & 0x0F)) : (1 << n);
+      n = gCSetupPkt.wIndex.WB.L & (USB_EP_ADDR_DIR_MASK | 0x07);
+      m = (n & USB_EP_ADDR_DIR_MASK) ?
+            ((1 << USB_EP_QUANTITY) << (n & 0x07)) :
+             (1 << n);
       if (((gConfiguration != 0) ||
-          ((n & 0x0F) == 0)) && (gEndPointMask & m))
+          ((n & 0x07) == 0)) && (gEndPointMask & m))
       {
         *((__packed U16 *)gCBuffer) = (gEndPointHalt & m) ? 1 : 0;
         gCData.pData = gCBuffer;
@@ -191,10 +193,12 @@ U32 usbc_CtrlSetupReqStdSetClrFeature(U32 aSetClear)
     case REQUEST_TO_INTERFACE:
       break;
     case REQUEST_TO_ENDPOINT:
-      n = gCSetupPkt.wIndex.WB.L & 0x8F;
-      m = (n & 0x80) ? ((1 << 16) << (n & 0x0F)) : (1 << n);
+      n = gCSetupPkt.wIndex.WB.L & (USB_EP_ADDR_DIR_MASK | 0x07);
+      m = (n & USB_EP_ADDR_DIR_MASK) ?
+            ((1 << USB_EP_QUANTITY) << (n & 0x07)) :
+             (1 << n);
       if ((gConfiguration != 0) &&
-          ((n & 0x0F) != 0) && (gEndPointMask & m))
+          ((n & 0x07) != 0) && (gEndPointMask & m))
       {
         if (gCSetupPkt.wValue.W == USB_FEATURE_ENDPOINT_STALL)
         {
@@ -308,7 +312,6 @@ void usbc_EpConfig(USB_ENDPOINT_DESCRIPTOR * pD)
       break;
     case USB_ENDPOINT_TYPE_BULK:
       t = USB_EP_TYPE_BULK;
-      //if (USB_DBL_BUF_EP & (1 << num)) val |= USB_EP_KIND;
       break;
     case USB_ENDPOINT_TYPE_INTERRUPT:
       t = USB_EP_TYPE_INTERRUPT;
@@ -349,18 +352,18 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
               {
                 gAltSetting[n] = 0;
               }
-              for (n = 1; n < 16; n++)
+              for (n = 1; n < USB_EP_QUANTITY; n++)
               {
                 if (gEndPointMask & (1 << n))
                 {
                   USB_EpDisable(n);
                 }
-                if (gEndPointMask & ((1 << 16) << n))
+                if (gEndPointMask & ((1 << USB_EP_QUANTITY) << n))
                 {
-                  USB_EpDisable(n | 0x80);
+                  USB_EpDisable(n | USB_EP_ADDR_DIR_MASK);
                 }
               }
-              gEndPointMask = 0x00010001;
+              gEndPointMask = ((1 << USB_EP_QUANTITY) | 1);
               gEndPointHalt = 0x00000000;
               USB_Configure(TRUE);
               if (((USB_CONFIGURATION_DESCRIPTOR *)pD)->bmAttributes &
@@ -386,8 +389,11 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
           case USB_ENDPOINT_DESCRIPTOR_TYPE:
             if (alt == 0)
             {
-              n = ((USB_ENDPOINT_DESCRIPTOR *)pD)->bEndpointAddress & 0x8F;
-              m = (n & 0x80) ? ((1 << 16) << (n & 0x0F)) : (1 << n);
+              n = ((USB_ENDPOINT_DESCRIPTOR *)pD)->bEndpointAddress &
+                   (USB_EP_ADDR_DIR_MASK | 0x07);
+              m = (n & USB_EP_ADDR_DIR_MASK) ?
+                    ((1 << USB_EP_QUANTITY) << (n & 0x07)) :
+                     (1 << n);
               gEndPointMask |= m;
               
               usbc_EpConfig((USB_ENDPOINT_DESCRIPTOR *)pD);
@@ -402,18 +408,18 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
     else
     {
       gConfiguration = 0;
-      for (n = 1; n < 16; n++)
+      for (n = 1; n < USB_EP_QUANTITY; n++)
       {
         if (gEndPointMask & (1 << n))
         {
           USB_EpDisable(n);
         }
-        if (gEndPointMask & ((1 << 16) << n))
+        if (gEndPointMask & ((1 << USB_EP_QUANTITY) << n))
         {
-          USB_EpDisable(n | 0x80);
+          USB_EpDisable(n | USB_EP_ADDR_DIR_MASK);
         }
       }
-      gEndPointMask  = 0x00010001;
+      gEndPointMask  = ((1 << USB_EP_QUANTITY) | 1);
       gEndPointHalt  = 0x00000000;
       USB_Configure(FALSE);
     }
@@ -477,8 +483,11 @@ U32 usbc_CtrlSetupReqStdSetInterface(void)
         case USB_ENDPOINT_DESCRIPTOR_TYPE:
           if (ifn == gCSetupPkt.wIndex.WB.L)
           {
-            n = ((USB_ENDPOINT_DESCRIPTOR *)pD)->bEndpointAddress & 0x8F;
-            m = (n & 0x80) ? ((1 << 16) << (n & 0x0F)) : (1 << n);
+            n = ((USB_ENDPOINT_DESCRIPTOR *)pD)->bEndpointAddress &
+                 (USB_EP_ADDR_DIR_MASK | 0x07);
+            m = (n & USB_EP_ADDR_DIR_MASK) ?
+                  ((1 << USB_EP_QUANTITY) << (n & 0x07)) :
+                   (1 << n);
             if (alt == gCSetupPkt.wValue.WB.L)
             {
               gEndPointMask |=  m;
@@ -521,7 +530,7 @@ U32 usbc_CtrlSetupReqStdSetAddress(void)
   
   if (REQUEST_TO_DEVICE == gCSetupPkt.bmRequestType.BM.Recipient)
   {
-    gDeviceAddress = 0x80 | gCSetupPkt.wValue.WB.L;
+    gDeviceAddress = USB_EP_ADDR_DIR_MASK | gCSetupPkt.wValue.WB.L;
     usbc_StatusInStage();
     result = TRUE;
   }
