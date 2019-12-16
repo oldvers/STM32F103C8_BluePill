@@ -1,7 +1,7 @@
 #ifndef __INTERRUPTS_H__
 #define __INTERRUPTS_H__
 
-#include "stm32f1xx.h"
+#include "hardware.h"
 
 /*      IRQ_PRIORITY_SYSTICK    255 */
 /*      IRQ_PRIORITY_PENDSV     255 */

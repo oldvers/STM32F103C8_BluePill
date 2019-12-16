@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
-#include "debug.h"
+#include "types.h"
+#include "hardware.h"
 
 #if defined(__ARMCC_VERSION)
 #include <rt_misc.h>

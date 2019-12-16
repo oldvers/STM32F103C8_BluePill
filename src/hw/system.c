@@ -3,20 +3,26 @@
 #include "system_stm32f1xx.h"
 #include "system.h"
 
-#define SYSTEM_STARTUP_TIMEOUT     (20000U)
-#define RCC_CFGR_PLLSRC_HSI        (0U << RCC_CFGR_PLLSRC_Pos)
-#define RCC_CFGR_PLLSRC_HSE        (1U << RCC_CFGR_PLLSRC_Pos)
+#define NVIC_PRIORITYGROUP_P0S4         (0x00000007U)
+#define NVIC_PRIORITYGROUP_P1S3         (0x00000006U)
+#define NVIC_PRIORITYGROUP_P2S2         (0x00000005U)
+#define NVIC_PRIORITYGROUP_P3S1         (0x00000004U)
+#define NVIC_PRIORITYGROUP_P4S0         (0x00000003U)
+
+#define SYSTEM_STARTUP_TIMEOUT          (20000U)
+#define RCC_CFGR_PLLSRC_HSI             (0U << RCC_CFGR_PLLSRC_Pos)
+#define RCC_CFGR_PLLSRC_HSE             (1U << RCC_CFGR_PLLSRC_Pos)
 
 static void SystemClockConfig( void );
 
 void ApplicationInit( void )
 {
   /* Setup interrupts priority grouping */
-  NVIC_SetPriorityGrouping(5);
-  
+  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_P4S0);
+
   /* First of all - Init the system */
   SystemInit();
-  
+
   /* Initialize system clock */
   SystemClockConfig();
 }
@@ -28,12 +34,12 @@ void ApplicationInit( void )
     - SYSCLK              - 72000000 Hz
     - HCLK                - 72000000 Hz
     - AHB Prescaler       - 1
-    - APB1 Prescaler      - 1
+    - APB1 Prescaler      - 2
     - APB2 Prescaler      - 1
     - HSE Frequency       - 8000000 Hz
     - PLL MUL             - 9
     - VDD                 - 3.3 V
-    - Flash Latency       - 1 WS                                                                  */
+    - Flash Latency       - 2 WS                                                                  */
 
 void SystemClockConfig( void )
 {
@@ -41,7 +47,7 @@ void SystemClockConfig( void )
 
   /* Enable HSE */    
   RCC->CR |= ((U32)RCC_CR_HSEON);
- 
+
   /* Wait till HSE is ready and if Time out is reached exit */
   do
   {
@@ -57,7 +63,7 @@ void SystemClockConfig( void )
   else
   {
     HSEStatus = 0U;
-  }  
+  }
 
   if (1U == HSEStatus)
   {
@@ -66,7 +72,7 @@ void SystemClockConfig( void )
 
     /* Flash 2 wait state */
     FLASH->ACR &= (U32)((U32)~FLASH_ACR_LATENCY);
-    FLASH->ACR |= (U32)FLASH_ACR_LATENCY_2;    
+    FLASH->ACR |= (U32)FLASH_ACR_LATENCY_1;    
  
     /* HCLK = SYSCLK */
     RCC->CFGR |= (U32)RCC_CFGR_HPRE_DIV1;
