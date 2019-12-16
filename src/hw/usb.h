@@ -48,6 +48,7 @@ typedef enum USB_EP_TYPE_E
 typedef void (*USB_CbGeneric)(void);
 typedef void (*USB_CbError)(U32 aError);
 typedef void (*USB_CbEp)(U32 aEvent);
+
 /* Function Declarations */
 void USB_SetCb_Reset     (USB_CbGeneric pCbReset);
 void USB_SetCb_Suspend   (USB_CbGeneric pCbSuspend);

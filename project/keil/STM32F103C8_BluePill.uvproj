@@ -373,7 +373,7 @@
               <MiscControls>--c99</MiscControls>
               <Define>STM32F103xB,STM32F10X_MD</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\src\;..\..\src\lib\cmsis\Include;..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include;..\..\src\lib\freertos;..\..\src\lib\freertos\Source\include;..\..\src\lib\freertos\Source\portable\Keil\ARM_CM3;..\..\src\hw;..\..\src\lib\usb;..\..\src\lib\usb\icemkii</IncludePath>
+              <IncludePath>..\..\src\;..\..\src\lib\cmsis\Include;..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include;..\..\src\lib\freertos;..\..\src\lib\freertos\Source\include;..\..\src\lib\freertos\Source\portable\Keil\ARM_CM3;..\..\src\hw;..\..\src\lib\usb;..\..\src\lib\usb\icemkii;..\..\src\lib\fifo</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -605,6 +605,21 @@
               <FileName>icemkii_defs.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\src\lib\usb\icemkii\icemkii_defs.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Utils</GroupName>
+          <Files>
+            <File>
+              <FileName>fifo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\src\lib\fifo\fifo.c</FilePath>
+            </File>
+            <File>
+              <FileName>fifo.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\src\lib\fifo\fifo.h</FilePath>
             </File>
           </Files>
         </Group>

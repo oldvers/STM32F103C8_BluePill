@@ -20,24 +20,32 @@ typedef __packed struct EpBuffDescription_s
   U32 COUNT_RX;
 } EpBuffDescription_t, * EpBuffDescription_p;
 
+/* Endpoint Configuration */
+typedef __packed struct EpConfiguration_s
+{
+  U16      IMaxSize; /* In Enpoint max transfer size  */
+  U16      IRsvd;
+  USB_CbEp ICb;      /* In Enpoint Callback function  */
+  U16      OMaxSize; /* Out Enpoint max transfer size */
+  U16      ORsvd;
+  USB_CbEp OCb;      /* Out Enpoint Callback function */
+} EpConfiguration_t, * EpConfiguration_p;
+
 /* Pointer to Endpoint Buffer Descriptors */
 static EpBuffDescription_p pEpBuffDscr = (EpBuffDescription_p)USB_PMAADDR;
 /* Endpoint Free Buffer Address */
 static U16 gEpFreeBuffAddr                           = 0;
 /* Endpoint Count */
-static U8 gMaxEpCount                                = 1;
+static U8  gMaxEpCount                               = 1;
 /* Control Endpoint max packet size */
-static U8 gCtrlEpMaxPacketSize                       = 8;
+static U8  gCtrlEpMaxPacketSize                      = 8;
 /* Callback Functions */
-static USB_CbGeneric pUSB_CbReset                    = NULL;
-static USB_CbGeneric pUSB_CbSuspend                  = NULL;
-static USB_CbGeneric pUSB_CbWakeUp                   = NULL;
-static USB_CbGeneric pUSB_CbSOF                      = NULL;
-static USB_CbError   pUSB_CbError                    = NULL;
-/* The array of EP callbacks */
-/*  in case of OUT EP - bit 3 of array index is clear - 0..7 items */
-/*  in case of IN EP - bit 3 of array index is set - 8..15 items */
-static USB_CbEp      pUSB_CbEp[USB_EP_QUANTITY * 2]  = {0};
+static USB_CbGeneric     pUSB_CbReset                = NULL;
+static USB_CbGeneric     pUSB_CbSuspend              = NULL;
+static USB_CbGeneric     pUSB_CbWakeUp               = NULL;
+static USB_CbGeneric     pUSB_CbSOF                  = NULL;
+static USB_CbError       pUSB_CbError                = NULL;
+static EpConfiguration_t USB_EpCfg[USB_EP_QUANTITY]  = {0};
 
 //-----------------------------------------------------------------------------
 /** @brief Resets endpoint
@@ -151,11 +159,18 @@ void USB_SetCb_Error(USB_CbError pCbError)
  */
 void USB_SetCb_Ep(U32 aNumber, USB_CbEp pCbEp)
 {
-  U32 epIndex = (aNumber & USB_EP_NUM_MASK);
+  U32 num = (aNumber & USB_EP_NUM_MASK);
 
-  if (0 != (aNumber & USB_EP_DIR_MASK)) epIndex |= USB_EP_QUANTITY;
-  
-  pUSB_CbEp[epIndex] = pCbEp;
+  if (0 != (aNumber & USB_EP_DIR_MASK))
+  {
+    /* IN */
+    USB_EpCfg[num].ICb = pCbEp;
+  }
+  else
+  {
+    /* OUT */
+    USB_EpCfg[num].OCb = pCbEp;
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -167,10 +182,12 @@ void USB_SetCb_Ep(U32 aNumber, USB_CbEp pCbEp)
  */
 void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
 {
-  for (U32 i = 0; i < USB_EP_QUANTITY; i++)
+  for (U32 num = 0; num < USB_EP_QUANTITY; num++)
   {
-    pUSB_CbEp[i] = NULL;
-    pUSB_CbEp[i | USB_EP_QUANTITY] = NULL;
+    USB_EpCfg[num].ICb = NULL;
+    USB_EpCfg[num].OCb = NULL;
+    USB_EpCfg[num].IMaxSize = 0;
+    USB_EpCfg[num].OMaxSize = 0;
   }
 
   gMaxEpCount = aMaxEpCount;
@@ -359,12 +376,14 @@ void USB_EpConfigure(U8 aAddress, U16 aMaxPacketSize, USB_EP_TYPE aType)
   if (aAddress & USB_EP_DIR_MASK)
   {
     /* IN */
+    USB_EpCfg[num].IMaxSize = aMaxPacketSize;
     (pEpBuffDscr + num)->ADDR_TX = gEpFreeBuffAddr;
     val = (val + 1) & ~1;
   }
   else
   {
     /* OUT */
+    USB_EpCfg[num].OMaxSize = aMaxPacketSize;
     (pEpBuffDscr + num)->ADDR_RX = gEpFreeBuffAddr;
     if (val > 62)
     {
@@ -586,26 +605,24 @@ void USB_IRQHandler(void)
     if (val & USB_EP_CTR_RX)
     {
       EPREG(num) = val & ~USB_EP_CTR_RX & USB_EPREG_MASK;
-      /* 0..7 items of EP callback table is used */
-      if (NULL != pUSB_CbEp[num])
+      if (NULL != USB_EpCfg[num].OCb)
       {
         if (val & USB_EP_SETUP)
         {
-          pUSB_CbEp[num](USB_EVNT_EP_SETUP);
+          USB_EpCfg[num].OCb(USB_EVNT_EP_SETUP);
         }
         else
         {
-          pUSB_CbEp[num](USB_EVNT_EP_OUT);
+          USB_EpCfg[num].OCb(USB_EVNT_EP_OUT);
         }
       }
     }
     if (val & USB_EP_CTR_TX)
     {
       EPREG(num) = val & ~USB_EP_CTR_TX & USB_EPREG_MASK;
-      /* 8..15 items of EP callback table is used */
-      if (NULL != pUSB_CbEp[num | USB_EP_QUANTITY])
+      if (NULL != USB_EpCfg[num].ICb)
       {
-        pUSB_CbEp[num | USB_EP_QUANTITY](USB_EVNT_EP_IN);
+        USB_EpCfg[num].ICb(USB_EVNT_EP_IN);
       }
     }
   }

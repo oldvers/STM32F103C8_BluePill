@@ -203,20 +203,20 @@ typedef __packed struct _USB_STRING_DESCRIPTOR
 {
   U8   bLength;
   U8   bDescriptorType;
-  U16  bString/*[]*/;
+  U16  bString;
 } USB_STRING_DESCRIPTOR;
 
 /* USB Interface Association Descriptor */
 typedef __packed struct _USB_INTERFACE_ASSOCIATION_DESCRIPTOR
 {
-	U8 bLength;           /* 8 Bytes */
-	U8 bDescriptorType;
-	U8 bFirstInterface;
-	U8 bInterfaceCount;
-	U8 bFunctionClass;
-	U8 bFunctionSubClass;
-	U8 bFunctionProtocol;
-	U8 iFunction;
+  U8 bLength;           /* 8 Bytes */
+  U8 bDescriptorType;
+  U8 bFirstInterface;
+  U8 bInterfaceCount;
+  U8 bFunctionClass;
+  U8 bFunctionSubClass;
+  U8 bFunctionProtocol;
+  U8 iFunction;
 } USB_IF_ASSOC_DESCRIPTOR;
 
 /* USB Common Descriptor */
