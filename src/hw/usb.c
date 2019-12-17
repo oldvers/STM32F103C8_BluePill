@@ -529,6 +529,99 @@ U32 USB_EpWrite(U32 aNumber, U8 *pData, U32 aSize)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Reads USB Endpoint Data
+ *  @param aNumber - Endpoint Number
+ *  @param pPutCb - Pointer to Callback that puts Byte to the Buffer
+ *  @param aSize - Count of Bytes to be read
+ *  @return Number of bytes read
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
+ */
+U32 USB_EpReadToFifo(U32 aNumber, USB_CbEpPut pPutCb, U32 aSize)
+{
+  /* Double Buffering is not yet supported */
+  U32 num, cnt, *pv, n;
+  U8 data[2] = {0};
+
+  num = aNumber & USB_EP_NUM_MASK;
+
+  cnt = (pEpBuffDscr + num)->COUNT_RX & USB_EP_COUNT_MASK;
+  if (aSize < cnt)
+  {
+    return 0; /* The Buffer size is too small for received bytes */
+  }
+
+  pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_RX));
+
+  for (n = 0; n < (cnt >> 1); n++)
+  {
+    *((U16 *)data) = *pv++;
+    //pData += 2;
+    pPutCb(&data[0]);
+    pPutCb(&data[1]);
+  }
+  if (1 == (cnt % 2))
+  {
+    *((U16 *)data) = *pv++;
+    //*pData = (U8)data;
+    //pData++;
+    pPutCb(&data[0]);
+  }
+  usb_EpSetStatus(aNumber, USB_EP_RX_VALID);
+
+  return (cnt);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Writes USB Endpoint Data
+ *  @param aNumber - Endpoint Number
+ *  @param pGetCb - Pointer to Callback that gets Byte from the Buffer
+ *  @param aSize - Number of bytes to be written
+ *  @return Number of bytes written
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
+ */
+U32 USB_EpWriteFromFifo(U32 aNumber, USB_CbEpGet pGetCb, U32 aSize)
+{
+  /* Double Buffering is not yet supported */
+  U32 num, *pv, n;
+  U8 data[2] = {0};
+
+  num = aNumber & USB_EP_NUM_MASK;
+
+  if (aSize > USB_EpCfg[num].IMaxSize)
+  {
+    return 0; /* Endpoint Buffer is too small for write */
+  }
+  
+  pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_TX));
+//  for (n = 0; n < ((aSize + 1) >> 1); n++)
+//  {
+//    *pv++ = *((__packed U16 *)pData);
+//    pData += 2;
+//  }
+  for (n = 0; n < (aSize >> 1); n++)
+  {
+    //*((U16 *)data) = *pv++;
+    //pData += 2;
+    pGetCb(&data[0]);
+    pGetCb(&data[1]);
+    *pv++ = *((U16 *)data);
+  }
+  if (1 == (aSize % 2))
+  {
+    //*((U16 *)data) = *pv++;
+    //*pData = (U8)data;
+    //pData++;
+    pGetCb(&data[0]);
+    data[1] = 0;
+    *pv++ = *((U16 *)data);
+  }
+  (pEpBuffDscr + num)->COUNT_TX = aSize;
+  usb_EpSetStatus(aNumber, USB_EP_TX_VALID);
+
+  return (aSize);
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Gets USB Last Frame Number
  *  @param None
  *  @return Frame Number

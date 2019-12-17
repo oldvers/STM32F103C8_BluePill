@@ -290,13 +290,21 @@ void ICEMKII_Init(void)
  *  @param None
  *  @return None
  */
+U8 icemkii_Put(U8 * pByte)
+{
+  LOG("%0.2X", *pByte);
+  return 0;
+}
+//typedef U8   (*USB_CbEpGet)(U8 * pByte);
+
 void icemkii_OutStage(void)
 {
   U32 len; //, i = 0;
 
   /* Read from OUT EP */
-  len = USB_EpRead(USB_ICEMKII_EP_BULK_OUT, gOBuffer);
-  LOG("ICEMKII OUT: Len = %d\r\n", len);
+  LOG("ICEMKII OUT:\r\n  - ");
+  len = USB_EpReadToFifo(USB_ICEMKII_EP_BULK_OUT, icemkii_Put, USB_ICEMKII_PACKET_SIZE);
+  LOG(" : Len = %d\r\n", len);
 
   /* If there is no reading in progress - ignore */
 //  while ((TRUE == gVcpReading) && (i < len))

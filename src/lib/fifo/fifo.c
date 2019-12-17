@@ -17,6 +17,9 @@
  * calls to QueuePut fail.
  */
 
+// https://github.com/holodnak/stm32-fdsemu/blob/master/fifo.c
+// https://github.com/vyacht/stm32/blob/master/vynmea/fifo.c
+// http://mainloop.ru/c-language/simple-fifo.html
 
 
 //#define MAX_QUEUE_SIZE    (MAX_EVENTS_IN_QUEUE + 1)

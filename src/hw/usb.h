@@ -48,6 +48,9 @@ typedef enum USB_EP_TYPE_E
 typedef void (*USB_CbGeneric)(void);
 typedef void (*USB_CbError)(U32 aError);
 typedef void (*USB_CbEp)(U32 aEvent);
+/* Put/Get byte functions - return 0 on Success */
+typedef U8   (*USB_CbEpPut)(U8 * pByte);
+typedef U8   (*USB_CbEpGet)(U8 * pByte);
 
 /* Function Declarations */
 void USB_SetCb_Reset     (USB_CbGeneric pCbReset);
@@ -75,6 +78,8 @@ void USB_EpSetStall      (U32 aNumber);
 void USB_EpClrStall      (U32 aNumber);
 U32  USB_EpRead          (U32 aNumber, U8 *pData);
 U32  USB_EpWrite         (U32 aNumber, U8 *pData, U32 aSize);
+U32  USB_EpReadToFifo    (U32 aNumber, USB_CbEpPut pPutCb, U32 aSize);
+U32  USB_EpWriteFromFifo (U32 aNumber, USB_CbEpGet pGetCb, U32 aSize);
 U32  USB_GetFrame        (void);
 /* Interrupt Handler Declaration */
 void USB_IRQHandler      (void);
