@@ -293,13 +293,16 @@ void cdc_OutStage(void)
 
   /* Read from OUT EP */
   len = USB_EpRead(USB_CDC_EP_BULK_OUT, gOBuffer);
-  //LOG("CDC OUT: len = %d\r\n", len);
+  LOG("CDC OUT: len = %d\r\n", len);
 
   /* If there is no reading in progress - ignore */
+  LOG(" EAST Rx:");
   while ((TRUE == gVcpReading) && (i < len))
   {
+    LOG(" %0.2X", gOBuffer[i]);
     EAST_PutByte(&gVcpRxState, gOBuffer[i++]);
   }
+  LOG("\r\n");
 }
 
 //-----------------------------------------------------------------------------
@@ -363,17 +366,23 @@ void cdc_InStage(void)
 {
   U8 data, len = 0;
 
+  LOG(" EAST Tx:");
   while
   (
     (len < USB_CDC_PACKET_SIZE) &&
     (TRUE == EAST_GetByte(&gVcpTxState, &data))
   )
   {
+    LOG(" %0.2X", data);
     gIBuffer[len++] = data;
   }
+  LOG("\r\n");
 
-  //LOG("CDC IN: len = %d\r\n", len);
-  if (0 < len) USB_EpWrite(USB_CDC_EP_BULK_IN, gIBuffer, len);
+  if (0 < len)
+  {
+    len = USB_EpWrite(USB_CDC_EP_BULK_IN, gIBuffer, len);
+    LOG("CDC IN: len = %d\r\n", len);
+  }
 }
 
 //-----------------------------------------------------------------------------
