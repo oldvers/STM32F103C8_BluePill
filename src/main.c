@@ -25,7 +25,7 @@
 #define BITBAND_PERIPH(reg,bit)  ((BITBAND_PERI_BASE + (((U32)reg)-BITBAND_PERI_REF)*32 + (bit*4)))
 #define BITBAND_REG(reg,bit)     (*((volatile U32 *)(BITBAND_PERIPH(reg,bit))))
 
-#define LED_COUNT 24
+#define LED_COUNT 64
 U8 LED[LED_COUNT * 3] = {50, 30, 34, 56, 67, 58, 99, 12, 4};
 U8 LEDBUF[LED_COUNT * 3 * 8 + 6];
 U32 LEDCNT;
@@ -50,19 +50,25 @@ void WS2812_SetColor(U16 aLed, U8 aR, U8 aG, U8 aB)
 {
   U32 pos = aLed * 3;
   U32 * pLed = (U32*)BITBAND_SRAM(&LED[pos], 0);
-  U32 * pPwmBit = (U32*)BITBAND_SRAM(&LEDBUF[pos << 3], 4);
+  //U32 * pPwmBit = (U32*)BITBAND_SRAM(&LEDBUF[pos << 3], 4);
+  U32 * pPwmBit = (U32*)BITBAND_SRAM(&LEDBUF[(pos + 3) << 3], 4);
+  pPwmBit -= 8;
   U32 i;
 
   if (LED_COUNT <= aLed) return;
-  LED[pos++] = aG;
-  LED[pos++] = aR;
+  //LED[pos++] = aG;
+  //LED[pos++] = aR;
+  //LED[pos++] = aB;
   LED[pos++] = aB;
+  LED[pos++] = aR;
+  LED[pos++] = aG;
 
   for (i = 0; i < 3 * 8; i++)
   {
     *pPwmBit = *pLed;
     pLed += 1;
-    pPwmBit += 8;
+    //pPwmBit += 8;
+    pPwmBit -= 8;    
   }
 }
 
@@ -186,22 +192,22 @@ void Rainbow(void)
     loop += 3;
   }
 
-  loop = 0;  
-  while (5 > loop)
-  {
-    Fill_Rainbow(200, 100);
-    WS2812_StartE();
-    vTaskDelay(100);
-  
-    for (i = 0; i < LED_COUNT; i++)
-    {
-      WS2812_SetColor(i, 0, 0, 0);
-    }
-    WS2812_StartE();
-    vTaskDelay(100);
-    
-    loop++;
-  }
+//  loop = 0;  
+//  while (5 > loop)
+//  {
+//    Fill_Rainbow(200, 100);
+//    WS2812_StartE();
+//    vTaskDelay(100);
+//  
+//    for (i = 0; i < LED_COUNT; i++)
+//    {
+//      WS2812_SetColor(i, 0, 0, 0);
+//    }
+//    WS2812_StartE();
+//    vTaskDelay(100);
+//    
+//    loop++;
+//  }
 }
 
 
@@ -237,6 +243,113 @@ void RunningPixel(void)
   }
 }
 
+void BrightnessR(void)
+{
+  U32 led = 0, loop = 0;
+  
+  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
+
+  vTaskDelay(300);
+  
+  while (255 >= loop)
+  {
+    for (led = 0; led < LED_COUNT; led++)
+    {
+      WS2812_SetColor(led, loop, 0, 0);
+    }
+    WS2812_StartE();
+    vTaskDelay(30);
+    loop++;
+  }
+  
+  vTaskDelay(300);
+  
+  loop = 255;
+  while (0 != loop)
+  {
+    for (led = 0; led < LED_COUNT; led++)
+    {
+      WS2812_SetColor(led, loop, 0, 0);
+    }
+    WS2812_StartE();
+    vTaskDelay(30);
+    loop--;
+  }
+  
+  vTaskDelay(300);
+}
+
+void BrightnessG(void)
+{
+  U32 led = 0, loop = 0;
+  
+  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
+
+  vTaskDelay(300);
+  
+  while (255 >= loop)
+  {
+    for (led = 0; led < LED_COUNT; led++)
+    {
+      WS2812_SetColor(led, 0, loop, 0);
+    }
+    WS2812_StartE();
+    vTaskDelay(30);
+    loop++;
+  }
+  
+  vTaskDelay(300);
+  
+  loop = 255;
+  while (0 != loop)
+  {
+    for (led = 0; led < LED_COUNT; led++)
+    {
+      WS2812_SetColor(led, 0, loop, 0);
+    }
+    WS2812_StartE();
+    vTaskDelay(30);
+    loop--;
+  }
+  
+  vTaskDelay(300);
+}
+
+void BrightnessB(void)
+{
+  U32 led = 0, loop = 0;
+  
+  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
+
+  vTaskDelay(300);
+  
+  while (255 >= loop)
+  {
+    for (led = 0; led < LED_COUNT; led++)
+    {
+      WS2812_SetColor(led, 0, 0, loop);
+    }
+    WS2812_StartE();
+    vTaskDelay(30);
+    loop++;
+  }
+  
+  vTaskDelay(300);
+  
+  loop = 255;
+  while (0 != loop)
+  {
+    for (led = 0; led < LED_COUNT; led++)
+    {
+      WS2812_SetColor(led, 0, 0, loop);
+    }
+    WS2812_StartE();
+    vTaskDelay(30);
+    loop--;
+  }
+  
+  vTaskDelay(300);
+}
 
 void vLEDTask(void * pvParameters)
 {
@@ -288,7 +401,10 @@ void vLEDTask(void * pvParameters)
 //    vTaskDelay(10);
 //    GPIO_Hi(GPIOC, 13);
 //    vTaskDelay(10);
-    RunningPixel();
+//    RunningPixel();
+      BrightnessR();
+      BrightnessG();
+      BrightnessB();
   }
 }
 
