@@ -60,16 +60,16 @@ void Pour(U8 Channel, U16 Duration, PourRsp_p TxPkt)
   switch (Channel)
   {
     case 0:
-      GPIO_Hi(GPIOB, 6);
+      GPIO_Hi(GPIOA, 0);
       break;
     case 1:
-      GPIO_Hi(GPIOB, 7);
+      GPIO_Hi(GPIOA, 1);
       break;
     case 2:
-      GPIO_Hi(GPIOB, 8);
+      GPIO_Hi(GPIOA, 2);
       break;
     case 3:
-      GPIO_Hi(GPIOB, 9);
+      GPIO_Hi(GPIOA, 3);
       break;
     default:
       return;
@@ -86,16 +86,16 @@ void Pour(U8 Channel, U16 Duration, PourRsp_p TxPkt)
   switch (Channel)
   {
     case 0:
-      GPIO_Lo(GPIOB, 6);
+      GPIO_Lo(GPIOA, 0);
       break;
     case 1:
-      GPIO_Lo(GPIOB, 7);
+      GPIO_Lo(GPIOA, 1);
       break;
     case 2:
-      GPIO_Lo(GPIOB, 8);
+      GPIO_Lo(GPIOA, 2);
       break;
     case 3:
-      GPIO_Lo(GPIOB, 9);
+      GPIO_Lo(GPIOA, 3);
       break;
     default:
       return;
@@ -112,10 +112,10 @@ void vVCPTask(void * pvParameters)
   PourRsp_t TxPkt;
   U16 RxLen = 0;
 
-  GPIO_Init(GPIOB, 6, GPIO_TYPE_OUT_PP_2MHZ);
-  GPIO_Init(GPIOB, 7, GPIO_TYPE_OUT_PP_2MHZ);
-  GPIO_Init(GPIOB, 8, GPIO_TYPE_OUT_PP_2MHZ);
-  GPIO_Init(GPIOB, 9, GPIO_TYPE_OUT_PP_2MHZ);
+  GPIO_Init(GPIOA, 0, GPIO_TYPE_OUT_PP_2MHZ);
+  GPIO_Init(GPIOA, 1, GPIO_TYPE_OUT_PP_2MHZ);
+  GPIO_Init(GPIOA, 2, GPIO_TYPE_OUT_PP_2MHZ);
+  GPIO_Init(GPIOA, 3, GPIO_TYPE_OUT_PP_2MHZ);
   
   if (TRUE == VCP_Open())
   {
