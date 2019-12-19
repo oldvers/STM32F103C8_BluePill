@@ -39,6 +39,8 @@ typedef struct FIFO_s
 void FIFO_Init(FIFO_p pFIFO, U8 * pBuffer, U32 aSize);
 U32  FIFO_Put (FIFO_p pFIFO, U8 * pByte);
 U32  FIFO_Get (FIFO_p pFIFO, U8 * pByte);
+U32  FIFO_Free(FIFO_p pFIFO);
+U32  FIFO_Size(FIFO_p pFIFO);
 
 //U8   FIFO_Save(PCF85Time_p Time, Event_p Event);
 //U8   FIFO_Load(PCF85Time_p Time, Event_p Event);
