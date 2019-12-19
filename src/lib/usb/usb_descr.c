@@ -73,7 +73,7 @@ static const U8 USB_DeviceDescriptor[] =
 
   USB_CTRL_PACKET_SIZE,              /* bMaxPacketSize0 */
   WBVAL(0xC251),                     /* idVendor */
-  WBVAL(0x1C03),                     /* idProduct */
+  WBVAL(0x1C04),                     /* idProduct */
   WBVAL(0x0100), /* 1.00 */          /* bcdDevice */
   STR_DESC_IDX_MANUFACTURER,         /* iManufacturer */
   STR_DESC_IDX_PRODUCT,              /* iProduct */

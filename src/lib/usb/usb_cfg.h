@@ -48,11 +48,11 @@
 
 /* USB Class Support */
 /* Mass Storage Device Class (MSC) (0 - Disabled, 1 - Enabled) */
-#define USB_MSC                   (1)
+#define USB_MSC                   (0)
 /* Communication Device Class (CDC) (0 - Disabled, 1 - Enabled) */
 #define USB_CDC                   (1)
 /* Human Interface Device (HID) (0 - Disabled, 1 - Enabled) */
-#define USB_HID                   (1)
+#define USB_HID                   (0)
 
 /* --- Calculations -------------------------------------------------------- */
 /* USB Endpoint Direction */
