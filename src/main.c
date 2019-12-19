@@ -27,32 +27,130 @@ void vLEDTask(void * pvParameters)
   //vTaskDelete(NULL);
 }
 
+typedef __packed struct PourReq_s
+{
+  U8  Req;
+  U16 Param1;
+  U16 Param2;
+  U16 Param3;
+  U16 Param4;
+}
+PourReq_t, * PourReq_p;
+
+typedef __packed struct PourRsp_s
+{
+  U8  Rsp;
+  U8  Channel;
+  U16 Param;
+}
+PourRsp_t, * PourRsp_p;
+
+void Pour(U8 Channel, U16 Duration, PourRsp_p TxPkt)
+{
+  U32 time2, time1;
+
+  if (0 == Duration) return;
+  
+  time1 = xTaskGetTickCount();
+  time2 = xTaskGetTickCount() + Duration;
+
+  TxPkt->Rsp = 1;
+  TxPkt->Channel = Channel;
+
+  switch (Channel)
+  {
+    case 0:
+      GPIO_Hi(GPIOB, 6);
+      break;
+    case 1:
+      GPIO_Hi(GPIOB, 7);
+      break;
+    case 2:
+      GPIO_Hi(GPIOB, 8);
+      break;
+    case 3:
+      GPIO_Hi(GPIOB, 9);
+      break;
+    default:
+      return;
+  }
+
+  while ( time1 < time2 )
+  {
+    vTaskDelay(10);
+    time1 = xTaskGetTickCount();
+    TxPkt->Param = (Duration - (time2 - time1)) * 100 / Duration;
+    VCP_Write((U8 *)TxPkt, sizeof(*TxPkt), 50);
+  }
+
+  switch (Channel)
+  {
+    case 0:
+      GPIO_Lo(GPIOB, 6);
+      break;
+    case 1:
+      GPIO_Lo(GPIOB, 7);
+      break;
+    case 2:
+      GPIO_Lo(GPIOB, 8);
+      break;
+    case 3:
+      GPIO_Lo(GPIOB, 9);
+      break;
+    default:
+      return;
+  }
+
+  TxPkt->Param = 100;
+  VCP_Write((U8 *)TxPkt, sizeof(*TxPkt), 50);
+}
+
 void vVCPTask(void * pvParameters)
 {
-  U8  Rx[130];
+  U8  Rx[64];
+  PourReq_p RxPkt;
+  PourRsp_t TxPkt;
   U16 RxLen = 0;
-  U32 time;
+
+  GPIO_Init(GPIOB, 6, GPIO_TYPE_OUT_PP_2MHZ);
+  GPIO_Init(GPIOB, 7, GPIO_TYPE_OUT_PP_2MHZ);
+  GPIO_Init(GPIOB, 8, GPIO_TYPE_OUT_PP_2MHZ);
+  GPIO_Init(GPIOB, 9, GPIO_TYPE_OUT_PP_2MHZ);
   
   if (TRUE == VCP_Open())
   {
     while(TRUE)
     {
       RxLen = VCP_Read(Rx, sizeof(Rx), 5000);
-      if (0 < RxLen)
-      {
-        LOG("VCP Rx: len = %d\r\n", RxLen);
-        LOG("VCP Rx: ");
-        for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
-        LOG("\r\n");
 
-        time = xTaskGetTickCount();
-        VCP_Write(Rx, RxLen, 5000);
-        LOG("VCP Tx: time = %d\r\n", xTaskGetTickCount() - time);
+      if (0 == RxLen)
+      {
+        LOG("VCP Rx: Timout\r\n");
+        continue;
+      }
+
+      LOG("VCP Rx: len = %d\r\n", RxLen);
+      LOG("VCP Rx: ");
+      for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
+      LOG("\r\n");
+      
+      RxPkt = (PourReq_p)Rx;
+
+      if ( (sizeof(*RxPkt) == RxLen) && (0x01 == RxPkt->Req))
+      {
+        Pour(0, RxPkt->Param1, &TxPkt);
+        Pour(1, RxPkt->Param2, &TxPkt);
+        Pour(2, RxPkt->Param3, &TxPkt);
+        Pour(3, RxPkt->Param4, &TxPkt);
       }
       else
       {
-        LOG("VCP Rx: Timout\r\n");
+        TxPkt.Rsp = 0xFF;
+        TxPkt.Channel = 0xFF;
+        TxPkt.Param = 0;
+        VCP_Write((U8 *)&TxPkt, sizeof(TxPkt), 5000);
       }
+
     }
   }
   VCP_Close();
