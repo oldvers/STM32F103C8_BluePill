@@ -469,13 +469,33 @@ void USB_EpClrStall(U32 aNumber)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Reads USB Endpoint count of data available
+ *  @param aNumber - Endpoint Number
+ *  @return Number of bytes available
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
+ */
+U32 USB_EpIsDataAvailable(U32 aNumber)
+{
+  U32 num, cnt;
+
+  /* Nothing is available for IN Endpoints */
+  if (0 != (aNumber & USB_EP_DIR_MASK)) return 0;
+
+  num = aNumber & USB_EP_NUM_MASK;
+  cnt = (pEpBuffDscr + num)->COUNT_RX & USB_EP_COUNT_MASK;
+
+  return (cnt);
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Reads USB Endpoint Data
  *  @param aNumber - Endpoint Number
  *  @param pData - Pointer to Data Buffer
+ *  @param aSize - Number of bytes to read
  *  @return Number of bytes read
  *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
-U32 USB_EpRead(U32 aNumber, U8 *pData)
+U32 USB_EpRead(U32 aNumber, U8 *pData, U32 aSize)
 {
   /* Double Buffering is not yet supported */
   U32 num, cnt, *pv, n;
@@ -483,8 +503,14 @@ U32 USB_EpRead(U32 aNumber, U8 *pData)
 
   num = aNumber & USB_EP_NUM_MASK;
 
-  pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_RX));
   cnt = (pEpBuffDscr + num)->COUNT_RX & USB_EP_COUNT_MASK;
+  if (aSize < cnt)
+  {
+    return 0; /* The Buffer size is too small for received bytes */
+  }
+
+  pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_RX));
+
   for (n = 0; n < (cnt >> 1); n++)
   {
     *((__packed U16 *)pData) = *pv++;
@@ -515,6 +541,11 @@ U32 USB_EpWrite(U32 aNumber, U8 *pData, U32 aSize)
   U32 num, *pv, n;
 
   num = aNumber & USB_EP_NUM_MASK;
+
+  if (aSize > USB_EpCfg[num].IMaxSize)
+  {
+    aSize = USB_EpCfg[num].IMaxSize;
+  }
 
   pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_TX));
   for (n = 0; n < ((aSize + 1) >> 1); n++)
@@ -555,15 +586,12 @@ U32 USB_EpReadToFifo(U32 aNumber, USB_CbEpPut pPutCb, U32 aSize)
   for (n = 0; n < (cnt >> 1); n++)
   {
     *((U16 *)data) = *pv++;
-    //pData += 2;
     pPutCb(&data[0]);
     pPutCb(&data[1]);
   }
   if (1 == (cnt % 2))
   {
     *((U16 *)data) = *pv++;
-    //*pData = (U8)data;
-    //pData++;
     pPutCb(&data[0]);
   }
   usb_EpSetStatus(aNumber, USB_EP_RX_VALID);
@@ -589,28 +617,18 @@ U32 USB_EpWriteFromFifo(U32 aNumber, USB_CbEpGet pGetCb, U32 aSize)
 
   if (aSize > USB_EpCfg[num].IMaxSize)
   {
-    return 0; /* Endpoint Buffer is too small for write */
+    aSize = USB_EpCfg[num].IMaxSize;
   }
-  
+
   pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_TX));
-//  for (n = 0; n < ((aSize + 1) >> 1); n++)
-//  {
-//    *pv++ = *((__packed U16 *)pData);
-//    pData += 2;
-//  }
   for (n = 0; n < (aSize >> 1); n++)
   {
-    //*((U16 *)data) = *pv++;
-    //pData += 2;
     pGetCb(&data[0]);
     pGetCb(&data[1]);
     *pv++ = *((U16 *)data);
   }
   if (1 == (aSize % 2))
   {
-    //*((U16 *)data) = *pv++;
-    //*pData = (U8)data;
-    //pData++;
     pGetCb(&data[0]);
     data[1] = 0;
     *pv++ = *((U16 *)data);

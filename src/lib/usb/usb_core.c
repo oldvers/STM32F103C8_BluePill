@@ -61,7 +61,7 @@ void USBC_Reset(void)
  */
 void usbc_SetupStage(void)
 {
-  USB_EpRead(EP0_OUT, (U8 *)&gCSetupPkt);
+  USB_EpRead(EP0_OUT, (U8 *)&gCSetupPkt, USB_CTRL_PACKET_SIZE);
 }
 
 //-----------------------------------------------------------------------------
@@ -95,7 +95,7 @@ void usbc_DataOutStage(void)
 {
   U32 cnt;
 
-  cnt = USB_EpRead(EP0_OUT, gCData.pData);
+  cnt = USB_EpRead(EP0_OUT, gCData.pData, USB_CTRL_PACKET_SIZE);
   gCData.pData += cnt;
   gCData.Count -= cnt;
 }
@@ -117,7 +117,7 @@ void usbc_StatusInStage(void)
  */
 void usbc_StatusOutStage(void)
 {
-  USB_EpRead(EP0_OUT, gCBuffer);
+  USB_EpRead(EP0_OUT, gCBuffer, USB_CTRL_PACKET_SIZE);
 }
 
 //-----------------------------------------------------------------------------

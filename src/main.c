@@ -13,6 +13,8 @@
 #include "usb_device.h"
 //#include "vcp.h"
 
+#include "fifo.h"
+
 void vLEDTask(void * pvParameters)
 {
   GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
@@ -57,8 +59,15 @@ void vVCPTask(void * pvParameters)
     }
 //  }
 //  VCP_Close();
-  vTaskDelete(NULL);
+//  vTaskDelete(NULL);
 }
+
+
+
+U8     FifoBuf[17];
+FIFO_t Fifo;
+U8     i, data;
+extern void ICEMKII_Init(void);
 
 int main(void)
 {
@@ -70,13 +79,84 @@ int main(void)
   LOG("Memory Size = %d kB\r\n", FLASH_SIZE);
   LOG("SysClock = %d Hz\r\n", SystemCoreClock);
   
-  USBD_Init();
+  FIFO_Init(&Fifo, FifoBuf, sizeof(FifoBuf));
+  LOG("FIFO Capacity = %d\r\n", FIFO_Capacity(&Fifo));
+
+  for (i = 0; i < 10; i++)
+  {
+    data = 0x33;
+    FIFO_Put(&Fifo, &data);
+  }
+  LOG("--- FIFO Put 10 ---\r\n");
+  LOG("FIFO Size = %d\r\n", FIFO_Size(&Fifo));
+  LOG("FIFO Free = %d\r\n", FIFO_Free(&Fifo));
+  LOG("FIFO Sum  = %d\r\n", FIFO_Free(&Fifo) + FIFO_Size(&Fifo));
+  
+  for (i = 0; i < 5; i++)
+  {
+    FIFO_Get(&Fifo, &data);
+  }
+  LOG("--- FIFO Get 5 ---\r\n");
+  LOG("FIFO Size = %d\r\n", FIFO_Size(&Fifo));
+  LOG("FIFO Free = %d\r\n", FIFO_Free(&Fifo));
+  LOG("FIFO Sum  = %d\r\n", FIFO_Free(&Fifo) + FIFO_Size(&Fifo));
+  
+  for (i = 0; i < 10; i++)
+  {
+    data = 0x44;
+    FIFO_Put(&Fifo, &data);
+  }
+  LOG("--- FIFO Put 10 ---\r\n");
+  LOG("FIFO Size = %d\r\n", FIFO_Size(&Fifo));
+  LOG("FIFO Free = %d\r\n", FIFO_Free(&Fifo));
+  LOG("FIFO Sum  = %d\r\n", FIFO_Free(&Fifo) + FIFO_Size(&Fifo));
+  
+  for (i = 0; i < 3; i++)
+  {
+    FIFO_Get(&Fifo, &data);
+  }
+  LOG("--- FIFO Get 3 ---\r\n");
+  LOG("FIFO Size = %d\r\n", FIFO_Size(&Fifo));
+  LOG("FIFO Free = %d\r\n", FIFO_Free(&Fifo));
+  LOG("FIFO Sum  = %d\r\n", FIFO_Free(&Fifo) + FIFO_Size(&Fifo));
+  
+  for (i = 0; i < 13; i++)
+  {
+    data = 0x55;
+    FIFO_Put(&Fifo, &data);
+  }
+  LOG("--- FIFO Put 13 ---\r\n");
+  LOG("FIFO Size = %d\r\n", FIFO_Size(&Fifo));
+  LOG("FIFO Free = %d\r\n", FIFO_Free(&Fifo));
+  LOG("FIFO Sum  = %d\r\n", FIFO_Free(&Fifo) + FIFO_Size(&Fifo));
+  
+  for (i = 0; i < 20; i++)
+  {
+    FIFO_Get(&Fifo, &data);
+  }
+  LOG("--- FIFO Get 20 ---\r\n");
+  LOG("FIFO Size = %d\r\n", FIFO_Size(&Fifo));
+  LOG("FIFO Free = %d\r\n", FIFO_Free(&Fifo));
+  LOG("FIFO Sum  = %d\r\n", FIFO_Free(&Fifo) + FIFO_Size(&Fifo));
+  
+  for (i = 0; i < 13; i++)
+  {
+    data = 0x66;
+    FIFO_Put(&Fifo, &data);
+  }
+  LOG("--- FIFO Put 13 ---\r\n");
+  LOG("FIFO Size = %d\r\n", FIFO_Size(&Fifo));
+  LOG("FIFO Free = %d\r\n", FIFO_Free(&Fifo));
+  LOG("FIFO Sum  = %d\r\n", FIFO_Free(&Fifo) + FIFO_Size(&Fifo));
+
+  ICEMKII_Init();
+//  USBD_Init();
   
 //  GPIO_Init(GPIOB, 6, GPIO_TYPE_OUT_PP_2MHZ);
 //  GPIO_Lo(GPIOB, 6);
 //  GPIO_Init(GPIOB, 8, GPIO_TYPE_OUT_PP_2MHZ);
 //  GPIO_Hi(GPIOB, 8);
-  
+
   xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
   xTaskCreate(vVCPTask,"VCPTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 
