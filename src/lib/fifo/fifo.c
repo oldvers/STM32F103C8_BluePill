@@ -97,5 +97,47 @@ U32 FIFO_Capacity(FIFO_p pFIFO)
 
 U32 FIFO_Size(FIFO_p pFIFO)
 {
-  return (pFIFO->I - pFIFO->O + pFIFO->S) % pFIFO->S;
+//Reset values after ED
+LastSavedEventAddress = 0;
+LastSendedEventAddress = 0;
+}*/
+
+U32 FIFO_Free(FIFO_p pFIFO)
+{
+  return (pFIFO->S + 1) - (pFIFO->I - pFIFO->O);
 }
+
+U32 FIFO_Size(FIFO_p pFIFO)
+{
+  return (pFIFO->S - 1);
+}
+
+//unsigned int fifo_len(fifo_t * fifo)
+//{
+//    // two usigned will not make this negative 
+//    // even if in or out overflow as long as in is ahead of out
+//    return fifo->in - fifo->out;
+//}
+
+//int fifo_is_empty(fifo_t * fifo)
+//{
+//     return fifo->in == fifo->out;
+//  if (pFIFO->I == pFIFO->O)
+//  {
+//    return FIFO_IS_EMPTY;
+//  }
+//}
+
+//int fifo_is_full(fifo_t * fifo)
+//{
+//     return fifo_len(fifo) > fifo->mask;
+//   if (pFIFO->I == ((pFIFO->O - 1 + pFIFO->S) % pFIFO->S))
+//  {
+//    return FIFO_IS_FULL;
+//  }
+//}
+
+//unsigned int fifo_free(fifo_t * fifo)
+//{
+//     return fifo_unused(fifo);
+//}

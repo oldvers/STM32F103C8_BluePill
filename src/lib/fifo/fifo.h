@@ -22,5 +22,7 @@ U32  FIFO_Get      (FIFO_p pFIFO, U8 * pByte);
 U32  FIFO_Free     (FIFO_p pFIFO);
 U32  FIFO_Capacity (FIFO_p pFIFO);
 U32  FIFO_Size     (FIFO_p pFIFO);
+U32  FIFO_Free(FIFO_p pFIFO);
+U32  FIFO_Size(FIFO_p pFIFO);
 
 #endif /* __FIFO_H__ */

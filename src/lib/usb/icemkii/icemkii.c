@@ -405,7 +405,7 @@ void icemkii_OutStage(void)
   while ( 0 );
 #else
   /* Read from OUT EP */
-  LOG("ICEMKII OUT:\r\n  - ");
+  LOG("ICEMKII OUT:\r\n  -");
   size = USB_EpReadToFifo
          (
            USB_ICEMKII_EP_BULK_OUT,

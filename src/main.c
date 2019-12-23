@@ -25,6 +25,7 @@ void vLEDTask(void * pvParameters)
     vTaskDelay(500);
     GPIO_Hi(GPIOC, 13);
     vTaskDelay(500);
+    LOG("LED\r\n");
   }
   //vTaskDelete(NULL);
 }
@@ -71,6 +72,8 @@ extern void ICEMKII_Init(void);
 
 int main(void)
 {
+  //Debug_Init();
+
   LOG("STM32F103C8 Started!\r\n");
   LOG("ID0 = 0x%04X\r\n", UDID_0);
   LOG("ID1 = 0x%04X\r\n", UDID_1);
@@ -151,6 +154,33 @@ int main(void)
 
   ICEMKII_Init();
 //  USBD_Init();
+  
+  FIFO_t fifo;
+  U8 fifobuf[17];
+  U8 i, data;
+  
+  FIFO_Init(&fifo, fifobuf, sizeof(fifobuf));
+  
+  LOG("FIFO Size = %d B\r\n", FIFO_Size(&fifo));
+  for (i = 0; i < sizeof(fifobuf); i++)
+  {
+    data = i;
+    FIFO_Put(&fifo, &data);
+  }
+  LOG("FIFO Free = %d B\r\n", FIFO_Free(&fifo));
+  
+  for (i = 0; i < 5; i++)
+  {
+    FIFO_Get(&fifo, &data);
+  }
+  LOG("FIFO Free = %d B\r\n", FIFO_Free(&fifo));
+  
+  for (i = 0; i < 9; i++)
+  {
+    data = i;
+    FIFO_Put(&fifo, &data);
+  }
+  LOG("FIFO Free = %d B\r\n", FIFO_Free(&fifo));
   
 //  GPIO_Init(GPIOB, 6, GPIO_TYPE_OUT_PP_2MHZ);
 //  GPIO_Lo(GPIOB, 6);
