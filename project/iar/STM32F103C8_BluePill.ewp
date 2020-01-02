@@ -351,6 +351,7 @@
                     <state>$PROJ_DIR$\..\..\src\lib\usb</state>
                     <state>$PROJ_DIR$\..\..\src\lib\usb\icemkii</state>
                     <state>$PROJ_DIR$\..\..\src\lib\fifo</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\rtt</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1125,6 +1126,21 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\timers.c</name>
+        </file>
+    </group>
+    <group>
+        <name>RTT</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT_Conf.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT_printf.c</name>
         </file>
     </group>
     <group>

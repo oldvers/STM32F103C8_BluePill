@@ -3,6 +3,7 @@
 #include "types.h"
 #include "debug.h"
 #include "stm32f1xx.h"
+#include "SEGGER_RTT.h"
 
 /* ITM Stimulus Ports */
 #define CPU_ITM_O_STIMPORT_00               (0x00000000)
@@ -139,8 +140,8 @@ int fputc(int c, FILE *f)
 #if defined(__ICCARM__)
 size_t __write(int handle, const unsigned char * buffer, size_t size)
 {
-  /* PB3 (JTDO/TRACESWO) is used for debug output */
-  for (U32 i = 0; i< size; i++) ITM_SendChar(*buffer++);
+  (void) handle;  /* Not used, avoid warning */
+  SEGGER_RTT_Write(0, (const char*)buffer, size);
   return size;
 }
 #endif
