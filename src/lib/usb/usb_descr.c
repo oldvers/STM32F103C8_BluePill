@@ -2,7 +2,7 @@
 #include "usb_cfg.h"
 #include "usb_defs.h"
 #include "usb_descr.h"
-#include "icemkii_defs.h"
+#include "usb_icemkii_defs.h"
 
 #include "debug.h"
 

@@ -4,8 +4,8 @@
 #include "usb_cfg.h"
 #include "usb_defs.h"
 #include "usb_core.h"
-#include "icemkii_defs.h"
-#include "icemkii.h"
+#include "usb_icemkii_defs.h"
+#include "usb_icemkii.h"
 
 #define ICEMKII_TEST_MODE
 

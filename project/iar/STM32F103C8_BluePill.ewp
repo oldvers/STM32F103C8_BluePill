@@ -1084,6 +1084,15 @@
         </file>
     </group>
     <group>
+        <name>JTAGICEmkII</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\icemkii_message.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\icemkii_message.h</name>
+        </file>
+    </group>
+    <group>
         <name>Main</name>
         <file>
             <name>$PROJ_DIR$\..\..\src\main.c</name>
@@ -1146,15 +1155,6 @@
     <group>
         <name>USB</name>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\icemkii.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\icemkii.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\icemkii_defs.h</name>
-        </file>
-        <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\usb_cfg.h</name>
         </file>
         <file>
@@ -1177,6 +1177,15 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\usb_device.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\usb_icemkii.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\usb_icemkii.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\usb_icemkii_defs.h</name>
         </file>
     </group>
     <group>

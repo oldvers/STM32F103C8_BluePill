@@ -4,7 +4,7 @@
 #include "usb_cfg.h"
 #include "usb_defs.h"
 #include "usb_core.h"
-#include "icemkii.h"
+#include "usb_icemkii.h"
 
 #include "debug.h"
 
