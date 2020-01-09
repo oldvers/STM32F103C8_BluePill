@@ -307,3 +307,30 @@ void USBD_Init(void)
   /* Connect USB */
   USB_Connect(TRUE);
 }
+
+//-----------------------------------------------------------------------------
+/** @brief De-Initializes USB Device
+ *  @param None
+ *  @return None
+ *  @note De-Initializes USB peripheral
+ */
+void USBD_DeInit(void)
+{
+  USB_DeInit();
+
+#if USB_RESET_EVENT
+  USB_SetCb_Reset(NULL);
+#endif
+#if USB_SUSPEND_EVENT
+  USB_SetCb_Suspend(NULL);
+#endif
+#if USB_WAKEUP_EVENT
+  USB_SetCb_WakeUp(NULL);
+#endif
+#if USB_SOF_EVENT
+  USB_SetCb_SOF(NULL);
+#endif
+#if USB_ERROR_EVENT
+  USB_SetCb_Error(NULL);
+#endif
+}

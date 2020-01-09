@@ -202,10 +202,31 @@ void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
 
   /* Enable USB peripheral clock */
   RCC->APB1ENR |= RCC_APB1ENR_USBEN;
+  
+  /* Reset USB peripheral */
+  RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
+  RCC->APB1RSTR &= (~RCC_APB1RSTR_USBRST);
 
   /* Enable USB Interrupts */
+  NVIC_ClearPendingIRQ(USB_LP_CAN1_RX0_IRQn);
   NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, IRQ_PRIORITY_USB);
   NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief De-Initializes USB peripheral
+ *  @param None
+ *  @return None
+ *  @note Called by the User to de-initialize USB
+ */
+void USB_DeInit(void)
+{
+  /* Disable USB Interrupts */
+  NVIC_DisableIRQ(USB_LP_CAN1_RX0_IRQn);
+  NVIC_ClearPendingIRQ(USB_LP_CAN1_RX0_IRQn);
+
+  /* Disable USB peripheral clock */
+  RCC->APB1ENR &= (~RCC_APB1ENR_USBEN);
 }
 
 //-----------------------------------------------------------------------------

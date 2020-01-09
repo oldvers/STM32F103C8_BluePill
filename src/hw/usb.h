@@ -60,6 +60,7 @@ void USB_SetCb_SOF         (USB_CbGeneric pCbSOF);
 void USB_SetCb_Error       (USB_CbError pCbError);
 void USB_SetCb_Ep          (U32 aNumber, USB_CbEp pCbEp);
 void USB_Init              (U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize);
+void USB_DeInit            (void);
 void USB_Connect           (U32 aConnnect);
 void USB_Reset             (void);
 void USB_PreapareReConfig  (void);
