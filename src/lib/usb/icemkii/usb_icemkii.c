@@ -7,7 +7,7 @@
 #include "usb_icemkii_defs.h"
 #include "usb_icemkii.h"
 
-#define ICEMKII_TEST_MODE
+//#define ICEMKII_TEST_MODE
 
 #include "FreeRTOS.h"
 #ifdef ICEMKII_TEST_MODE
