@@ -34,7 +34,7 @@ void FIFO_Init(FIFO_p pFIFO, U8 * pBuffer, U32 aSize)
   pFIFO->O = 0;
   pFIFO->S = aSize;
   pFIFO->B = pBuffer;
-  for(U8 i = 0; i < aSize; i++) pFIFO->B[i] = 0;
+  for(U32 i = 0; i < aSize; i++) pFIFO->B[i] = 0;
 }
 
 /****************************************************************************************/

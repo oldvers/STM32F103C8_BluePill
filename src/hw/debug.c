@@ -137,7 +137,7 @@ int fputc(int c, FILE *f)
 }
 #endif
 
-#if defined(__ICCARM__)
+#if defined(__ICCARM__) && !defined(SIMULATOR)
 size_t __write(int handle, const unsigned char * buffer, size_t size)
 {
   (void) handle;  /* Not used, avoid warning */
