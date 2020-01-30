@@ -10,7 +10,7 @@ typedef struct ICEMKII_MESSAGE_STRUCT
   U32             MaxSize;
   U32             ActSize;
   U16             Index;
-  U16             CRC;
+  U16             CRC16;
   U16             SeqNumber;
   U8              OK;
   U8            * Buffer;

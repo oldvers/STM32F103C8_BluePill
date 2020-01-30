@@ -75,7 +75,7 @@ void ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
   {
     pMsg->ActSize += (U32)(aValue << 24);
     pMsg->OK = ((0 < pMsg->ActSize) || (pMsg->MaxSize >= pMsg->ActSize));
-    pMsg->CRC = 0;
+    pMsg->CRC16 = 0;
   }
   /* Message Token Stage */
   else if ( ICEMKII_MESSAGE_STAGE_TOKEN(pMsg->Index) )
@@ -85,12 +85,12 @@ void ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
   /* Message CRC Stage */
   else if ( ICEMKII_MESSAGE_STAGE_CRCL(pMsg->Index, pMsg->ActSize) )
   {
-    pMsg->CRC = aValue;
+    pMsg->CRC16 = aValue;
   }
   else if ( ICEMKII_MESSAGE_STAGE_CRCH(pMsg->Index, pMsg->ActSize) )
   {
-    pMsg->CRC += (aValue << 8);
-    pMsg->OK = (0 == pMsg->CRC);
+    pMsg->CRC16 += (aValue << 8);
+    pMsg->OK = (0 == pMsg->CRC16);
   }
   //else if (pState->Index == (pMsg->ActSize + 4))
   //{

@@ -2190,7 +2190,13 @@
             <name>$PROJ_DIR$\..\..\tests\main.c</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\tests\test_icemkii_msg.c</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\tests\test_template.c</name>
+            <excluded>
+                <configuration>Tests</configuration>
+            </excluded>
         </file>
     </group>
     <group>
