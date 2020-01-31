@@ -20,10 +20,15 @@
 // TOKEN           - 14 - 0x0E
 // MESSAGE_BODY         - 0x87654321
 // CRC                  - 0xXXXX
-static U8 msgErrCrc[14] =
+
+static U8 msgs[14 * 2] =
 {
+  /* Message with incorrect CRC */
   0x1B, 0x05, 0x00, 0x04, 0x00, 0x00, 0x00,
   0x0E, 0x21, 0x43, 0x65, 0x87, 0xFF, 0xFF,
+  /* Correct message */
+  0x1B, 0x05, 0x00, 0x04, 0x00, 0x00, 0x00,
+  0x0E, 0x21, 0x43, 0x65, 0x87, 0xC2, 0xC3,
 };
 
 //-----------------------------------------------------------------------------
@@ -49,7 +54,7 @@ static ICEMKII_MESSAGE msg = { 0 };
 
 void vTestTask(void * pvParameters)
 {
-    U32 i = 0;
+    U32 i = 0, result = ICEMKII_MSG_SUCCESS;
     
     msg.MaxSize = sizeof(msgBuffer);
     msg.Buffer = msgBuffer;
@@ -58,9 +63,22 @@ void vTestTask(void * pvParameters)
   
     //vTaskDelay(200);
     
-    for(i = 0; i < sizeof(msgErrCrc); i++)
+    for(i = 0; i < sizeof(msgs); i++)
     {
-        ICEMKII_MESSAGE_PutByte(&msg, msgErrCrc[i]);
+        LOG(" - Put Byte - %0.2X", msgs[i]);
+        result = ICEMKII_MESSAGE_PutByte(&msg, msgs[i]);
+        switch ( result )
+        {
+            case ICEMKII_MSG_SUCCESS:
+                LOG("\r\n");
+                break;
+            case ICEMKII_MSG_COMPLETE:
+                LOG(" <- COMPLETE\r\n");
+                break;
+            default:
+                LOG(" <- ERROR: ID = %d\r\n", result - ICEMKII_MSG_ERROR_MASK);
+                break;
+        }
     }
     
     while(TRUE)

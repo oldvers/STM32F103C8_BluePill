@@ -3,7 +3,9 @@
 
 #include "types.h"
 
-//typedef void (*EAST_Completed)(void);
+#define ICEMKII_MSG_SUCCESS            ( 0x00000000 )
+#define ICEMKII_MSG_COMPLETE           ( 0xADE00000 )
+#define ICEMKII_MSG_ERROR              ( 0xBAD00000 )
 
 typedef struct ICEMKII_MESSAGE_STRUCT
 {
@@ -14,10 +16,9 @@ typedef struct ICEMKII_MESSAGE_STRUCT
   U16             SeqNumber;
   U8              OK;
   U8            * Buffer;
-  //EAST_Completed  OnComplete;
 } ICEMKII_MESSAGE;
 
-void ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue);
+U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8   aValue);
 U32 ICEMKII_MESSAGE_GetByte(ICEMKII_MESSAGE * pMsg, U8 * pValue);
 
 #endif /* __ICEMKII_MESSAGE_H__ */
