@@ -1,41 +1,24 @@
 #include "icemkii_message.h"
 
-// Test Packets
-//#24 #05#00 #01#02#03#04#05 #42#01
-//#24 #40#00 #01#02#03#04#05#06#07#08#09#10#11#12#13#14#15#16
-//           #01#02#03#04#05#06#07#08#09#10#11#12#13#14#15#16
-//           #01#02#03#04#05#06#07#08#09#10#11#12#13#14#15#16
-//           #01#02#03#04#05#06#07#08#09#10#11#12#13#14#15#16 #42#00
+#define ICEMKII_MESSAGE_START               ( 0x1B )
+#define ICEMKII_MESSAGE_TOKEN               ( 0x0E )
+#define ICEMKII_MESSAGE_HEADER_SIZE         ( 8 )
+   
+#define ICEMKII_MESSAGE_STAGE_START(i)      (0 == i)
+#define ICEMKII_MESSAGE_STAGE_SEQNUML(i)    (1 == i)
+#define ICEMKII_MESSAGE_STAGE_SEQNUMH(i)    (2 == i)
+#define ICEMKII_MESSAGE_STAGE_SIZE0(i)      (3 == i)
+#define ICEMKII_MESSAGE_STAGE_SIZE1(i)      (4 == i)
+#define ICEMKII_MESSAGE_STAGE_SIZE2(i)      (5 == i)
+#define ICEMKII_MESSAGE_STAGE_SIZE3(i)      (6 == i)
+#define ICEMKII_MESSAGE_STAGE_TOKEN(i)      (7 == i)
+#define ICEMKII_MESSAGE_STAGE_CRCL(i,s)     (i == (8 + s))
+#define ICEMKII_MESSAGE_STAGE_CRCH(i,s)     (i == (8 + s + 1))
+#define ICEMKII_MESSAGE_STAGE_COMPLETE(i,s) (i == (8 + s + 2))
 
+#define CRC16_INIT_VALUE                    ( 0xFFFF )
 
-/////////////////////////////////////////////////////////////////////////
-// ???? crc16.h.
-//#ifndef CRC16_H
-//#define CRC16_H
-//class Crc16
-//{
-//public:
-//   //?????????? ??????????? ????? ?????????.
-//   static unsigned short Checksum ( const unsigned char* message,
-//                                    unsigned long length,
-//                                    unsigned short crc = 0xffff);
-//   //????????? ????????? 2 ????? (??????? ???? LSB ??????)
-//   // ?? ???????????? CRC ?????????.
-//   static bool VerifyChecksum ( const unsigned char* message,
-//                                unsigned long length);
-//   //????????? 2 ????? CRC (??????? ???? LSB ??????) ? ?????????.
-//   // length ???????? ???????? ????????? ??? ????? crc.
-//   // ????? ??? ???? CRC ?????? ???? ?????????????? ????????!
-//   static void AppendChecksum ( unsigned char* message,
-//                                unsigned long length);
-//};
-//#endif
- 
-/////////////////////////////////////////////////////////////////////////
-//#include "Crc16.h"
-// ???, ?????? ?? DataTransportLayer crc16.h
-// ??????????? CRC16
-const U16 CRC16_Table[256] =
+static const U16 CRC16_Table[256] =
 {
     0x0000, 0x1189, 0x2312, 0x329B, 0x4624, 0x57AD, 0x6536, 0x74BF,
     0x8C48, 0x9DC1, 0xAF5A, 0xBED3, 0xCA6C, 0xDBE5, 0xE97E, 0xF8F7,
@@ -70,12 +53,9 @@ const U16 CRC16_Table[256] =
     0xF78F, 0xE606, 0xD49D, 0xC514, 0xB1AB, 0xA022, 0x92B9, 0x8330,
     0x7BC7, 0x6A4E, 0x58D5, 0x495C, 0x3DE3, 0x2C6A, 0x1EF1, 0x0F78,
 };
- 
-// ?????? ?????????? CRC
-#define CRC16_INIT_VALUE               ( 0xFFFF )
-//#define CRC(crcval,newchar) crcval = (crcval >> 8) ^
-//                            crc_table[(crcval ^ newchar) & 0x00ff]
- 
+
+//-----------------------------------------------------------------------------
+
 static U16 CRC16_Get(U8 * pMsg, U32 size, U16 crc)
 {
    for (U32 i = 0; i < size; i++)
@@ -85,50 +65,12 @@ static U16 CRC16_Get(U8 * pMsg, U32 size, U16 crc)
    return crc;
 }
  
-// ?????????? true, ???? ????????? 2 ????? ? ????????? ?????????? crc
-// ?? ?????????? ????.
-//bool Crc16::VerifyChecksum( const unsigned char* message,
-//                            unsigned long length)
-//{
-//   unsigned short expected = Checksum(message, length - 2);
-//   return (expected & 0xff) == message[length - 2] &&
-//           ((expected >> 8) & 0xff) == message[length - 1];
-//}
-// 
-//void Crc16::AppendChecksum ( unsigned char* message, 
-//                             unsigned long length)
-//{
-//   unsigned long crc = Checksum(message, length);
-//   message[length]   = (unsigned char)(crc & 0xff);
-//   message[length+1] = (unsigned char)((crc >> 8) & 0xff);
-//}
-
-
 //-----------------------------------------------------------------------------
 /** @brief Puts Byte into JTAG ICE mkII message
  *  @param pPacket - Pointer to ICE mkII message structure
  *  @param aValue - Value that should be placed into message
  *  @return None
- ********  @note Calls OnComplete callback when the packet is collected successfuly.
  */
-   
-#define ICEMKII_MESSAGE_START               ( 0x1B )
-#define ICEMKII_MESSAGE_TOKEN               ( 0x0E )
-#define ICEMKII_MESSAGE_HEADER_SIZE         ( 8 )
-   
-#define ICEMKII_MESSAGE_STAGE_START(i)      (0 == i)
-#define ICEMKII_MESSAGE_STAGE_SEQNUML(i)    (1 == i)
-#define ICEMKII_MESSAGE_STAGE_SEQNUMH(i)    (2 == i)
-#define ICEMKII_MESSAGE_STAGE_SIZE0(i)      (3 == i)
-#define ICEMKII_MESSAGE_STAGE_SIZE1(i)      (4 == i)
-#define ICEMKII_MESSAGE_STAGE_SIZE2(i)      (5 == i)
-#define ICEMKII_MESSAGE_STAGE_SIZE3(i)      (6 == i)
-#define ICEMKII_MESSAGE_STAGE_TOKEN(i)      (7 == i)
-//#define ICEMKII_MESSAGE_STAGE_BODY(i,s)     ((8 <= i) && (i < (8 + s)))
-#define ICEMKII_MESSAGE_STAGE_CRCL(i,s)     (i == (8 + s))
-#define ICEMKII_MESSAGE_STAGE_CRCH(i,s)     (i == (8 + s + 1))
-#define ICEMKII_MESSAGE_STAGE_COMPLETE(i,s) (i == (8 + s + 2))
-
    
 U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
 {
@@ -209,7 +151,7 @@ U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
   }
   else
   {
-    result = ICEMKII_MSG_ERROR_MASK + pMsg->Index;
+    result = ICEMKII_MSG_ERROR + pMsg->Index;
     pMsg->Index = 0;
     pMsg->ActSize = 0;
   }

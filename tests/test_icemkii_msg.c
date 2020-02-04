@@ -76,7 +76,7 @@ void vTestTask(void * pvParameters)
                 LOG(" <- COMPLETE\r\n");
                 break;
             default:
-                LOG(" <- ERROR: ID = %d\r\n", result - ICEMKII_MSG_ERROR_MASK);
+                LOG(" <- ERROR: ID = %d\r\n", result - ICEMKII_MSG_ERROR);
                 break;
         }
     }
