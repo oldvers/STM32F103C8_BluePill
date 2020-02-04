@@ -49,5 +49,14 @@
 #ifndef CU32
   typedef const unsigned int   CU32;
 #endif
+#ifndef BOOLEAN
+  typedef unsigned char        BOOLEAN;
+#endif
+
+#ifndef SIMULATOR
+#define STATIC    static
+#else
+#define STATIC
+#endif
 
 #endif /* __TYPES_H__ */

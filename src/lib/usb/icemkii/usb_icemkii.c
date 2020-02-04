@@ -10,9 +10,9 @@
 //#define ICEMKII_TEST_MODE
 
 #include "FreeRTOS.h"
-#ifdef ICEMKII_TEST_MODE
-#include "task.h"
-#endif
+//#ifdef ICEMKII_TEST_MODE
+//#include "task.h"
+//#endif
 #include "event_groups.h"
 
 //#include "east.h"
@@ -88,15 +88,15 @@
 //  0,                    /* Data */
 //};
 
-static FIFO_t gRxFifo;
-static FIFO_t gTxFifo;
-#ifdef ICEMKII_TEST_MODE
-static U8     gRxBuffer[USB_ICEMKII_PACKET_SIZE + 1];
-static U8     gTxBuffer[USB_ICEMKII_PACKET_SIZE + 1];
-#else
-static U8     gRxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1];
-static U8     gTxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1];
-#endif
+STATIC FIFO_t                gRxFifo;
+STATIC FIFO_t                gTxFifo;
+//#ifdef ICEMKII_TEST_MODE
+//static U8     gRxBuffer[USB_ICEMKII_PACKET_SIZE + 1];
+//static U8     gTxBuffer[USB_ICEMKII_PACKET_SIZE + 1];
+//#else
+STATIC U8                    gRxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1];
+STATIC U8                    gTxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1];
+//#endif
 
 //static U8               *gIrqBuff = NULL;
 //static U8                gIrqBuffLen = 0;
@@ -108,12 +108,12 @@ static U8     gTxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1];
 //static EAST_STATE        gVcpRxState;
 //static EAST_STATE        gVcpTxState;
 
-EventGroupHandle_t         hEvtGroup;
+STATIC EventGroupHandle_t    hEvtGroup;
 
 //-----------------------------------------------------------------------------
 /* Private Functions declarations */
-static void icemkii_InStage(void);
-static void icemkii_OutStage(void);
+STATIC void icemkii_ProcessTx(void);
+STATIC void icemkii_ProcessRx(void);
 
 //-----------------------------------------------------------------------------
 /** @brief Processes IRQ EP data
@@ -152,7 +152,7 @@ static void icemkii_OutStage(void);
 //  gNotification.Data.Raw = aState;
 //  gIrqBuff = (U8 *)&gNotification;
 //  gIrqBuffLen = sizeof(gNotification);
-//  
+//
 //  cdc_IrqInStage();
 //}
 
@@ -194,7 +194,7 @@ USB_CTRL_STAGE ICEMKII_CtrlSetupReq
 //      result = USB_CTRL_STAGE_STATUS;
 //      break;
 //  }
-  
+
   return result;
 }
 
@@ -214,7 +214,7 @@ USB_CTRL_STAGE ICEMKII_CtrlOutReq
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
-  
+
   LOG("ICEMKII Out: Req = %d Len = %d\r\n", pSetup->bRequest, *pSize);
 
 //  switch (pSetup->bRequest)
@@ -224,7 +224,7 @@ USB_CTRL_STAGE ICEMKII_CtrlOutReq
 //      result = USB_CTRL_STAGE_STATUS;
 //      break;
 //  }
-  
+
   return result;
 }
 
@@ -243,9 +243,10 @@ USB_CTRL_STAGE ICEMKII_CtrlOutReq
  *  @param aEvent - Event
  *  @return None
  */
-static void icemkii_BulkIn(U32 aEvent)
+STATIC void icemkii_BulkIn(U32 aEvent)
 {
-  icemkii_InStage();
+  (void)aEvent;
+  icemkii_ProcessTx();
 }
 
 //-----------------------------------------------------------------------------
@@ -253,9 +254,10 @@ static void icemkii_BulkIn(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
-void icemkii_BulkOut(U32 aEvent)
+STATIC void icemkii_BulkOut(U32 aEvent)
 {
-  icemkii_OutStage();
+  (void)aEvent;
+  icemkii_ProcessRx();
 }
 
 //-----------------------------------------------------------------------------
@@ -263,28 +265,28 @@ void icemkii_BulkOut(U32 aEvent)
  *  @param None
  *  @return None
  */
-#ifdef ICEMKII_TEST_MODE
-void vTestTxTask(void * pvParameters)
-{
-  while(TRUE)
-  {
-    vTaskDelay(500);
-    icemkii_OutStage();
-  }
-}
-
-U8 ICEMKII_ReadByte(void);
-
-void vTestRxTask(void * pvParameters)
-{
-  vTaskDelay(5000);
-
-  while(TRUE)
-  {
-    ICEMKII_ReadByte();
-  }
-}
-#endif
+//#ifdef ICEMKII_TEST_MODE
+//void vTestTxTask(void * pvParameters)
+//{
+//  while(TRUE)
+//  {
+//    vTaskDelay(500);
+//    icemkii_OutStage();
+//  }
+//}
+//
+//U8 ICEMKII_ReadByte(void);
+//
+//void vTestRxTask(void * pvParameters)
+//{
+//  vTaskDelay(5000);
+//
+//  while(TRUE)
+//  {
+//    ICEMKII_ReadByte();
+//  }
+//}
+//#endif
 
 void ICEMKII_Init(void)
 {
@@ -295,31 +297,31 @@ void ICEMKII_Init(void)
   FIFO_Init(&gRxFifo, gRxBuffer, sizeof(gRxBuffer));
   FIFO_Init(&gTxFifo, gTxBuffer, sizeof(gTxBuffer));
 
-#ifdef ICEMKII_TEST_MODE
-  xTaskCreate
-  (
-    vTestRxTask,
-    "TestRxTask",
-    configMINIMAL_STACK_SIZE,
-    NULL,
-    tskIDLE_PRIORITY + 2,
-    NULL
-  );
-
-  xTaskCreate
-  (
-    vTestTxTask,
-    "TestTxTask",
-    configMINIMAL_STACK_SIZE,
-    NULL,
-    tskIDLE_PRIORITY + 1,
-    NULL
-  );
-#else
+//#ifdef ICEMKII_TEST_MODE
+//  xTaskCreate
+//  (
+//    vTestRxTask,
+//    "TestRxTask",
+//    configMINIMAL_STACK_SIZE,
+//    NULL,
+//    tskIDLE_PRIORITY + 2,
+//    NULL
+//  );
+//
+//  xTaskCreate
+//  (
+//    vTestTxTask,
+//    "TestTxTask",
+//    configMINIMAL_STACK_SIZE,
+//    NULL,
+//    tskIDLE_PRIORITY + 1,
+//    NULL
+//  );
+//#else
   /* Register appropriate EP callbacks */
   USB_SetCb_Ep(USB_ICEMKII_EP_BULK_OUT, icemkii_BulkOut);
   USB_SetCb_Ep(USB_ICEMKII_EP_BULK_IN,  icemkii_BulkIn);
-#endif
+//#endif
 
   /* Create Semaphores/Mutex for VCP */
 //  gVcpSemRx = xSemaphoreCreateBinary();
@@ -344,7 +346,7 @@ void ICEMKII_Init(void)
 
 //  /* Indicate that there is no reading in progress */
 //  gVcpReading = FALSE;
-//  
+//
 //  return TRUE;
 //}
 
@@ -365,7 +367,7 @@ void ICEMKII_Init(void)
  *  @param None
  *  @return None
  */
-static U8 icemkii_Put(U8 * pByte)
+STATIC U8 icemkii_Put(U8 * pByte)
 {
   LOG(" %0.2X", *pByte);
   return (U8)FIFO_Put(&gRxFifo, pByte);
@@ -385,27 +387,27 @@ static U8 icemkii_Put(U8 * pByte)
 //    xEventGroupSetBits( xEventGroup, ( ebALL_SYNC_BITS & ~ebSET_BIT_TASK_SYNC_BIT ) );
 //#define ICEMKII_RX_READY         (1 << 0)
 //#define ICEMKII_RX_WAITING       (1 << 1)
-    
-void icemkii_OutStage(void)
+
+STATIC void icemkii_ProcessRx(void)
 {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE, xResult;
   EventBits_t uxBitsToSet = 0;
   U32 size = 0;
 
-#ifdef ICEMKII_TEST_MODE
-  do
-  {
-    if (13 > FIFO_Free(&gRxFifo)) break;
-
-    //LOG("--- ICEMKII Tx Task ---------------------------\r\n");
-    LOG("--- ICEMKII OUT -------------------------------\r\n  - ");
-    for (size = 0; size < 13; size++) icemkii_Put((U8 *)&size);
-    LOG(" : Len = %d\r\n", size);
-  }
-  while ( 0 );
-#else
+//#ifdef ICEMKII_TEST_MODE
+//  do
+//  {
+//    if (13 > FIFO_Free(&gRxFifo)) break;
+//
+//    //LOG("--- ICEMKII Tx Task ---------------------------\r\n");
+//    LOG("--- ICEMKII OUT -------------------------------\r\n  - ");
+//    for (size = 0; size < 13; size++) icemkii_Put((U8 *)&size);
+//    LOG(" : Len = %d\r\n", size);
+//  }
+//  while ( 0 );
+//#else
   /* Read from OUT EP */
-  LOG("ICEMKII OUT:\r\n  - ");
+  LOG("ICEMKII OUT:\r\n   - ");
   size = USB_EpReadToFifo
          (
            USB_ICEMKII_EP_BULK_OUT,
@@ -413,7 +415,7 @@ void icemkii_OutStage(void)
            FIFO_Free(&gRxFifo)
          );
   LOG(" : Len = %d\r\n", size);
-#endif
+//#endif
 
   /* Successful reading */
   if (0 != size)
@@ -432,13 +434,13 @@ void icemkii_OutStage(void)
 //    EAST_PutByte(&gVcpRxState, gOBuffer[i++]);
 //  }
 
-#ifdef ICEMKII_TEST_MODE
-  xResult = xEventGroupSetBits
-            (
-              hEvtGroup,   /* The event group being updated */
-              uxBitsToSet  /* The bits being set */
-            );
-#else
+//#ifdef ICEMKII_TEST_MODE
+//  xResult = xEventGroupSetBits
+//            (
+//              hEvtGroup,   /* The event group being updated */
+//              uxBitsToSet  /* The bits being set */
+//            );
+//#else
   /* Set bits in EventGroup */
   xResult = xEventGroupSetBitsFromISR
             (
@@ -456,15 +458,15 @@ void icemkii_OutStage(void)
       the documentation page for the port being used. */
       portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
   }
-#endif
+//#endif
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Reads from Vortual COM Port
- *  @param pData - Buffer for data to be read
- *  @param aSize - Size of data to be read
- *  @param aTimeout - Time to waiting a data
- *  @return Number of bytes read
+/** @brief Reads byte from JTAG ICE mkII FIFO buffer
+ *  @param None
+ *  @return Byte read from FIFO
+ *  @note In case FIFO is empty the caller will be blocked until at least
+ *        one byte available
  */
 U8 ICEMKII_ReadByte(void)
 {
@@ -473,33 +475,33 @@ U8 ICEMKII_ReadByte(void)
   U32 size = 0;
 
 //uxReturned = xEventGroupWaitBits( xEventGroup, ebALL_SYNC_BITS, pdFALSE, pdTRUE, portMAX_DELAY );
-  
+
   uxReturned = xEventGroupWaitBits
                (
-                 hEvtGroup,  /* The event group that contains the event bits being queried */
+                 hEvtGroup,                             /* The event group that contains the event bits being queried */
                  ICEMKII_RX_READY | ICEMKII_RX_WAITING, /* The bit to wait for */
-                 pdFALSE,    /* Clear the bit on exit */
-                 pdFALSE,    /* Wait for all the bits (only one in this case anyway) */
-                 portMAX_DELAY /* Block indefinitely to wait for the condition to be met */
+                 pdFALSE,                               /* Clear the bit on exit */
+                 pdFALSE,                               /* Wait for all the bits (only one in this case anyway) */
+                 portMAX_DELAY                          /* Block indefinitely to wait for the condition to be met */
                );
 
-  LOG("--- ICEMKII ReadByte --------------------------\r\n  - ");
+//  LOG("--- ICEMKII ReadByte --------------------------\r\n  - ");
 
   if (0 != (uxReturned & ICEMKII_RX_WAITING))
   {
-#ifdef ICEMKII_TEST_MODE
-    do
-    {
-      if (13 > FIFO_Free(&gRxFifo)) break;
-
-      LOG("PENDING READ:\r\n  - ");
-      for (size = 0; size < 13; size++) icemkii_Put((U8 *)&size);
-      LOG(" : Len = %d\r\n", size);
-
-      (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_WAITING);
-    }
-    while ( 0 );
-#else
+//#ifdef ICEMKII_TEST_MODE
+//    do
+//    {
+//      if (13 > FIFO_Free(&gRxFifo)) break;
+//
+//      LOG("PENDING READ:\r\n  - ");
+//      for (size = 0; size < 13; size++) icemkii_Put((U8 *)&size);
+//      LOG(" : Len = %d\r\n", size);
+//
+//      (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_WAITING);
+//    }
+//    while ( 0 );
+//#else
     /* Read from OUT EP */
     LOG("ICEMKII READ:\r\n  - ");
     size = USB_EpReadToFifo
@@ -509,7 +511,9 @@ U8 ICEMKII_ReadByte(void)
              FIFO_Free(&gRxFifo)
            );
     LOG(" : Len = %d\r\n", size);
-#endif
+
+    //(void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
+//#endif
   }
 
   if (0 != (uxReturned & ICEMKII_RX_READY))
@@ -583,9 +587,9 @@ U8 ICEMKII_ReadByte(void)
  *  @param None
  *  @return None
  */
-void icemkii_InStage(void)
+STATIC void icemkii_ProcessTx(void)
 {
-  U8 /*data,*/ len = 0;
+//  U8 /*data,*/ len = 0;
 
 //  while
 //  (

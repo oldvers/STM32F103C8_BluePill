@@ -2104,9 +2104,15 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\usb.c</name>
+            <excluded>
+                <configuration>Tests</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\usb.h</name>
+            <excluded>
+                <configuration>Tests</configuration>
+            </excluded>
         </file>
     </group>
     <group>
@@ -2191,6 +2197,12 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_icemkii_msg.c</name>
+            <excluded>
+                <configuration>Tests</configuration>
+            </excluded>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\tests\test_icemkii_usb.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_template.c</name>
