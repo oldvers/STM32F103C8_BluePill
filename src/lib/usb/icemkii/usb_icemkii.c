@@ -462,8 +462,9 @@ STATIC void icemkii_ProcessRx(void)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Reads byte from JTAG ICE mkII FIFO buffer
- *  @param None
+/** @brief Reads byte from JTAG ICE mkII input FIFO buffer
+ *  @param pByte - pointer to the place where byte will be read
+ *  @param aTimeoutMs - timeout for waiting a byte
  *  @return Byte read from FIFO
  *  @note In case FIFO is empty the caller will be blocked until at least
  *        one byte available

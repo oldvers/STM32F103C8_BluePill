@@ -131,19 +131,6 @@ static void vTest_RxIsReady(void)
                    0
                  );
 
-//  if (0 != (uxReturned & ICEMKII_RX_WAITING))
-//  {
-//    /* Read from OUT EP */
-//    LOG("ICEMKII READ:\r\n  - ");
-//    size = USB_EpReadToFifo
-//           (
-//             USB_ICEMKII_EP_BULK_OUT,
-//             icemkii_Put,
-//             FIFO_Free(&gRxFifo)
-//           );
-//    LOG(" : Len = %d\r\n", size);
-//  }
-
     if (0 != (uxReturned & ICEMKII_RX_READY))
     {
         result = TRUE;
