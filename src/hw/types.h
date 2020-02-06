@@ -4,31 +4,33 @@
 #ifdef NULL
 #   undef NULL
 #endif
-#define NULL             ((void *)0)
+#define NULL                 ((void *)0)
 
-typedef unsigned char        U8;
-typedef char                 S8;
-typedef unsigned char const  U8C;
-typedef const unsigned char  CU8;
-typedef unsigned short       U16;
-typedef short                S16;
-typedef unsigned short const U16C;
-typedef const unsigned short CU16;
-typedef int                  S32;
-typedef unsigned int         U32;
-typedef unsigned int const   U32C;
-typedef const unsigned int   CU32;
-typedef unsigned char        BOOLEAN;
+#include "stdint.h"
 
-#ifdef SUCCESS
-#   undef SUCCESS
-#endif
-typedef enum RESULT_E
+typedef uint8_t              U8;
+typedef int8_t               S8;
+typedef uint16_t             U16;
+typedef int16_t              S16;
+typedef uint32_t             U32;
+typedef int32_t              S32;
+typedef uint64_t             U64;
+typedef int64_t              S64;
+
+typedef enum
 {
-    FALSE = 0,
-    TRUE = 1,
-    OK = 0,
-} RESULT;
+    FW_FALSE     = 0,
+    FW_TRUE      = 1,
+} FW_BOOLEAN;
+
+typedef enum
+{
+    FW_OK        = 0x0000,
+    FW_SUCCESS   = 0x0000,
+    FW_COMPLETE  = 0x0000,
+    FW_ERROR     = 0xBAD0,
+    FW_FAIL      = 0xFAC0,
+} FW_RESULT;
 
 #ifndef SIMULATOR
 #  define STATIC             static

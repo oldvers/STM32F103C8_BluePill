@@ -185,7 +185,7 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
   {
     //
   }
-  
+
   return result;
 }
 
@@ -305,7 +305,7 @@ void USBD_Init(void)
   /* Init Core */
   USBC_Init(&USBC_Events);
   /* Connect USB */
-  USB_Connect(TRUE);
+  USB_Connect(FW_TRUE);
 }
 
 //-----------------------------------------------------------------------------

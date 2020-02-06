@@ -202,7 +202,7 @@ void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
 
   /* Enable USB peripheral clock */
   RCC->APB1ENR |= RCC_APB1ENR_USBEN;
-  
+
   /* Reset USB peripheral */
   RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
   RCC->APB1RSTR &= (~RCC_APB1RSTR_USBRST);
@@ -235,7 +235,7 @@ void USB_DeInit(void)
  *  @return None
  *  @note Called by the User to Connect/Disconnect USB
  */
-void USB_Connect(U32 aConnect)
+void USB_Connect(FW_BOOLEAN aConnect)
 {
   /* Force USB Reset */
   USB->CNTR = USB_CNTR_FRES;
@@ -418,7 +418,7 @@ void USB_EpConfigure(U8 aAddress, U16 aMaxPacketSize, USB_EP_TYPE aType)
     }
   }
   gEpFreeBuffAddr += val;
-  
+
   val = (aType << USB_EP_TYPE_MASK_Pos) & USB_EP_TYPE_MASK;
   val |= num;
   EPREG(num) = val;

@@ -3,7 +3,7 @@
 #define ICEMKII_MESSAGE_START               ( 0x1B )
 #define ICEMKII_MESSAGE_TOKEN               ( 0x0E )
 #define ICEMKII_MESSAGE_HEADER_SIZE         ( 8 )
-   
+
 #define ICEMKII_MESSAGE_STAGE_START(i)      (0 == i)
 #define ICEMKII_MESSAGE_STAGE_SEQNUML(i)    (1 == i)
 #define ICEMKII_MESSAGE_STAGE_SEQNUMH(i)    (2 == i)
@@ -64,18 +64,18 @@ static U16 CRC16_Get(U8 * pMsg, U32 size, U16 crc)
    }
    return crc;
 }
- 
+
 //-----------------------------------------------------------------------------
 /** @brief Puts Byte into JTAG ICE mkII message
  *  @param pPacket - Pointer to ICE mkII message structure
  *  @param aValue - Value that should be placed into message
  *  @return None
  */
-   
+
 U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
 {
   U32 result = ICEMKII_MSG_SUCCESS;
-  pMsg->OK = TRUE;
+  pMsg->OK = FW_TRUE;
 
   /* Message Body Stage */
   //if ( ICEMKII_MESSAGE_STAGE_BODY(pMsg->Index, pMsg->ActSize) )
@@ -87,7 +87,7 @@ U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
   //else
   if ( ICEMKII_MESSAGE_STAGE_START(pMsg->Index) )
   {
-    pMsg->OK = (aValue == ICEMKII_MESSAGE_START);
+    pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MESSAGE_START);
   }
   /* Message Sequence Number Stage */
   else if ( ICEMKII_MESSAGE_STAGE_SEQNUML(pMsg->Index) )
@@ -116,13 +116,15 @@ U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
   else if ( ICEMKII_MESSAGE_STAGE_SIZE3(pMsg->Index) )
   {
     pMsg->ActSize += (U32)(aValue << 24);
-    pMsg->OK = ((0 < pMsg->ActSize) || (pMsg->MaxSize >= pMsg->ActSize));
+    //pMsg->OK = ((0 < pMsg->ActSize) || (pMsg->MaxSize >= pMsg->ActSize));
+    pMsg->OK  = (FW_BOOLEAN)(0 < pMsg->ActSize);
+    pMsg->OK |= (FW_BOOLEAN)(pMsg->MaxSize >= pMsg->ActSize);
     pMsg->CRC16 = CRC16_INIT_VALUE;
   }
   /* Message Token Stage */
   else if ( ICEMKII_MESSAGE_STAGE_TOKEN(pMsg->Index) )
   {
-    pMsg->OK = (aValue == ICEMKII_MESSAGE_TOKEN);
+    pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MESSAGE_TOKEN);
   }
   /* Message CRC Stage */
   else if ( ICEMKII_MESSAGE_STAGE_CRCL(pMsg->Index, pMsg->ActSize) )
@@ -132,11 +134,11 @@ U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
   else if ( ICEMKII_MESSAGE_STAGE_CRCH(pMsg->Index, pMsg->ActSize) )
   {
     pMsg->CRC16 += (aValue << 8);
-    
+
     U32 size = pMsg->ActSize + ICEMKII_MESSAGE_HEADER_SIZE;
     U16 crc = CRC16_Get(pMsg->Buffer, size, CRC16_INIT_VALUE);
     //pMsg->Buffer[pMsg->Index - ICEMKII_MESSAGE_HEADER_SIZE] = aValue;
-    pMsg->OK = (crc == pMsg->CRC16);
+    pMsg->OK = (FW_BOOLEAN)(crc == pMsg->CRC16);
   }
   //else if (pState->Index == (pMsg->ActSize + 4))
   //{
@@ -144,7 +146,7 @@ U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
   //}
 
   /* Packet Index Incrementing Stage */
-  if (TRUE == pMsg->OK)
+  if (FW_TRUE == pMsg->OK)
   {
     pMsg->Buffer[pMsg->Index] = aValue;
     pMsg->Index++;
@@ -155,7 +157,7 @@ U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
     pMsg->Index = 0;
     pMsg->ActSize = 0;
   }
-  
+
   /* Packet Completed Stage */
   if ( ICEMKII_MESSAGE_STAGE_COMPLETE(pMsg->Index, pMsg->ActSize) )
   {
@@ -165,7 +167,9 @@ U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
     /* Indicate Packet Completed */
     pMsg->Index = 0;
   }
-  
+
+  //RESULT r = OK;
+
   return result;
 }
 

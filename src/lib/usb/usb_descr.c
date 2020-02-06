@@ -169,9 +169,14 @@ U8 *USB_GetStringDescriptor(U8 aIndex)
 
 /* ------------------------------------------------------------------------- */
 
-U32 USB_GetItrfaceDescriptor(USB_SETUP_PACKET * pSetup, U8 **pData, U16 *pSize)
+FW_BOOLEAN USB_GetItrfaceDescriptor
+(
+    USB_SETUP_PACKET * pSetup,
+    U8 **pData,
+    U16 *pSize
+)
 {
-  U32 result = FALSE;
+  FW_BOOLEAN result = FW_FALSE;
 
   return result;
 }

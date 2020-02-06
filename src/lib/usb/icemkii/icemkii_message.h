@@ -14,7 +14,7 @@ typedef struct ICEMKII_MESSAGE_STRUCT
   U16             Index;
   U16             CRC16;
   U16             SeqNumber;
-  U8              OK;
+  FW_BOOLEAN      OK;
   U8            * Buffer;
 } ICEMKII_MESSAGE;
 

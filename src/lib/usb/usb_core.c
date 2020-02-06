@@ -123,18 +123,19 @@ void usbc_StatusOutStage(void)
 //-----------------------------------------------------------------------------
 /** @brief Get Status USB Request
  *  @param None (global gCSetupPkt)
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  */
-U32 usbc_CtrlSetupReqStdGetStatus(void)
+FW_BOOLEAN usbc_CtrlSetupReqStdGetStatus(void)
 {
-  U32 n, m, result = FALSE;
+  U32 n, m;
+  FW_BOOLEAN result = FW_FALSE;
 
   switch (gCSetupPkt.bmRequestType.BM.Recipient)
   {
     case REQUEST_TO_DEVICE:
       gCData.pData = (U8 *)&gDeviceStatus;
       usbc_DataInStage();
-      result = TRUE;
+      result = FW_TRUE;
       break;
     case REQUEST_TO_INTERFACE:
       if ((gConfiguration != 0) &&
@@ -143,7 +144,7 @@ U32 usbc_CtrlSetupReqStdGetStatus(void)
         *((__packed U16 *)gCBuffer) = 0;
         gCData.pData = gCBuffer;
         usbc_DataInStage();
-        result = TRUE;
+        result = FW_TRUE;
       }
       break;
     case REQUEST_TO_ENDPOINT:
@@ -157,7 +158,7 @@ U32 usbc_CtrlSetupReqStdGetStatus(void)
         *((__packed U16 *)gCBuffer) = (gEndPointHalt & m) ? 1 : 0;
         gCData.pData = gCBuffer;
         usbc_DataInStage();
-        result = TRUE;
+        result = FW_TRUE;
       }
       break;
     default:
@@ -170,11 +171,12 @@ U32 usbc_CtrlSetupReqStdGetStatus(void)
 //-----------------------------------------------------------------------------
 /** @brief Set/Clear Feature USB Request
  *  @param aSetClear - 0 = Clear, 1 = Set
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  */
-U32 usbc_CtrlSetupReqStdSetClrFeature(U32 aSetClear)
+FW_BOOLEAN usbc_CtrlSetupReqStdSetClrFeature(U32 aSetClear)
 {
-  U32 n, m, result = FALSE;
+  U32 n, m;
+  FW_BOOLEAN result = FW_FALSE;
 
   switch (gCSetupPkt.bmRequestType.BM.Recipient)
   {
@@ -183,15 +185,15 @@ U32 usbc_CtrlSetupReqStdSetClrFeature(U32 aSetClear)
       {
         if (aSetClear)
         {
-          USB_WakeUpConfigure(TRUE);
+          USB_WakeUpConfigure(FW_TRUE);
           gDeviceStatus |=  USB_GETSTATUS_REMOTE_WAKEUP;
         }
         else
         {
-          USB_WakeUpConfigure(FALSE);
+          USB_WakeUpConfigure(FW_FALSE);
           gDeviceStatus &= ~USB_GETSTATUS_REMOTE_WAKEUP;
         }
-        result = TRUE;
+        result = FW_TRUE;
       }
       break;
     case REQUEST_TO_INTERFACE:
@@ -216,15 +218,15 @@ U32 usbc_CtrlSetupReqStdSetClrFeature(U32 aSetClear)
             USB_EpClrStall(n);
             gEndPointHalt &= ~m;
           }
-          result = TRUE;
+          result = FW_TRUE;
         }
       }
       break;
     default:
       break;
   }
-  
-  if (TRUE == result)
+
+  if (FW_TRUE == result)
   {
     usbc_StatusInStage();
     if (NULL != gCEvents->CbFeature) gCEvents->CbFeature();
@@ -236,12 +238,13 @@ U32 usbc_CtrlSetupReqStdSetClrFeature(U32 aSetClear)
 //-----------------------------------------------------------------------------
 /** @brief Get Descriptor USB Request
  *  @param None (global gCSetupPkt)
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  */
-U32 usbc_CtrlSetupReqStdGetDescriptor(void)
+FW_BOOLEAN usbc_CtrlSetupReqStdGetDescriptor(void)
 {
   U8 *pD;
-  U32 len, n, result = FALSE;
+  U32 len, n;
+  FW_BOOLEAN result = FW_FALSE;
 
   switch (gCSetupPkt.bmRequestType.BM.Recipient)
   {
@@ -251,7 +254,7 @@ U32 usbc_CtrlSetupReqStdGetDescriptor(void)
         case USB_DEVICE_DESCRIPTOR_TYPE:
           gCData.pData = USB_GetDeviceDescriptor();
           len = USB_DEVICE_DESC_SIZE;
-          result = TRUE;
+          result = FW_TRUE;
           break;
         case USB_CONFIGURATION_DESCRIPTOR_TYPE:
           pD = USB_GetConfigDescriptor();
@@ -266,26 +269,26 @@ U32 usbc_CtrlSetupReqStdGetDescriptor(void)
           {
             gCData.pData = pD;
             len = ((USB_CONFIGURATION_DESCRIPTOR *)pD)->wTotalLength;
-            result = TRUE;
+            result = FW_TRUE;
           }
           break;
         case USB_STRING_DESCRIPTOR_TYPE:
           gCData.pData = USB_GetStringDescriptor(gCSetupPkt.wValue.WB.L);
           len = ((USB_STRING_DESCRIPTOR *)gCData.pData)->bLength;
-          result = TRUE;
+          result = FW_TRUE;
           break;
         default:
           break;
       }
       break;
     case REQUEST_TO_INTERFACE:
-      result = USB_GetItrfaceDescriptor(&gCSetupPkt, 
+      result = USB_GetItrfaceDescriptor(&gCSetupPkt,
                    &gCData.pData, (U16 *)&len);
     default:
       break;
   }
 
-  if (TRUE == result)
+  if (FW_TRUE == result)
   {
     if (gCData.Count > len)
     {
@@ -305,7 +308,7 @@ U32 usbc_CtrlSetupReqStdGetDescriptor(void)
 void usbc_EpConfig(USB_ENDPOINT_DESCRIPTOR * pD)
 {
   USB_EP_TYPE t;
-  
+
   switch (pD->bmAttributes & USB_ENDPOINT_TYPE_MASK)
   {
     case USB_ENDPOINT_TYPE_CONTROL:
@@ -321,19 +324,20 @@ void usbc_EpConfig(USB_ENDPOINT_DESCRIPTOR * pD)
       t = USB_EP_TYPE_INTERRUPT;
       break;
   }
-  
+
   USB_EpConfigure(pD->bEndpointAddress, pD->wMaxPacketSize, t);
 }
 
 //-----------------------------------------------------------------------------
 /** @brief Set Configuration USB Request
  *  @param None (global gCSetupPkt)
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  */
-U32 usbc_CtrlSetupReqStdSetConfiguration(void)
+FW_BOOLEAN usbc_CtrlSetupReqStdSetConfiguration(void)
 {
   USB_COMMON_DESCRIPTOR *pD;
-  U32                    alt, n, m, result = FALSE;
+  U32                    alt, n, m;
+  FW_BOOLEAN             result = FW_FALSE;
 
   if (REQUEST_TO_DEVICE == gCSetupPkt.bmRequestType.BM.Recipient)
   {
@@ -369,7 +373,7 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
               }
               gEndPointMask = ((1 << USB_EP_QUANTITY) | 1);
               gEndPointHalt = 0x00000000;
-              USB_Configure(TRUE);
+              USB_Configure(FW_TRUE);
               if (((USB_CONFIGURATION_DESCRIPTOR *)pD)->bmAttributes &
                     USB_CONFIG_SELF_POWERED)
               {
@@ -382,7 +386,7 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
             }
             else
             {
-              pD = (USB_COMMON_DESCRIPTOR *)((U8 *)pD + 
+              pD = (USB_COMMON_DESCRIPTOR *)((U8 *)pD +
                 ((USB_CONFIGURATION_DESCRIPTOR *)pD)->wTotalLength);
               continue;
             }
@@ -399,7 +403,7 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
                     ((1 << USB_EP_QUANTITY) << (n & USB_EP_NUM_MASK)) :
                      (1 << n);
               gEndPointMask |= m;
-              
+
               usbc_EpConfig((USB_ENDPOINT_DESCRIPTOR *)pD);
               USB_EpEnable(n);
               USB_EpReset(n);
@@ -425,7 +429,7 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
       }
       gEndPointMask  = ((1 << USB_EP_QUANTITY) | 1);
       gEndPointHalt  = 0x00000000;
-      USB_Configure(FALSE);
+      USB_Configure(FW_FALSE);
     }
 
     if (gConfiguration == gCSetupPkt.wValue.WB.L)
@@ -435,23 +439,23 @@ U32 usbc_CtrlSetupReqStdSetConfiguration(void)
       {
         gCEvents->CbConfigure(gConfiguration);
       }
-      result = TRUE;
+      result = FW_TRUE;
     }
   }
-  
+
   return result;
 }
 
 //-----------------------------------------------------------------------------
 /** @brief Set Interface USB Request
  *  @param None (global gCSetupPkt)
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  */
-U32 usbc_CtrlSetupReqStdSetInterface(void)
+FW_BOOLEAN usbc_CtrlSetupReqStdSetInterface(void)
 {
   USB_COMMON_DESCRIPTOR *pD;
   U32                    ifn, alt, old, msk, n, m;
-  U32                    result = FALSE;
+  FW_BOOLEAN             result = FW_FALSE;
 
   if (gConfiguration == 0) return result;
 
@@ -479,7 +483,7 @@ U32 usbc_CtrlSetupReqStdSetInterface(void)
           if ((ifn == gCSetupPkt.wIndex.WB.L) &&
               (alt == gCSetupPkt.wValue.WB.L))
           {
-            result = TRUE;
+            result = FW_TRUE;
             old = gAltSetting[ifn];
             gAltSetting[ifn] = (U8)alt;
           }
@@ -513,30 +517,30 @@ U32 usbc_CtrlSetupReqStdSetInterface(void)
       pD = (USB_COMMON_DESCRIPTOR *)((U8 *)pD + pD->bLength);
     }
   }
-  
-  if (TRUE == result)
+
+  if (FW_TRUE == result)
   {
     usbc_StatusInStage();
     if (NULL != gCEvents->CbInterface) gCEvents->CbInterface();
   }
-  
+
   return result;
 }
 
 //-----------------------------------------------------------------------------
 /** @brief Set Address USB Request
  *  @param None (global gCSetupPkt)
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  */
-U32 usbc_CtrlSetupReqStdSetAddress(void)
+FW_BOOLEAN usbc_CtrlSetupReqStdSetAddress(void)
 {
-  U32 result = FALSE;
-  
+  FW_BOOLEAN result = FW_FALSE;
+
   if (REQUEST_TO_DEVICE == gCSetupPkt.bmRequestType.BM.Recipient)
   {
     gDeviceAddress = USB_EP_DIR_MASK | gCSetupPkt.wValue.WB.L;
     usbc_StatusInStage();
-    result = TRUE;
+    result = FW_TRUE;
   }
   return result;
 }
@@ -544,74 +548,74 @@ U32 usbc_CtrlSetupReqStdSetAddress(void)
 //-----------------------------------------------------------------------------
 /** @brief Get Configuration USB Request
  *  @param None (global gCSetupPkt)
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  */
-U32 usbc_CtrlSetupReqStdGetConfiguration(void)
+FW_BOOLEAN usbc_CtrlSetupReqStdGetConfiguration(void)
 {
-  U32 result = FALSE;
-  
+  FW_BOOLEAN result = FW_FALSE;
+
   if (REQUEST_TO_DEVICE == gCSetupPkt.bmRequestType.BM.Recipient)
   {
     gCData.pData = &gConfiguration;
     usbc_DataInStage();
-    result = TRUE;
+    result = FW_TRUE;
   }
-  
+
   return result;
 }
 
 //-----------------------------------------------------------------------------
 /** @brief Get Interface USB Request
  *  @param None (global gCSetupPkt)
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  */
-U32 usbc_CtrlSetupReqStdGetInterface(void)
+FW_BOOLEAN usbc_CtrlSetupReqStdGetInterface(void)
 {
-  U32 result = FALSE;
-  
+  FW_BOOLEAN result = FW_FALSE;
+
   if (REQUEST_TO_INTERFACE == gCSetupPkt.bmRequestType.BM.Recipient)
   {
-    if ((gConfiguration != 0) && 
+    if ((gConfiguration != 0) &&
         (gCSetupPkt.wIndex.WB.L < gNumInterfaces))
     {
       gCData.pData = gAltSetting + gCSetupPkt.wIndex.WB.L;
       usbc_DataInStage();
-      result = TRUE;
+      result = FW_TRUE;
     }
   }
-  
+
   return result;
 }
 
 //-----------------------------------------------------------------------------
 /** @brief Checks the next In Stage
  *  @param None (global gCSetupPkt)
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  */
-U32 usbc_CheckInStage(USB_CTRL_STAGE stage)
+FW_BOOLEAN usbc_CheckInStage(USB_CTRL_STAGE stage)
 {
   switch (stage)
   {
     case USB_CTRL_STAGE_WAIT:
-      return (TRUE);
+      return (FW_TRUE);
     case USB_CTRL_STAGE_DATA:
       usbc_DataInStage();
-      return (TRUE);
+      return (FW_TRUE);
     case USB_CTRL_STAGE_STATUS:
       usbc_StatusInStage();
-      return (TRUE);
+      return (FW_TRUE);
     case USB_CTRL_STAGE_ERROR:
     default:
-      return (FALSE);
+      return (FW_FALSE);
   }
 }
-  
+
 //-----------------------------------------------------------------------------
 /** @brief Class USB Setup Request
  *  @param None (global gCSetupPkt)
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  */
-U32 usbc_CtrlSetupReqClass(void)
+FW_BOOLEAN usbc_CtrlSetupReqClass(void)
 {
   USB_CTRL_STAGE stage = USB_CTRL_STAGE_ERROR;
 
@@ -627,13 +631,13 @@ U32 usbc_CtrlSetupReqClass(void)
 //-----------------------------------------------------------------------------
 /** @brief Class USB Out Request
  *  @param None (global gCSetupPkt)
- *  @return TRUE - Success, FALSE - Error
+ *  @return FW_TRUE - Success, FW_FALSE - Error
  *  @note Called when all the OUT packets have been already collected
  */
-U32 usbc_CtrlOutReqClass(void)
+FW_BOOLEAN usbc_CtrlOutReqClass(void)
 {
   USB_CTRL_STAGE stage = USB_CTRL_STAGE_ERROR;
-  
+
   gCData.pData = gCBuffer;
   if (NULL != gCEvents->CtrlOutReq)
   {
@@ -650,7 +654,7 @@ U32 usbc_CtrlOutReqClass(void)
  */
 void USBC_ControlInOut(U32 aEvent)
 {
-  U32 result = FALSE;
+  FW_BOOLEAN result = FW_FALSE;
 
   switch (aEvent)
   {
@@ -658,7 +662,7 @@ void USBC_ControlInOut(U32 aEvent)
       usbc_SetupStage();
       USB_EpDirCtrl(gCSetupPkt.bmRequestType.BM.Dir);
       gCData.Count = gCSetupPkt.wLength;
-      result = FALSE;
+      result = FW_FALSE;
       switch (gCSetupPkt.bmRequestType.BM.Type)
       {
         case REQUEST_STANDARD:
@@ -669,11 +673,11 @@ void USBC_ControlInOut(U32 aEvent)
               break;
 
             case USB_REQUEST_CLEAR_FEATURE:
-              result = usbc_CtrlSetupReqStdSetClrFeature(FALSE);
+              result = usbc_CtrlSetupReqStdSetClrFeature(FW_FALSE);
               break;
 
             case USB_REQUEST_SET_FEATURE:
-              result = usbc_CtrlSetupReqStdSetClrFeature(TRUE);
+              result = usbc_CtrlSetupReqStdSetClrFeature(FW_TRUE);
               break;
 
             case USB_REQUEST_SET_ADDRESS:
@@ -719,7 +723,7 @@ void USBC_ControlInOut(U32 aEvent)
           break;
 
       }
-      if (TRUE != result)
+      if (FW_TRUE != result)
       {
         USB_EpSetStall(EP0_IN);
         gCData.Count = 0;
@@ -734,7 +738,7 @@ void USBC_ControlInOut(U32 aEvent)
           usbc_DataOutStage();
           if (gCData.Count == 0)
           {
-            result = FALSE;
+            result = FW_FALSE;
             switch (gCSetupPkt.bmRequestType.BM.Type)
             {
               case REQUEST_STANDARD:
@@ -747,7 +751,7 @@ void USBC_ControlInOut(U32 aEvent)
               default:
                 break;
             }
-            if (TRUE != result)
+            if (FW_TRUE != result)
             {
               USB_EpSetStall(EP0_OUT);
               gCData.Count = 0;

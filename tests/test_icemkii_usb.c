@@ -83,7 +83,7 @@ void vLEDTask(void * pvParameters)
 {
     //LOG("LED Task Started\r\n");
 
-    while(TRUE)
+    while(FW_TRUE)
     {
         //LOG("LED Hi\r\n");
         vTaskDelay(50);
@@ -98,9 +98,9 @@ void vLEDTask(void * pvParameters)
 //static U8 msgBuffer[100];
 //static ICEMKII_MESSAGE msg = { 0 };
 
-static void vLog_Result(BOOLEAN result)
+static void vLog_Result(FW_BOOLEAN result)
 {
-    if (TRUE == result)
+    if (FW_TRUE == result)
     {
         LOG(" ----- PASS\r\n");
     }
@@ -113,7 +113,7 @@ static void vLog_Result(BOOLEAN result)
 static void vTest_RxIsReady(void)
 {
     EventBits_t uxReturned;
-    BOOLEAN result = FALSE;
+    FW_BOOLEAN result = FW_FALSE;
     U8 data = 0;
 
     LOG("--- ICEMKII Test USB Rx Is Ready ------------------------------\r\n");
@@ -133,7 +133,7 @@ static void vTest_RxIsReady(void)
 
     if (0 != (uxReturned & ICEMKII_RX_READY))
     {
-        result = TRUE;
+        result = FW_TRUE;
 
         LOG("   - FIFO Size = %d\r\n", FIFO_Size(&gRxFifo));
 
@@ -150,7 +150,7 @@ static void vTest_RxIsReady(void)
 static void vTest_NoSpace(void)
 {
     EventBits_t uxReturned;
-    BOOLEAN result = FALSE;
+    FW_BOOLEAN result = FW_FALSE;
     U32 bunch = 0, bunchExpctd, space, spaceExpctd;
     U8 data = 0;
 
@@ -159,7 +159,7 @@ static void vTest_NoSpace(void)
     bunchExpctd = FIFO_Capacity(&gRxFifo) / sizeof(msgs);
     spaceExpctd = bunchExpctd * sizeof(msgs);
 
-    while (TRUE)
+    while (FW_TRUE)
     {
         LOG(" - Put %d bunch of data from USB EP to FIFO\r\n", bunch);
         icemkii_ProcessRx();
@@ -179,7 +179,7 @@ static void vTest_NoSpace(void)
             space = FIFO_Size(&gRxFifo);
             if ((space == spaceExpctd) && (bunch == bunchExpctd))
             {
-                result = TRUE;
+                result = FW_TRUE;
             }
 
             LOG("   - FIFO Size = %d Expected = %d\r\n", space, spaceExpctd);
@@ -234,7 +234,7 @@ void vTestTask(void * pvParameters)
     vTest_RxIsReady();
     vTest_NoSpace();
 
-    while(TRUE)
+    while(FW_TRUE)
     {
         //LOG("Template Task Iteration\r\n");
         vTaskDelay(500);
