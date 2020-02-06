@@ -522,7 +522,7 @@ U8 ICEMKII_ReadByte(void)
     size = FIFO_Get(&gRxFifo, &result);
     LOG("  - %0.2X\r\n", result);
 
-    if (FIFO_IS_EMPTY == size)
+    if (FW_EMPTY == size)
     {
       (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
     }

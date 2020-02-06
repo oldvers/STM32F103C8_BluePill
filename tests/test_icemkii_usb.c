@@ -138,7 +138,7 @@ static void vTest_RxIsReady(void)
         LOG("   - FIFO Size = %d\r\n", FIFO_Size(&gRxFifo));
 
         LOG("   - Clearing FIFO...\r\n");
-        while (FIFO_IS_EMPTY != FIFO_Get(&gRxFifo, &data)) {};
+        while (FW_EMPTY != FIFO_Get(&gRxFifo, &data)) {};
         LOG("   - FIFO Size = %d\r\n", FIFO_Size(&gRxFifo));
 
         (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
@@ -186,7 +186,7 @@ static void vTest_NoSpace(void)
             LOG("   - Bunches = %d Expected = %d\r\n", bunch, bunchExpctd);
 
             LOG("   - Clearing FIFO...\r\n");
-            while (FIFO_IS_EMPTY != FIFO_Get(&gRxFifo, &data)) {};
+            while (FW_EMPTY != FIFO_Get(&gRxFifo, &data)) {};
             LOG("   - FIFO Size = %d\r\n", FIFO_Size(&gRxFifo));
 
             (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_WAITING);

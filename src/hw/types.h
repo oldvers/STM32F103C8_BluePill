@@ -28,6 +28,8 @@ typedef enum
     FW_OK        = 0x0000,
     FW_SUCCESS   = 0x0000,
     FW_COMPLETE  = 0x0000,
+    FW_FULL      = 0x0001,
+    FW_EMPTY     = 0x0002,
     FW_ERROR     = 0xBAD0,
     FW_FAIL      = 0xFAC0,
 } FW_RESULT;
