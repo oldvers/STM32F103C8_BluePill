@@ -3,10 +3,6 @@
 
 #include "types.h"
 
-#define ICEMKII_MSG_SUCCESS            ( 0x00000000 )
-#define ICEMKII_MSG_COMPLETE           ( 0xADE00000 )
-#define ICEMKII_MSG_ERROR              ( 0xBAD00000 )
-
 typedef struct ICEMKII_MESSAGE_STRUCT
 {
   U32             MaxSize;
@@ -14,6 +10,7 @@ typedef struct ICEMKII_MESSAGE_STRUCT
   U16             Index;
   U16             CRC16;
   U16             SeqNumber;
+  U16             LastError;
   FW_BOOLEAN      OK;
   U8            * Buffer;
 } ICEMKII_MESSAGE;

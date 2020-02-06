@@ -66,6 +66,24 @@ static U16 CRC16_Get(U8 * pMsg, U32 size, U16 crc)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Inits JTAG ICE mkII message
+ *  @param None
+ *  @return None
+ */
+
+void ICEMKII_MESSAGE_Init(ICEMKII_MESSAGE * pMsg, U8 *pBuffer, U32 aSize)
+{
+    pMsg->MaxSize    = aSize;
+    pMsg->ActSize    = 0;
+    pMsg->Index      = 0;
+    pMsg->CRC16      = CRC16_INIT_VALUE;
+    pMsg->SeqNumber  = 0;
+    pMsg->LastError  = 0;
+    pMsg->OK         = FW_FALSE;
+    pMsg->Buffer     = pBuffer;
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Puts Byte into JTAG ICE mkII message
  *  @param pPacket - Pointer to ICE mkII message structure
  *  @param aValue - Value that should be placed into message
@@ -74,8 +92,8 @@ static U16 CRC16_Get(U8 * pMsg, U32 size, U16 crc)
 
 U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
 {
-  U32 result = ICEMKII_MSG_SUCCESS;
-  pMsg->OK = FW_TRUE;
+    FW_RESULT result = FW_SUCCESS;
+    pMsg->OK = FW_TRUE;
 
   /* Message Body Stage */
   //if ( ICEMKII_MESSAGE_STAGE_BODY(pMsg->Index, pMsg->ActSize) )
@@ -83,94 +101,84 @@ U32 ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
   //  pMsg->Buffer[pMsg->Index - ICEMKII_MESSAGE_HEADER_SIZE] = aValue;
   //  //pState->CS ^= aValue;
   //}
-  /* Message Start Stage */
-  //else
-  if ( ICEMKII_MESSAGE_STAGE_START(pMsg->Index) )
-  {
-    pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MESSAGE_START);
-  }
-  /* Message Sequence Number Stage */
-  else if ( ICEMKII_MESSAGE_STAGE_SEQNUML(pMsg->Index) )
-  {
-    pMsg->SeqNumber = aValue;
-  }
-  else if ( ICEMKII_MESSAGE_STAGE_SEQNUMH(pMsg->Index) )
-  {
-    pMsg->SeqNumber = (pMsg->SeqNumber + (aValue << 8));
-    //pMsg->OK = ((0 < pMsg->ActSize) || (pMsg->MaxSize >= pMsg->ActSize));
-    //pMsg->CS = 0;
-  }
-  /* Message Size Stage */
-  else if ( ICEMKII_MESSAGE_STAGE_SIZE0(pMsg->Index) )
-  {
-    pMsg->ActSize = aValue;
-  }
-  else if ( ICEMKII_MESSAGE_STAGE_SIZE1(pMsg->Index) )
-  {
-    pMsg->ActSize += (U32)(aValue << 8);
-  }
-  else if ( ICEMKII_MESSAGE_STAGE_SIZE2(pMsg->Index) )
-  {
-    pMsg->ActSize += (U32)(aValue << 16);
-  }
-  else if ( ICEMKII_MESSAGE_STAGE_SIZE3(pMsg->Index) )
-  {
-    pMsg->ActSize += (U32)(aValue << 24);
-    //pMsg->OK = ((0 < pMsg->ActSize) || (pMsg->MaxSize >= pMsg->ActSize));
-    pMsg->OK  = (FW_BOOLEAN)(0 < pMsg->ActSize);
-    pMsg->OK |= (FW_BOOLEAN)(pMsg->MaxSize >= pMsg->ActSize);
-    pMsg->CRC16 = CRC16_INIT_VALUE;
-  }
-  /* Message Token Stage */
-  else if ( ICEMKII_MESSAGE_STAGE_TOKEN(pMsg->Index) )
-  {
-    pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MESSAGE_TOKEN);
-  }
-  /* Message CRC Stage */
-  else if ( ICEMKII_MESSAGE_STAGE_CRCL(pMsg->Index, pMsg->ActSize) )
-  {
-    pMsg->CRC16 = aValue;
-  }
-  else if ( ICEMKII_MESSAGE_STAGE_CRCH(pMsg->Index, pMsg->ActSize) )
-  {
-    pMsg->CRC16 += (aValue << 8);
+    /* Message Start Stage */
+    if ( ICEMKII_MESSAGE_STAGE_START(pMsg->Index) )
+    {
+      pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MESSAGE_START);
+    }
+    /* Message Sequence Number Stage */
+    else if ( ICEMKII_MESSAGE_STAGE_SEQNUML(pMsg->Index) )
+    {
+      pMsg->SeqNumber = aValue;
+    }
+    else if ( ICEMKII_MESSAGE_STAGE_SEQNUMH(pMsg->Index) )
+    {
+        pMsg->SeqNumber = (pMsg->SeqNumber + (aValue << 8));
+    }
+    /* Message Size Stage */
+    else if ( ICEMKII_MESSAGE_STAGE_SIZE0(pMsg->Index) )
+    {
+        pMsg->ActSize = aValue;
+    }
+    else if ( ICEMKII_MESSAGE_STAGE_SIZE1(pMsg->Index) )
+    {
+        pMsg->ActSize += (U32)(aValue << 8);
+    }
+    else if ( ICEMKII_MESSAGE_STAGE_SIZE2(pMsg->Index) )
+    {
+        pMsg->ActSize += (U32)(aValue << 16);
+    }
+    else if ( ICEMKII_MESSAGE_STAGE_SIZE3(pMsg->Index) )
+    {
+        pMsg->ActSize += (U32)(aValue << 24);
+        pMsg->OK  = (FW_BOOLEAN)(0 < pMsg->ActSize);
+        pMsg->OK |= (FW_BOOLEAN)(pMsg->MaxSize >= pMsg->ActSize);
+        pMsg->CRC16 = CRC16_INIT_VALUE;
+    }
+    /* Message Token Stage */
+    else if ( ICEMKII_MESSAGE_STAGE_TOKEN(pMsg->Index) )
+    {
+        pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MESSAGE_TOKEN);
+    }
+    /* Message CRC Stage */
+    else if ( ICEMKII_MESSAGE_STAGE_CRCL(pMsg->Index, pMsg->ActSize) )
+    {
+        pMsg->CRC16 = aValue;
+    }
+    else if ( ICEMKII_MESSAGE_STAGE_CRCH(pMsg->Index, pMsg->ActSize) )
+    {
+        pMsg->CRC16 += (aValue << 8);
 
-    U32 size = pMsg->ActSize + ICEMKII_MESSAGE_HEADER_SIZE;
-    U16 crc = CRC16_Get(pMsg->Buffer, size, CRC16_INIT_VALUE);
-    //pMsg->Buffer[pMsg->Index - ICEMKII_MESSAGE_HEADER_SIZE] = aValue;
-    pMsg->OK = (FW_BOOLEAN)(crc == pMsg->CRC16);
-  }
-  //else if (pState->Index == (pMsg->ActSize + 4))
-  //{
-  //  pState->OK = (aValue == pState->CS);
-  //}
+        U32 size = pMsg->ActSize + ICEMKII_MESSAGE_HEADER_SIZE;
+        U16 crc = CRC16_Get(pMsg->Buffer, size, CRC16_INIT_VALUE);
+        pMsg->OK = (FW_BOOLEAN)(crc == pMsg->CRC16);
+    }
 
-  /* Packet Index Incrementing Stage */
-  if (FW_TRUE == pMsg->OK)
-  {
-    pMsg->Buffer[pMsg->Index] = aValue;
-    pMsg->Index++;
-  }
-  else
-  {
-    result = ICEMKII_MSG_ERROR + pMsg->Index;
-    pMsg->Index = 0;
-    pMsg->ActSize = 0;
-  }
+    /* Packet Index Incrementing Stage */
+    if (FW_TRUE == pMsg->OK)
+    {
+        pMsg->Buffer[pMsg->Index] = aValue;
+        pMsg->Index++;
+    }
+    else
+    {
+        result = FW_ERROR;
+        pMsg->LastError = pMsg->Index;
+        pMsg->Index = 0;
+        pMsg->ActSize = 0;
+    }
 
-  /* Packet Completed Stage */
-  if ( ICEMKII_MESSAGE_STAGE_COMPLETE(pMsg->Index, pMsg->ActSize) )
-  {
-    result = ICEMKII_MSG_COMPLETE;
-    /* Call Back */
-    //if (NULL != pMsg->OnComplete) pMsg->OnComplete();
-    /* Indicate Packet Completed */
-    pMsg->Index = 0;
-  }
+    /* Packet Completed Stage */
+    if ( ICEMKII_MESSAGE_STAGE_COMPLETE(pMsg->Index, pMsg->ActSize) )
+    {
+        result = FW_COMPLETE;
+        /* Call Back */
+        //if (NULL != pMsg->OnComplete) pMsg->OnComplete();
+        /* Indicate Packet Completed */
+        pMsg->Index = 0;
+    }
 
-  //RESULT r = OK;
-
-  return result;
+    return result;
 }
 
 //-----------------------------------------------------------------------------
