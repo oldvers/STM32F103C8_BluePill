@@ -31,13 +31,20 @@ static U8 msgs[14 * 2] =
   0x0E, 0x21, 0x43, 0x65, 0x87, 0xC2, 0xC3,
 };
 
+//--- Mocks -------------------------------------------------------------------
+
+void USB_IRQHandler(void)
+{
+  //
+}
+
 //-----------------------------------------------------------------------------
 
 void vLEDTask(void * pvParameters)
 {
     //LOG("LED Task Started\r\n");
-  
-    while(TRUE)
+
+    while(FW_TRUE)
     {
         //LOG("LED Hi\r\n");
         vTaskDelay(50);
@@ -54,34 +61,37 @@ static ICEMKII_MESSAGE msg = { 0 };
 
 void vTestTask(void * pvParameters)
 {
-    U32 i = 0, result = ICEMKII_MSG_SUCCESS;
-    
-    msg.MaxSize = sizeof(msgBuffer);
-    msg.Buffer = msgBuffer;
-    
+    U32 i = 0;
+    FW_RESULT result = FW_SUCCESS;
+
+    ICEMKII_MESSAGE_Init(&msg, msgBuffer, sizeof(msgBuffer));
+
     LOG("Test Task Started\r\n");
-  
+
     //vTaskDelay(200);
-    
+
     for(i = 0; i < sizeof(msgs); i++)
     {
         LOG(" - Put Byte - %0.2X", msgs[i]);
         result = ICEMKII_MESSAGE_PutByte(&msg, msgs[i]);
         switch ( result )
         {
-            case ICEMKII_MSG_SUCCESS:
+            case FW_SUCCESS:
                 LOG("\r\n");
                 break;
-            case ICEMKII_MSG_COMPLETE:
+            case FW_COMPLETE:
                 LOG(" <- COMPLETE\r\n");
                 break;
+            case FW_ERROR:
+                LOG(" <- ERROR: ID = %d\r\n", msg.LastError);
+                break;
             default:
-                LOG(" <- ERROR: ID = %d\r\n", result - ICEMKII_MSG_ERROR);
+                LOG(" <- ERROR: Unexpected result!\r\n");
                 break;
         }
     }
-    
-    while(TRUE)
+
+    while(FW_TRUE)
     {
         //LOG("Template Task Iteration\r\n");
         vTaskDelay(500);
@@ -104,7 +114,7 @@ void Prepare_And_Run_Test( void )
         tskIDLE_PRIORITY + 1,
         NULL
     );
-    
+
     xTaskCreate
     (
         vTestTask,

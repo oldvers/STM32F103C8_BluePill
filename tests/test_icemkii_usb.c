@@ -47,7 +47,7 @@ extern EventGroupHandle_t    hEvtGroup;
 extern void icemkii_ProcessTx(void);
 extern void icemkii_ProcessRx(void);
 
-//-----------------------------------------------------------------------------
+//--- Mocks -------------------------------------------------------------------
 
 void USB_IRQHandler(void)
 {
