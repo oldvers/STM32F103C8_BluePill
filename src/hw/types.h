@@ -31,6 +31,7 @@ typedef enum
     FW_EMPTY     = 0x0003,
     FW_ERROR     = 0xBAD0,
     FW_FAIL      = 0xFAC0,
+    FW_TIMEOUT   = 0xFFFF,
 } FW_RESULT;
 
 #ifndef SIMULATOR

@@ -2197,12 +2197,12 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_icemkii_msg.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\tests\test_icemkii_usb.c</name>
             <excluded>
                 <configuration>Tests</configuration>
             </excluded>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\tests\test_icemkii_usb.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_template.c</name>

@@ -463,70 +463,78 @@ STATIC void icemkii_ProcessRx(void)
 
 //-----------------------------------------------------------------------------
 /** @brief Reads byte from JTAG ICE mkII input FIFO buffer
- *  @param pByte - pointer to the place where byte will be read
- *  @param aTimeoutMs - timeout for waiting a byte
- *  @return Byte read from FIFO
+ *  @param pValue - pointer to the place where byte will be read
+ *  @param aTimeOutMs - timeout for waiting a byte
+ *  @return FW_SUCCESS, FW_TIMOUT
  *  @note In case FIFO is empty the caller will be blocked until at least
- *        one byte available
+ *        one byte available or time is out
  */
-U8 ICEMKII_ReadByte(void)
+FW_RESULT ICEMKII_ReadByte(U8 * pValue, U32 aTimeOutMs)
 {
-  EventBits_t uxReturned;
-  U8 result = 0;
-  U32 size = 0;
+    EventBits_t uxReturned;
+    FW_RESULT result = FW_SUCCESS;
+    U32 size = 0;
 
-//uxReturned = xEventGroupWaitBits( xEventGroup, ebALL_SYNC_BITS, pdFALSE, pdTRUE, portMAX_DELAY );
+    //uxReturned = xEventGroupWaitBits( xEventGroup, ebALL_SYNC_BITS, pdFALSE, pdTRUE, portMAX_DELAY );
+    //pdMS_TO_TICKS( xTimeInMs )
+    uxReturned = xEventGroupWaitBits
+                 (
+                     hEvtGroup,                             /* The event group that contains the event bits being queried */
+                     ICEMKII_RX_READY | ICEMKII_RX_WAITING, /* The bit to wait for */
+                     pdFALSE,                               /* Clear the bit on exit */
+                     pdFALSE,                               /* Wait for all the bits (only one in this case anyway) */
+                     pdMS_TO_TICKS(aTimeOutMs)              /* Block indefinitely to wait for the condition to be met */
+                 );
 
-  uxReturned = xEventGroupWaitBits
-               (
-                 hEvtGroup,                             /* The event group that contains the event bits being queried */
-                 ICEMKII_RX_READY | ICEMKII_RX_WAITING, /* The bit to wait for */
-                 pdFALSE,                               /* Clear the bit on exit */
-                 pdFALSE,                               /* Wait for all the bits (only one in this case anyway) */
-                 portMAX_DELAY                          /* Block indefinitely to wait for the condition to be met */
-               );
+    //LOG("--- ICEMKII ReadByte --------------------------\r\n  - ");
 
-//  LOG("--- ICEMKII ReadByte --------------------------\r\n  - ");
-
-  if (0 != (uxReturned & ICEMKII_RX_WAITING))
-  {
-//#ifdef ICEMKII_TEST_MODE
-//    do
-//    {
-//      if (13 > FIFO_Free(&gRxFifo)) break;
-//
-//      LOG("PENDING READ:\r\n  - ");
-//      for (size = 0; size < 13; size++) icemkii_Put((U8 *)&size);
-//      LOG(" : Len = %d\r\n", size);
-//
-//      (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_WAITING);
-//    }
-//    while ( 0 );
-//#else
-    /* Read from OUT EP */
-    LOG("ICEMKII READ:\r\n  - ");
-    size = USB_EpReadToFifo
-           (
-             USB_ICEMKII_EP_BULK_OUT,
-             icemkii_Put,
-             FIFO_Free(&gRxFifo)
-           );
-    LOG(" : Len = %d\r\n", size);
-
-    //(void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
-//#endif
-  }
-
-  if (0 != (uxReturned & ICEMKII_RX_READY))
-  {
-    size = FIFO_Get(&gRxFifo, &result);
-    LOG("  - %0.2X\r\n", result);
-
-    if (FW_EMPTY == size)
+    if (0 == uxReturned)
     {
-      (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
+        result = FW_TIMEOUT;
     }
-  }
+    else
+    {
+        if (0 != (uxReturned & ICEMKII_RX_WAITING))
+        {
+    //#ifdef ICEMKII_TEST_MODE
+    //    do
+    //    {
+    //      if (13 > FIFO_Free(&gRxFifo)) break;
+    //
+    //      LOG("PENDING READ:\r\n  - ");
+    //      for (size = 0; size < 13; size++) icemkii_Put((U8 *)&size);
+    //      LOG(" : Len = %d\r\n", size);
+    //
+    //      (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_WAITING);
+    //    }
+    //    while ( 0 );
+    //#else
+            /* Read from OUT EP */
+            LOG("ICEMKII READ:\r\n  - ");
+            size = USB_EpReadToFifo
+                   (
+                     USB_ICEMKII_EP_BULK_OUT,
+                     icemkii_Put,
+                     FIFO_Free(&gRxFifo)
+                   );
+            LOG(" : Len = %d\r\n", size);
+
+        //(void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
+    //#endif
+        }
+
+        if (0 != (uxReturned & ICEMKII_RX_READY))
+        {
+            size = FIFO_Get(&gRxFifo, pValue);
+            LOG("  - %0.2X\r\n", result);
+
+            if (FW_EMPTY == size)
+            {
+                (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
+            }
+        }
+    }
+
 //if( xEventGroupSetBits( xEventGroup, 0x00 ) != 0 )
 //{
 //xError = pdTRUE;
@@ -535,7 +543,7 @@ U8 ICEMKII_ReadByte(void)
 //#define ICEMKII_RX_READY         (1 << 0)
 //#define ICEMKII_RX_WAITING       (1 << 1)
 
-  return (result);
+    return (result);
 }
 
 //U32 VCP_Read(U8 * pData, U32 aSize, U32 aTimeout)
