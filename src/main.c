@@ -13,6 +13,38 @@
 #include "usb_device.h"
 #include "vcp.h"
 
+/*----------------------------------------------------------------------------*/
+
+void PWM_On(U16 aPrescaler, U16 aReload, U16 aDuty)
+{
+  GPIO_Init(GPIOA, 6, GPIO_TYPE_ALT_PP_2MHZ);
+
+  RCC->APB1ENR  |= RCC_APB1ENR_TIM3EN;
+  RCC->APB1RSTR |= RCC_APB1RSTR_TIM3RST;
+  RCC->APB1RSTR &= (~RCC_APB1RSTR_TIM3RST);
+
+  /* Channel 1 - PWM 1 Mode */
+  TIM3->CCMR1 = (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
+  TIM3->CCER  = (TIM_CCER_CC1E);
+  TIM3->PSC   = aPrescaler;
+  TIM3->ARR   = aReload;
+  TIM3->CCR1  = aDuty;
+  /* Enable Timer */
+  TIM3->CR1   = 1;
+}
+
+void PWM_Off(void)
+{
+  RCC->APB1RSTR |= RCC_APB1RSTR_TIM3RST;
+  RCC->APB1RSTR &= (~RCC_APB1RSTR_TIM3RST);
+
+  RCC->APB1ENR  &= (~RCC_APB1ENR_TIM3EN);
+
+  GPIO_Init(GPIOA, 6, GPIO_TYPE_IN_FLOATING);
+}
+
+/*----------------------------------------------------------------------------*/
+
 void vLEDTask(void * pvParameters)
 {
   GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
@@ -105,6 +137,35 @@ void Pour(U8 Channel, U16 Duration, PourRsp_p TxPkt)
   VCP_Write((U8 *)TxPkt, sizeof(*TxPkt), 50);
 }
 
+void PourEx(U16 aPresc, U16 aReload, U16 aDuty, U16 Duration, PourRsp_p TxPkt)
+{
+  U32 time2, time1;
+
+  if (((0 == aReload) && (0 == aDuty)) || (aDuty > aReload)) return;
+  if (0 == Duration) return;
+
+  time1 = xTaskGetTickCount();
+  time2 = xTaskGetTickCount() + Duration;
+
+  TxPkt->Rsp = 2;
+  TxPkt->Channel = 0;
+
+  PWM_On(aPresc, aReload, aDuty);
+
+  while ( time1 < time2 )
+  {
+    vTaskDelay(10);
+    time1 = xTaskGetTickCount();
+    TxPkt->Param = (Duration - (time2 - time1)) * 100 / Duration;
+    VCP_Write((U8 *)TxPkt, sizeof(*TxPkt), 50);
+  }
+
+  PWM_Off();
+
+  TxPkt->Param = 100;
+  VCP_Write((U8 *)TxPkt, sizeof(*TxPkt), 50);
+}
+
 void vVCPTask(void * pvParameters)
 {
   U8  Rx[64];
@@ -153,6 +214,17 @@ void vVCPTask(void * pvParameters)
         Pour(1, RxPkt->Param2, &TxPkt);
         Pour(2, RxPkt->Param3, &TxPkt);
         Pour(3, RxPkt->Param4, &TxPkt);
+      }
+      else if ( (sizeof(*RxPkt) == RxLen) && (0x02 == RxPkt->Req))
+      {
+        PourEx
+        (
+          RxPkt->Param1,
+          RxPkt->Param2,
+          RxPkt->Param3,
+          RxPkt->Param4,
+          &TxPkt
+        );
       }
       else
       {
