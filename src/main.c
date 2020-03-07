@@ -16,7 +16,7 @@
 void vLEDTask(void * pvParameters)
 {
   GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
-  
+
   while(TRUE)
   {
     GPIO_Lo(GPIOC, 13);
@@ -50,7 +50,7 @@ void Pour(U8 Channel, U16 Duration, PourRsp_p TxPkt)
   U32 time2, time1;
 
   if (0 == Duration) return;
-  
+
   time1 = xTaskGetTickCount();
   time2 = xTaskGetTickCount() + Duration;
 
@@ -112,11 +112,22 @@ void vVCPTask(void * pvParameters)
   PourRsp_t TxPkt;
   U16 RxLen = 0;
 
+  /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
+  GPIO_Init(GPIOB, 2, GPIO_TYPE_OUT_OD_2MHZ);
+  GPIO_Hi(GPIOB, 2);
+
+  /* Delay */
+  vTaskDelay(200);
+
+  /* Init USB. Switch-on 1k5 PullUp to USB D+ - connect USB device */
+  USBD_Init();
+  GPIO_Lo(GPIOB, 2);
+
   GPIO_Init(GPIOA, 0, GPIO_TYPE_OUT_PP_2MHZ);
   GPIO_Init(GPIOA, 1, GPIO_TYPE_OUT_PP_2MHZ);
   GPIO_Init(GPIOA, 2, GPIO_TYPE_OUT_PP_2MHZ);
   GPIO_Init(GPIOA, 3, GPIO_TYPE_OUT_PP_2MHZ);
-  
+
   if (TRUE == VCP_Open())
   {
     while(TRUE)
@@ -133,7 +144,7 @@ void vVCPTask(void * pvParameters)
       LOG("VCP Rx: ");
       for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
       LOG("\r\n");
-      
+
       RxPkt = (PourReq_p)Rx;
 
       if ( (sizeof(*RxPkt) == RxLen) && (0x01 == RxPkt->Req))
@@ -166,14 +177,14 @@ int main(void)
   LOG("ID2 = 0x%08X\r\n", UDID_3);
   LOG("Memory Size = %d kB\r\n", FLASH_SIZE);
   LOG("SysClock = %d Hz\r\n", SystemCoreClock);
-  
-  USBD_Init();
-  
+
+//  USBD_Init();
+
 //  GPIO_Init(GPIOB, 6, GPIO_TYPE_OUT_PP_2MHZ);
 //  GPIO_Lo(GPIOB, 6);
 //  GPIO_Init(GPIOB, 8, GPIO_TYPE_OUT_PP_2MHZ);
 //  GPIO_Hi(GPIOB, 8);
-  
+
   xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
   xTaskCreate(vVCPTask,"VCPTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 
@@ -185,13 +196,13 @@ int main(void)
 void Fault(U32 stack[])
 {
   enum {r0, r1, r2, r3, r12, lr, pc, psr};
-  
+
   LOG("Hard Fault\r\n");
   LOG("  SHCSR    = 0x%08x\r\n", SCB->SHCSR);
   LOG("  CFSR     = 0x%08x\r\n", SCB->CFSR);
   LOG("  HFSR     = 0x%08x\r\n", SCB->HFSR);
   LOG("  MMFAR    = 0x%08x\r\n", SCB->MMFAR);
-  LOG("  BFAR     = 0x%08x\r\n", SCB->BFAR);  
+  LOG("  BFAR     = 0x%08x\r\n", SCB->BFAR);
 
   LOG("  R0       = 0x%08x\r\n", stack[r0]);
   LOG("  R1       = 0x%08x\r\n", stack[r1]);
