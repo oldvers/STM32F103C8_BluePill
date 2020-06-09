@@ -107,8 +107,8 @@ typedef __packed struct _USB_SETUP_PACKET
 
 /* bEndpointAddress in Endpoint Descriptor */
 #define USB_ENDPOINT_DIRECTION_MASK            0x80
-#define USB_ENDPOINT_OUT(addr)                 ((addr) | 0x00)
-#define USB_ENDPOINT_IN(addr)                  ((addr) | 0x80)
+#define USB_ENDPOINT_O(addr)                   ((addr) | 0x00)
+#define USB_ENDPOINT_I(addr)                   ((addr) | 0x80)
 
 /* bmAttributes in Endpoint Descriptor */
 #define USB_ENDPOINT_TYPE_MASK                 0x03
@@ -126,6 +126,10 @@ typedef __packed struct _USB_SETUP_PACKET
 #define USB_ENDPOINT_USAGE_FEEDBACK            0x10
 #define USB_ENDPOINT_USAGE_IMPLICIT_FEEDBACK   0x20
 #define USB_ENDPOINT_USAGE_RESERVED            0x30
+
+/* Control Endpoints */
+#define EP0_I                                  USB_ENDPOINT_I(0)
+#define EP0_O                                  USB_ENDPOINT_O(0)
 
 /* USB Standard Device Descriptor */
 typedef __packed struct _USB_DEVICE_DESCRIPTOR

@@ -5,10 +5,14 @@
 #include "usb_cfg.h"
 #include "usb_descr.h"
 #include "usb_core.h"
+#include "debug.h"
 
-/* Control Endpoints */
-#define EP0_IN                0x80
-#define EP0_OUT               0x00
+#define USB_CORE_DEBUG
+#ifdef USB_CORE_DEBUG
+#  define UCLOG(...)   LOG(__VA_ARGS__)
+#else
+#  define UCLOG(...)
+#endif
 
 /* USB Endpoint Data Structure */
 typedef struct _USB_CTRL_DATA
@@ -61,7 +65,7 @@ void USBC_Reset(void)
  */
 void usbc_SetupStage(void)
 {
-  USB_EpRead(EP0_OUT, (U8 *)&gCSetupPkt, USB_CTRL_PACKET_SIZE);
+  USB_EpRead(EP0_O, (U8 *)&gCSetupPkt, USB_CTRL_PACKET_SIZE);
 }
 
 //-----------------------------------------------------------------------------
@@ -81,7 +85,8 @@ void usbc_DataInStage(void)
   {
     cnt = gCData.Count;
   }
-  cnt = USB_EpWrite(EP0_IN, gCData.pData, cnt);
+  cnt = USB_EpWrite(EP0_I, gCData.pData, cnt);
+  UCLOG("CTRL Data In: len = %d cnt = %d\r\n", cnt, gCData.Count);
   gCData.pData += cnt;
   gCData.Count -= cnt;
 }
@@ -95,7 +100,8 @@ void usbc_DataOutStage(void)
 {
   U32 cnt;
 
-  cnt = USB_EpRead(EP0_OUT, gCData.pData, USB_CTRL_PACKET_SIZE);
+  cnt = USB_EpRead(EP0_O, gCData.pData, USB_CTRL_PACKET_SIZE);
+  UCLOG("CTRL Data Out: len = %d\r\n", cnt);
   gCData.pData += cnt;
   gCData.Count -= cnt;
 }
@@ -107,7 +113,7 @@ void usbc_DataOutStage(void)
  */
 void usbc_StatusInStage(void)
 {
-  USB_EpWrite(EP0_IN, NULL, 0);
+  USB_EpWrite(EP0_I, NULL, 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -117,7 +123,7 @@ void usbc_StatusInStage(void)
  */
 void usbc_StatusOutStage(void)
 {
-  USB_EpRead(EP0_OUT, gCBuffer, USB_CTRL_PACKET_SIZE);
+  USB_EpRead(EP0_O, gCBuffer, USB_CTRL_PACKET_SIZE);
 }
 
 //-----------------------------------------------------------------------------
@@ -288,6 +294,8 @@ FW_BOOLEAN usbc_CtrlSetupReqStdGetDescriptor(void)
       break;
   }
 
+  UCLOG("CTRL Get Dsc: len = %d cnt = %d\r\n", len, gCData.Count);
+  
   if (FW_TRUE == result)
   {
     if (gCData.Count > len)
@@ -659,6 +667,7 @@ void USBC_ControlInOut(U32 aEvent)
   switch (aEvent)
   {
     case USB_EVNT_EP_SETUP:
+      UCLOG("CTRL SETUP\r\n");
       usbc_SetupStage();
       USB_EpDirCtrl(gCSetupPkt.bmRequestType.BM.Dir);
       gCData.Count = gCSetupPkt.wLength;
@@ -725,7 +734,7 @@ void USBC_ControlInOut(U32 aEvent)
       }
       if (FW_TRUE != result)
       {
-        USB_EpSetStall(EP0_IN);
+        USB_EpSetStall(EP0_I);
         gCData.Count = 0;
       }
       break;
@@ -753,7 +762,7 @@ void USBC_ControlInOut(U32 aEvent)
             }
             if (FW_TRUE != result)
             {
-              USB_EpSetStall(EP0_OUT);
+              USB_EpSetStall(EP0_O);
               gCData.Count = 0;
             }
           }
@@ -781,11 +790,11 @@ void USBC_ControlInOut(U32 aEvent)
       break;
 
     case USB_EVNT_EP_IN_STALL:
-      USB_EpClrStall(EP0_IN);
+      USB_EpClrStall(EP0_I);
       break;
 
     case USB_EVNT_EP_OUT_STALL:
-      USB_EpClrStall(EP0_OUT);
+      USB_EpClrStall(EP0_O);
       break;
   }
 }

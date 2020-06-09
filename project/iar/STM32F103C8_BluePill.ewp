@@ -349,9 +349,11 @@
                     <state>$PROJ_DIR$\..\..\src\hw</state>
                     <state>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3</state>
                     <state>$PROJ_DIR$\..\..\src\lib\usb</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\usb\icemkii</state>
                     <state>$PROJ_DIR$\..\..\src\lib\fifo</state>
                     <state>$PROJ_DIR$\..\..\src\lib\rtt</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\usb\msc</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\usb\hid</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\usb\cdc</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2214,6 +2216,39 @@
     <group>
         <name>USB</name>
         <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\cdc.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\cdc.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\cdc_defs.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\east.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\east.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\hid\hid.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\hid\hid.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\hid\hid_defs.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\msc\msc.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\msc\msc.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\msc\msc_defs.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\usb_cfg.h</name>
         </file>
         <file>
@@ -2239,12 +2274,24 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\usb_icemkii.c</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\usb_icemkii.h</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\icemkii\usb_icemkii_defs.h</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\vcp.h</name>
         </file>
     </group>
     <group>

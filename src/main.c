@@ -25,7 +25,7 @@ void vLEDTask(void * pvParameters)
         vTaskDelay(500);
         GPIO_Hi(GPIOC, 13);
         vTaskDelay(500);
-        LOG("LED\r\n");
+//        LOG("LED\r\n");
     }
     //vTaskDelete(NULL);
 }
