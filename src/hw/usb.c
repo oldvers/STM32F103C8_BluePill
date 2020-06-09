@@ -284,6 +284,10 @@ void USB_Reset(void)
   gEpFreeBuffAddr += gCtrlEpMaxPacketSize;
   pEpBuffDscr->ADDR_RX = gEpFreeBuffAddr;
   gEpFreeBuffAddr += gCtrlEpMaxPacketSize;
+  
+  USB_EpCfg[0].IMaxSize = gCtrlEpMaxPacketSize;
+  USB_EpCfg[0].OMaxSize = gCtrlEpMaxPacketSize;
+  
   if (gCtrlEpMaxPacketSize > 62)
   {
     pEpBuffDscr->COUNT_RX = ((gCtrlEpMaxPacketSize << 5) - 1) | 0x8000;
