@@ -14,21 +14,61 @@
 //#include "vcp.h"
 
 #include "fifo.h"
+#include "uart.h"
+
+//extern void CDC_Enable_SOF(void);
+//extern void CDC_Disable_SOF(void);
+
+//static U8 rxbuf[35], txbuf[35];
+//static FIFO_t tx, rx;
+
+//static FW_BOOLEAN rxPut(U8 * data)
+//{
+//  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&rx, data));
+//}
+
+//static FW_BOOLEAN txGet(U8 * data)
+//{
+//  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&tx, data));
+//}
 
 void vLEDTask(void * pvParameters)
 {
+//    /* UART1: PA9 - Tx, PA10 - Rx*/
+//    FIFO_Init(&rx, rxbuf, sizeof(rxbuf));
+//    FIFO_Init(&tx, txbuf, sizeof(txbuf));
+//    GPIO_Init(GPIOA,  9, GPIO_TYPE_ALT_PP_10MHZ);
+//    GPIO_Init(GPIOA, 10, GPIO_TYPE_ALT_PP_10MHZ);
+//    UART_Init(UART1, 115200, rxPut, txGet);
+    
+    /* LED */
     GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
 
+//    vTaskDelay(1000);
+//    CDC_Enable_SOF();
+//    vTaskDelay(45);
+//    CDC_Disable_SOF();
+    
     while(FW_TRUE)
     {
+//        /* UART1 */
+//        for (U32 i = 0; i < FIFO_Size(&tx); i++)
+//        {
+//          FIFO_Put(&tx, (U8 *)&i);
+//        }
+//        UART_TxStart(UART1);
+
+        /* LED */
         GPIO_Lo(GPIOC, 13);
         vTaskDelay(500);
         GPIO_Hi(GPIOC, 13);
         vTaskDelay(500);
-//        LOG("LED\r\n");
+//      LOG("LED\r\n");
     }
     //vTaskDelete(NULL);
 }
+
+//extern void cdc_BulkAIn(U32 aEvent);
 
 void vJTAGICEmkIITask(void * pvParameters)
 {
@@ -37,6 +77,23 @@ void vJTAGICEmkIITask(void * pvParameters)
 //  U32 time;
 
     LOG("JTAG ICE mkII Task Started\r\n");
+
+    /* Free PB3 from JTAG */
+    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+    AFIO->MAPR &= ~(7 << 24);
+    AFIO->MAPR |= (2 << 24);    
+    /* Init PB3 */
+    GPIO_Init(GPIOB,  3, GPIO_TYPE_OUT_PP_50MHZ);
+    GPIO_Init(GPIOA,  7, GPIO_TYPE_OUT_PP_50MHZ);
+    GPIO_Init(GPIOB, 11, GPIO_TYPE_OUT_PP_50MHZ);
+    GPIO_Hi(GPIOB, 3);
+    GPIO_Hi(GPIOB, 3);
+    GPIO_Hi(GPIOB, 3);
+    GPIO_Hi(GPIOB, 3);
+    GPIO_Hi(GPIOB, 3);
+    GPIO_Hi(GPIOB, 3);
+    GPIO_Lo(GPIOB, 3);
+    
 
     /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
     GPIO_Init(GPIOB, 2, GPIO_TYPE_OUT_OD_2MHZ);
@@ -51,6 +108,8 @@ void vJTAGICEmkIITask(void * pvParameters)
 
 //  if (TRUE == VCP_Open())
 //  {
+    vTaskDelay(5000);
+      
     while(FW_TRUE)
     {
 //      RxLen = VCP_Read(Rx, sizeof(Rx), 5000);
@@ -221,29 +280,6 @@ int main(void)
     );
 
     vTaskStartScheduler();
-
-    while(FW_TRUE) {};
-}
-
-void Fault(U32 stack[])
-{
-    enum {r0, r1, r2, r3, r12, lr, pc, psr};
-
-    LOG("Hard Fault\r\n");
-    LOG("  SHCSR    = 0x%08x\r\n", SCB->SHCSR);
-    LOG("  CFSR     = 0x%08x\r\n", SCB->CFSR);
-    LOG("  HFSR     = 0x%08x\r\n", SCB->HFSR);
-    LOG("  MMFAR    = 0x%08x\r\n", SCB->MMFAR);
-    LOG("  BFAR     = 0x%08x\r\n", SCB->BFAR);
-
-    LOG("  R0       = 0x%08x\r\n", stack[r0]);
-    LOG("  R1       = 0x%08x\r\n", stack[r1]);
-    LOG("  R2       = 0x%08x\r\n", stack[r2]);
-    LOG("  R3       = 0x%08x\r\n", stack[r3]);
-    LOG("  R12      = 0x%08x\r\n", stack[r12]);
-    LOG("  LR [R14] = 0x%08x - Subroutine call return address\r\n", stack[lr]);
-    LOG("  PC [R15] = 0x%08x - Program counter\r\n", stack[pc]);
-    LOG("  PSR      = 0x%08x\r\n", stack[psr]);
 
     while(FW_TRUE) {};
 }

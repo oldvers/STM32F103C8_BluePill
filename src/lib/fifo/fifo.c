@@ -1,8 +1,6 @@
 #include "fifo.h"
-
-/******************************************************************************/
-// Type Definitions
-/******************************************************************************/
+#include "interrupts.h"
+#include "gpio.h"
 
 /* Very simple queue
  * These are FIFO queues which discard the new data when full.
@@ -20,17 +18,106 @@
  * calls to Queue_Put fail.
  */
 
-/******************************************************************************/
-//*** Event Queue functions ***
-/******************************************************************************/
+//-----------------------------------------------------------------------------
+/** @brief Puts Byte To The FIFO
+ *  @param pFIFO - Pointer to the FIFO context
+ *  @param pByte - Pointer to the container for Byte
+ *  @return FW_FULL / FW_SUCCESS
+ */
 
-/******************************************************************************/
-// Event Queue Initialization
-/******************************************************************************/
+FW_RESULT FIFO_Put(FIFO_p pFIFO, U8 * pByte)
+{
+  IRQ_SAFE_AREA();
+  GPIO_Hi(GPIOB, 3);
+
+  if (pFIFO->I == ((pFIFO->O - 1 + pFIFO->S) % pFIFO->S))
+  {
+    return FW_FULL;
+  }
+
+  IRQ_DISABLE();
+  
+  pFIFO->B[pFIFO->I] = *pByte;
+
+  pFIFO->I = (pFIFO->I + 1) % pFIFO->S;
+  
+  IRQ_RESTORE();
+  GPIO_Lo(GPIOB, 3);
+  return FW_SUCCESS;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets Byte from the FIFO
+ *  @param pFIFO - Pointer to the FIFO context
+ *  @param pByte - Pointer to the container for Byte
+ *  @return FW_EMPTY / FW_SUCCESS
+ */
+
+FW_RESULT FIFO_Get(FIFO_p pFIFO, U8 * pByte)
+{
+  IRQ_SAFE_AREA();
+  GPIO_Hi(GPIOB, 3);
+
+  if (pFIFO->I == pFIFO->O)
+  {
+    return FW_EMPTY;
+  }
+
+  IRQ_DISABLE();
+
+  *pByte = pFIFO->B[pFIFO->O];
+
+  pFIFO->O = (pFIFO->O + 1) % pFIFO->S;
+
+  IRQ_RESTORE();
+  GPIO_Lo(GPIOB, 3);
+
+  return FW_SUCCESS;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Returns free space in the FIFO
+ *  @param pFIFO - Pointer to the FIFO context
+ *  @return Free space in the FIFO
+ */
+
+U32 FIFO_Free(FIFO_p pFIFO)
+{
+  return (pFIFO->O - pFIFO->I - 1 + pFIFO->S) % pFIFO->S;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Returns size of the FIFO
+ *  @param pFIFO - Pointer to the FIFO context
+ *  @return Size of the FIFO
+ */
+
+U32 FIFO_Size(FIFO_p pFIFO)
+{
+  return (pFIFO->S - 1);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Returns count of Bytes in the FIFO
+ *  @param pFIFO - Pointer to the FIFO context
+ *  @return Count of Bytes in the FIFO
+ */
+
+U32 FIFO_Count(FIFO_p pFIFO)
+{
+  return (pFIFO->I - pFIFO->O + pFIFO->S) % pFIFO->S;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Initializes the FIFO
+ *  @param pFIFO - Pointer to the FIFO context
+ *  @param pBuffer - Pointer to the FIFO buffer
+ *  @param aSize - Size of the FIFO buffer
+ *  @return None
+ */
 
 void FIFO_Init(FIFO_p pFIFO, U8 * pBuffer, U32 aSize)
 {
-  /* Initialize FIFO */
   pFIFO->I = 0;
   pFIFO->O = 0;
   pFIFO->S = aSize;
@@ -38,65 +125,21 @@ void FIFO_Init(FIFO_p pFIFO, U8 * pBuffer, U32 aSize)
   for(U32 i = 0; i < aSize; i++) pFIFO->B[i] = 0;
 }
 
-/******************************************************************************/
-// Put Event To Queue
-/******************************************************************************/
+//-----------------------------------------------------------------------------
+/** @brief Clear the FIFO
+ *  @param pFIFO - Pointer to the FIFO context
+ *  @return None
+ */
 
-FW_RESULT FIFO_Put(FIFO_p pFIFO, U8 * pByte)
+void FIFO_Clear(FIFO_p pFIFO)
 {
-  if (pFIFO->I == ((pFIFO->O - 1 + pFIFO->S) % pFIFO->S))
-  {
-    return FW_FULL;
-  }
+  IRQ_SAFE_AREA();
 
-  pFIFO->B[pFIFO->I] = *pByte;
+  IRQ_DISABLE();
 
-  pFIFO->I = (pFIFO->I + 1) % pFIFO->S;
-
-  return FW_SUCCESS;
-}
-
-/******************************************************************************/
-//  Get Event from Queue
-/******************************************************************************/
-
-FW_RESULT FIFO_Get(FIFO_p pFIFO, U8 * pByte)
-{
-  if (pFIFO->I == pFIFO->O)
-  {
-    return FW_EMPTY;
-  }
-
-  *pByte = pFIFO->B[pFIFO->O];
-
-  pFIFO->O = (pFIFO->O + 1) % pFIFO->S;
-
-  return FW_SUCCESS;
-}
-
-/******************************************************************************/
-// Free space in Queue
-/******************************************************************************/
-
-U32 FIFO_Free(FIFO_p pFIFO)
-{
-  return (pFIFO->O - pFIFO->I - 1 + pFIFO->S) % pFIFO->S;
-}
-
-/******************************************************************************/
-// Max count of items in Queue
-/******************************************************************************/
-
-U32 FIFO_Capacity(FIFO_p pFIFO)
-{
-  return (pFIFO->S - 1);
-}
-
-/******************************************************************************/
-// Current count of items in Queue
-/******************************************************************************/
-
-U32 FIFO_Size(FIFO_p pFIFO)
-{
-  return (pFIFO->I - pFIFO->O + pFIFO->S) % pFIFO->S;
+  pFIFO->I = 0;
+  pFIFO->O = 0;
+  for(U32 i = 0; i < pFIFO->S; i++) pFIFO->B[i] = 0;
+  
+  IRQ_RESTORE();
 }

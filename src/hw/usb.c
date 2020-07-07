@@ -3,6 +3,7 @@
 #include "interrupts.h"
 #include "usb.h"
 #include "debug.h"
+#include "gpio.h"
 
 /* Address Mask */
 #define USB_EP_ADDR_MASK    (0xFFFE)
@@ -208,9 +209,7 @@ void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
   RCC->APB1RSTR &= (~RCC_APB1RSTR_USBRST);
 
   /* Enable USB Interrupts */
-  NVIC_ClearPendingIRQ(USB_LP_CAN1_RX0_IRQn);
-  NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, IRQ_PRIORITY_USB);
-  NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+  IRQ_USB_Enable();
 }
 
 //-----------------------------------------------------------------------------
@@ -222,8 +221,7 @@ void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
 void USB_DeInit(void)
 {
   /* Disable USB Interrupts */
-  NVIC_DisableIRQ(USB_LP_CAN1_RX0_IRQn);
-  NVIC_ClearPendingIRQ(USB_LP_CAN1_RX0_IRQn);
+  IRQ_USB_Disable();
 
   /* Disable USB peripheral clock */
   RCC->APB1ENR &= (~RCC_APB1ENR_USBEN);
@@ -501,13 +499,36 @@ void USB_EpClrStall(U32 aNumber)
  */
 U32 USB_EpIsDataAvailable(U32 aNumber)
 {
-  U32 num, cnt;
+  U32 num, cnt = 0, val;
 
   /* Nothing is available for IN Endpoints */
-  if (0 != (aNumber & USB_EP_DIR_MASK)) return 0;
+  if (0 != (aNumber & USB_EP_DIR_MASK)) return (cnt);
 
   num = aNumber & USB_EP_NUM_MASK;
-  cnt = (pEpBuffDscr + num)->COUNT_RX & USB_EP_COUNT_MASK;
+  val = (EPREG(num) & USB_EPRX_STAT);
+  
+  if (USB_EP_RX_VALID != val)
+  {
+    cnt = (pEpBuffDscr + num)->COUNT_RX & USB_EP_COUNT_MASK;
+  }
+
+  return (cnt);
+}
+
+U32 USB_EpIsDataTransmitted(U32 aNumber)
+{
+  U32 num, cnt = 0, val;
+
+  /* Nothing is transmitted for OUT Endpoints */
+  if (0 == (aNumber & USB_EP_DIR_MASK)) return (cnt);
+
+  num = aNumber & USB_EP_NUM_MASK;
+  val = (EPREG(num) & USB_EPTX_STAT);
+  
+  if (USB_EP_TX_VALID == val)
+  {
+    cnt = (pEpBuffDscr + num)->COUNT_TX & USB_EP_COUNT_MASK;
+  }
 
   return (cnt);
 }
@@ -585,18 +606,23 @@ U32 USB_EpWrite(U32 aNumber, U8 *pData, U32 aSize)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Reads USB Endpoint Data
+/** @brief Reads USB Endpoint Data with Callback for each Byte
  *  @param aNumber - Endpoint Number
- *  @param pPutCb - Pointer to Callback that puts Byte to the Buffer
+ *  @param pPutByteCb - Pointer to Callback that puts Byte to the Buffer
  *  @param aSize - Count of Bytes to be read
  *  @return Number of bytes read
  *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
-U32 USB_EpReadToFifo(U32 aNumber, USB_CbEpPut pPutCb, U32 aSize)
+U32 USB_EpReadWsCb(U32 aNumber, USB_CbByte pPutByteCb, U32 aSize)
 {
   /* Double Buffering is not yet supported */
   U32 num, cnt, *pv, n;
   U8 data[2] = {0};
+  
+  if (NULL == pPutByteCb)
+  {
+    return 0;
+  }
 
   num = aNumber & USB_EP_NUM_MASK;
 
@@ -611,13 +637,13 @@ U32 USB_EpReadToFifo(U32 aNumber, USB_CbEpPut pPutCb, U32 aSize)
   for (n = 0; n < (cnt >> 1); n++)
   {
     *((U16 *)data) = *pv++;
-    pPutCb(&data[0]);
-    pPutCb(&data[1]);
+    pPutByteCb(&data[0]);
+    pPutByteCb(&data[1]);
   }
   if (1 == (cnt % 2))
   {
     *((U16 *)data) = *pv++;
-    pPutCb(&data[0]);
+    pPutByteCb(&data[0]);
   }
   usb_EpSetStatus(aNumber, USB_EP_RX_VALID);
 
@@ -625,18 +651,23 @@ U32 USB_EpReadToFifo(U32 aNumber, USB_CbEpPut pPutCb, U32 aSize)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Writes USB Endpoint Data
+/** @brief Writes USB Endpoint Data with Callback for each Byte
  *  @param aNumber - Endpoint Number
- *  @param pGetCb - Pointer to Callback that gets Byte from the Buffer
+ *  @param pGetByteCb - Pointer to Callback that gets Byte from the Buffer
  *  @param aSize - Number of bytes to be written
  *  @return Number of bytes written
  *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
-U32 USB_EpWriteFromFifo(U32 aNumber, USB_CbEpGet pGetCb, U32 aSize)
+U32 USB_EpWriteWsCb(U32 aNumber, USB_CbByte pGetByteCb, U32 aSize)
 {
   /* Double Buffering is not yet supported */
   U32 num, *pv, n;
   U8 data[2] = {0};
+  
+  if (NULL == pGetByteCb)
+  {
+    return 0;
+  }
 
   num = aNumber & USB_EP_NUM_MASK;
 
@@ -648,13 +679,13 @@ U32 USB_EpWriteFromFifo(U32 aNumber, USB_CbEpGet pGetCb, U32 aSize)
   pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_TX));
   for (n = 0; n < (aSize >> 1); n++)
   {
-    pGetCb(&data[0]);
-    pGetCb(&data[1]);
+    pGetByteCb(&data[0]);
+    pGetByteCb(&data[1]);
     *pv++ = *((U16 *)data);
   }
   if (1 == (aSize % 2))
   {
-    pGetCb(&data[0]);
+    pGetByteCb(&data[0]);
     data[1] = 0;
     *pv++ = *((U16 *)data);
   }
@@ -681,8 +712,43 @@ U32 USB_GetFrame(void)
  */
 void USB_IRQHandler(void)
 {
+  GPIO_Hi(GPIOB, 11);
+    
   U32 istr, num, val;
 
+  /* Endpoint Interrupts */
+  while ((istr = USB->ISTR) & USB_ISTR_CTR)
+  {
+    USB->ISTR = (U16)~(USB_ISTR_CTR);
+
+    num = istr & USB_ISTR_EP_ID;
+
+    val = EPREG(num);
+    if (val & USB_EP_CTR_RX)
+    {
+      EPREG(num) = val & ~USB_EP_CTR_RX & USB_EPREG_MASK;
+      if (NULL != USB_EpCfg[num].OCb)
+      {
+        if (val & USB_EP_SETUP)
+        {
+          USB_EpCfg[num].OCb(USB_EVNT_EP_SETUP);
+        }
+        else
+        {
+          USB_EpCfg[num].OCb(USB_EVNT_EP_OUT);
+        }
+      }
+    }
+    if (val & USB_EP_CTR_TX)
+    {
+      EPREG(num) = val & ~USB_EP_CTR_TX & USB_EPREG_MASK;
+      if (NULL != USB_EpCfg[num].ICb)
+      {
+        USB_EpCfg[num].ICb(USB_EVNT_EP_IN);
+      }
+    }
+  }
+  
   istr = USB->ISTR;
 
   /* USB Reset Request */
@@ -729,37 +795,6 @@ void USB_IRQHandler(void)
     if (NULL != pUSB_CbError) pUSB_CbError(0);
     USB->ISTR = (U16)~(USB_ISTR_ERR);
   }
-
-  /* Endpoint Interrupts */
-  while ((istr = USB->ISTR) & USB_ISTR_CTR)
-  {
-    USB->ISTR = (U16)~(USB_ISTR_CTR);
-
-    num = istr & USB_ISTR_EP_ID;
-
-    val = EPREG(num);
-    if (val & USB_EP_CTR_RX)
-    {
-      EPREG(num) = val & ~USB_EP_CTR_RX & USB_EPREG_MASK;
-      if (NULL != USB_EpCfg[num].OCb)
-      {
-        if (val & USB_EP_SETUP)
-        {
-          USB_EpCfg[num].OCb(USB_EVNT_EP_SETUP);
-        }
-        else
-        {
-          USB_EpCfg[num].OCb(USB_EVNT_EP_OUT);
-        }
-      }
-    }
-    if (val & USB_EP_CTR_TX)
-    {
-      EPREG(num) = val & ~USB_EP_CTR_TX & USB_EPREG_MASK;
-      if (NULL != USB_EpCfg[num].ICb)
-      {
-        USB_EpCfg[num].ICb(USB_EVNT_EP_IN);
-      }
-    }
-  }
+  
+  GPIO_Lo(GPIOB, 11);
 }

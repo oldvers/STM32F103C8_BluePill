@@ -14,5 +14,6 @@ USB_CTRL_STAGE CDC_CtrlOutReq
   U8 **pData,
   U16 *pSize
 );
+void CDC_SOF(void);
 
 #endif /* __CDC_H__ */

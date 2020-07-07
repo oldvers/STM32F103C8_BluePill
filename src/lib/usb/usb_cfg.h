@@ -15,7 +15,7 @@
 /* Remote Wakeup Event */
 #define USB_WAKEUP_EVENT          (1)
 /* Start of Frame Event */
-#define USB_SOF_EVENT             (0)
+#define USB_SOF_EVENT             (1)
 /* Error Event */
 #define USB_ERROR_EVENT           (0)
 

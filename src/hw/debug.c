@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "stm32f1xx.h"
 #include "SEGGER_RTT.h"
+#include "gpio.h"
 
 /* ITM Stimulus Ports */
 #define CPU_ITM_O_STIMPORT_00               (0x00000000)

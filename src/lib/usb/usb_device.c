@@ -72,7 +72,7 @@ static void usbd_CbWakeUp(void)
 #if USB_SOF_EVENT
 static void usbd_CbSOF(void)
 {
-  //
+  CDC_SOF();
 }
 #endif
 
@@ -174,9 +174,9 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
         result = HID_CtrlSetupReq(pSetup, pData, pSize);
         break;
 #endif
-#if USB_ICEMKII
-      case USB_ICEMKII_IF_NUM:
-        result = ICEMKII_CtrlSetupReq(pSetup, pData, pSize);
+#if USB_CDD
+      case USB_CDD_IF_NUM0:
+        result = CDC_CtrlSetupReq(pSetup, pData, pSize);
         break;
 #endif
       default:
@@ -222,9 +222,9 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
         result = HID_CtrlOutReq(pSetup, pData, pSize);
         break;
 #endif
-#if USB_ICEMKII
-      case USB_ICEMKII_IF_NUM:
-        result = ICEMKII_CtrlOutReq(pSetup, pData, pSize);
+#if USB_CDD
+      case USB_CDD_IF_NUM0:
+        result = CDC_CtrlOutReq(pSetup, pData, pSize);
         break;
 #endif
       default:
@@ -278,8 +278,6 @@ void USBD_Init(void)
   USB_SetCb_Error(usbd_CbError);
 #endif
 
-
-
   LOG("--- MSC --------------------------------------\r\n");
   LOG("Interface Count = %d\r\n",     USB_MSC_IF_CNT);
   LOG("    IF Num 0    = %d\r\n",     USB_MSC_IF_NUM);
@@ -316,7 +314,6 @@ void USBD_Init(void)
   LOG("Endpoint Count  = %d\r\n",     USB_EP_CNT);
   LOG("    EP 0 Ctl I  = 0x%02X\r\n", EP0_I);
   LOG("    EP 1 Ctl O  = 0x%02X\r\n", EP0_O);
-
 
   /* Init Hardware */
   USB_Init(USB_EP_CNT, USB_CTRL_PACKET_SIZE);

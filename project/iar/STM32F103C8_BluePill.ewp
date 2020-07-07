@@ -1380,6 +1380,9 @@
                     <state>$PROJ_DIR$\..\..\src\lib\usb\icemkii</state>
                     <state>$PROJ_DIR$\..\..\src\lib\fifo</state>
                     <state>$PROJ_DIR$\..\..\src\lib\rtt</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\usb\msc</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\usb\hid</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\usb\cdc</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2066,6 +2069,9 @@
             <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include\stm32f103xb.h</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Source\Templates\iar\linker\stm32f103xb_flash.icf</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include\stm32f1xx.h</name>
         </file>
         <file>
@@ -2077,6 +2083,9 @@
     </group>
     <group>
         <name>Hardware</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\board.h</name>
+        </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\debug.c</name>
         </file>
@@ -2100,6 +2109,12 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\types.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\uart.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\uart.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\uniquedevid.h</name>
@@ -2198,6 +2213,9 @@
             <name>$PROJ_DIR$\..\..\tests\main.c</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\tests\test_fifo.c</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\tests\test_icemkii_msg.c</name>
             <excluded>
                 <configuration>Tests</configuration>
@@ -2205,6 +2223,9 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_icemkii_usb.c</name>
+            <excluded>
+                <configuration>Tests</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_template.c</name>

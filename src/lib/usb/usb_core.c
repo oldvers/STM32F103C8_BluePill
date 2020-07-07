@@ -7,13 +7,6 @@
 #include "usb_core.h"
 #include "debug.h"
 
-#define USB_CORE_DEBUG
-#ifdef USB_CORE_DEBUG
-#  define UCLOG(...)   LOG(__VA_ARGS__)
-#else
-#  define UCLOG(...)
-#endif
-
 /* USB Endpoint Data Structure */
 typedef struct _USB_CTRL_DATA
 {
@@ -86,7 +79,6 @@ void usbc_DataInStage(void)
     cnt = gCData.Count;
   }
   cnt = USB_EpWrite(EP0_I, gCData.pData, cnt);
-  UCLOG("CTRL Data In: len = %d cnt = %d\r\n", cnt, gCData.Count);
   gCData.pData += cnt;
   gCData.Count -= cnt;
 }
@@ -101,7 +93,6 @@ void usbc_DataOutStage(void)
   U32 cnt;
 
   cnt = USB_EpRead(EP0_O, gCData.pData, USB_CTRL_PACKET_SIZE);
-  UCLOG("CTRL Data Out: len = %d\r\n", cnt);
   gCData.pData += cnt;
   gCData.Count -= cnt;
 }
@@ -294,8 +285,6 @@ FW_BOOLEAN usbc_CtrlSetupReqStdGetDescriptor(void)
       break;
   }
 
-  UCLOG("CTRL Get Dsc: len = %d cnt = %d\r\n", len, gCData.Count);
-  
   if (FW_TRUE == result)
   {
     if (gCData.Count > len)
@@ -667,7 +656,6 @@ void USBC_ControlInOut(U32 aEvent)
   switch (aEvent)
   {
     case USB_EVNT_EP_SETUP:
-      UCLOG("CTRL SETUP\r\n");
       usbc_SetupStage();
       USB_EpDirCtrl(gCSetupPkt.bmRequestType.BM.Dir);
       gCData.Count = gCSetupPkt.wLength;

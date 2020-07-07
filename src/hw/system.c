@@ -1,7 +1,6 @@
 #include "types.h"
-#include "stm32f1xx.h"
-#include "system_stm32f1xx.h"
 #include "system.h"
+#include "interrupts.h"
 
 #define SYSTEM_STARTUP_TIMEOUT     (20000U)
 #define RCC_CFGR_PLLSRC_HSI        (0U << RCC_CFGR_PLLSRC_Pos)
@@ -9,10 +8,29 @@
 
 static void SystemClockConfig( void );
 
+/* -------------------------------------------------------------------------- */
+
+__no_init U32 CPUClock;
+__no_init U32 AHBClock;
+__no_init U32 APB1Clock;
+__no_init U32 APB2Clock;
+
+static const U16 AHBDiv[16] =
+{
+  1,   1,   1,   1,   1,   1,   1,   1,
+  2,   4,   8,  16,  64, 128, 256, 512,
+};
+static const U8 APBDiv[8] =
+{
+  1,   1,   1,   1,   2,   4,   8,  16,
+};
+
+/* -------------------------------------------------------------------------- */
+
 void ApplicationInit( void )
 {
   /* Setup interrupts priority grouping */
-  NVIC_SetPriorityGrouping(5);
+  IRQ_SetPriorityGrouping();
   
   /* First of all - Init the system */
   SystemInit();
@@ -21,9 +39,9 @@ void ApplicationInit( void )
   SystemClockConfig();
 }
 
-/* ---------------------------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 
-/* Configuration of System clock frequency, AHB/APBx prescalers and Flash settings.
+/* Configuration of System clock frequency, AHB/APBx prescalers and Flash WS
     - System Clock source - PLL(HSE)
     - SYSCLK              - 72000000 Hz
     - HCLK                - 72000000 Hz
@@ -33,7 +51,7 @@ void ApplicationInit( void )
     - HSE Frequency       - 8000000 Hz
     - PLL MUL             - 9
     - VDD                 - 3.3 V
-    - Flash Latency       - 2 WS                                                                  */
+    - Flash Latency       - 2 WS                                              */
 
 void SystemClockConfig( void )
 {
@@ -107,5 +125,13 @@ void SystemClockConfig( void )
     configuration. User can add here some code to deal with this error */
   }
   
-  SystemCoreClockUpdate();  
+  SystemCoreClockUpdate();
+  
+  CPUClock  = SystemCoreClock;
+  AHBClock  = AHBDiv[(RCC->CFGR & RCC_CFGR_HPRE) >> RCC_CFGR_HPRE_Pos];
+  AHBClock  = CPUClock / AHBClock;
+  APB1Clock = APBDiv[(RCC->CFGR & RCC_CFGR_PPRE1) >> RCC_CFGR_PPRE1_Pos];
+  APB1Clock = CPUClock / APB1Clock;
+  APB2Clock = APBDiv[(RCC->CFGR & RCC_CFGR_PPRE2) >> RCC_CFGR_PPRE2_Pos];
+  APB2Clock = CPUClock / APB2Clock;
 }

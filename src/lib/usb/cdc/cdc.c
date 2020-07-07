@@ -14,23 +14,35 @@
 #include "debug.h"
 #include "string.h"
 
+#include "gpio.h"
+#include "uart.h"
+#include "board.h"
+#include "interrupts.h"
+
+//-----------------------------------------------------------------------------
+/* Private definitions */
+
+#define CDC_CTRL_LINE_STATE_DTR   (0)
+#define CDC_CTRL_LINE_STATE_RTS   (1)
+
 //-----------------------------------------------------------------------------
 /* Private Types definitions */
+
 /* Line Coding Structure */
 typedef __packed struct _CDC_LINE_CODING
 {
-  U32 dwBaudRate;  /* Number Data terminal rate, in bits per second */
-  U8  bCharFormat; /* Number of Stop bits */
-                   /*   0 - 1 Stop bit    *
-                    *   1 - 1.5 Stop bits *
-                    *   2 - 2 Stop bits   */
-  U8  bParityType; /* Number Parity */
-                   /*   0 - None    *
-                    *   1 - Odd     *
-                    *   2 - Even    *
-                    *   3 - Mark    *
-                    *   4 - Space   */
-  U8  bDataBits;   /* Number Data Bits (5, 6, 7, 8 or 16) */
+  U32 dwBaudRate;       /* Number Data terminal rate, in bits per second */
+  U8  bCharFormat;      /* Number of Stop bits */
+                        /*   0 - 1 Stop bit    *
+                         *   1 - 1.5 Stop bits *
+                         *   2 - 2 Stop bits   */
+  U8  bParityType;      /* Number Parity */
+                        /*   0 - None    *
+                         *   1 - Odd     *
+                         *   2 - Even    *
+                         *   3 - Mark    *
+                         *   4 - Space   */
+  U8  bDataBits;        /* Number Data Bits (5, 6, 7, 8 or 16) */
 } CDC_LINE_CODING;
 
 /* Serial State Notification Structure */
@@ -57,7 +69,7 @@ typedef __packed struct _CDC_SERIAL_STATE
   } Data;
 } CDC_SERIAL_STATE;
 
-/* Serial Port Context */
+/* CDC Port Context */
 typedef struct _CDC_PORT
 {
   U8                epBlkO;
@@ -66,29 +78,28 @@ typedef struct _CDC_PORT
   U8                irqBuffLen;
   FIFO_t            rxFifo;
   FIFO_t            txFifo;
+  USB_CbByte        rxFifoPutCb;
+  USB_CbByte        txFifoGetCb;
   U8                rxBuffer[USB_CDC_PACKET_SIZE * 4 + 1];
   U8                txBuffer[USB_CDC_PACKET_SIZE * 4 + 1];
   U8               *irqBuff;
   CDC_LINE_CODING  *lineCoding;
   CDC_SERIAL_STATE *notification;
-//  SemaphoreHandle_t vcpSemRx;
-//  SemaphoreHandle_t vcpMutRx;
-//  SemaphoreHandle_t vcpSemTx;
-//  SemaphoreHandle_t vcpMutTx;
-//  U8                vcpReading;
-//  EAST_STATE        gVcpRxState;
-//  EAST_STATE        gVcpTxState;
+  UART_t            uart;
+  FW_BOOLEAN        ready;
 } CDC_PORT;
 
 //-----------------------------------------------------------------------------
 /* Global Variables */
+
 STATIC CDC_LINE_CODING   gLineCodingA =
 {
-  115200, /* dwBaudRate */
-  0,      /* bCharFormat */
-  0,      /* bParityType */
-  8,      /* bDataBits */
+  115200,               /* dwBaudRate */
+  0,                    /* bCharFormat */
+  0,                    /* bParityType */
+  8,                    /* bDataBits */
 };
+
 STATIC CDC_SERIAL_STATE  gNotificationA =
 {
   /* bmRequestType */
@@ -99,16 +110,18 @@ STATIC CDC_SERIAL_STATE  gNotificationA =
   2,                    /* wLength */
   0,                    /* Data */
 };
+
 STATIC CDC_PORT          gPortA = {0};
 
 #if (USB_CDD)
 STATIC CDC_LINE_CODING   gLineCodingB =
 {
-  115200, /* dwBaudRate */
-  0,      /* bCharFormat */
-  0,      /* bParityType */
-  8,      /* bDataBits */
+  115200,               /* dwBaudRate */
+  0,                    /* bCharFormat */
+  0,                    /* bParityType */
+  8,                    /* bDataBits */
 };
+
 STATIC CDC_SERIAL_STATE  gNotificationB =
 {
   /* bmRequestType */
@@ -119,22 +132,124 @@ STATIC CDC_SERIAL_STATE  gNotificationB =
   2,                    /* wLength */
   0,                    /* Data */
 };
+
 STATIC CDC_PORT          gPortB = {0};
 #endif /* USB_CDD */
 
 //-----------------------------------------------------------------------------
 /* Private Functions declarations */
-//void cdc_InStage(void);
-//void cdc_OutStage(void);
 
+static FW_BOOLEAN uart_FifoPutA(U8 * pByte);
+static FW_BOOLEAN uart_FifoGetA(U8 * pByte);
+static FW_BOOLEAN uart_FifoPutB(U8 * pByte);
+static FW_BOOLEAN uart_FifoGetB(U8 * pByte);
 
+//-----------------------------------------------------------------------------
+/** @brief Initializes the UART
+ *  @param pUART - UART Number
+ *  @return None
+ */
+
+static void uart_Init(UART_t aUART)
+{
+  if (UART1 == aUART)
+  {
+    /* UART1: PA9 - Tx, PA10 - Rx, DTR - PB8, RTS - PB6 */
+    GPIO_Init(UART1_TX_PORT,  UART1_TX_PIN,  GPIO_TYPE_ALT_PP_10MHZ);
+    GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_FLOATING);
+    GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_ALT_PP_10MHZ);
+    GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_ALT_PP_10MHZ);
+    
+    UART_Init
+    (
+      UART1,
+      gPortA.lineCoding->dwBaudRate,
+      uart_FifoPutA,
+      uart_FifoGetA
+    );
+    UART_RxStart(UART1);
+  }
+  else
+  {
+    /* UART2: PA2 - Tx, PA3 - Rx */
+    GPIO_Init(UART2_TX_PORT, UART2_TX_PIN, GPIO_TYPE_ALT_PP_10MHZ);
+    GPIO_Init(UART1_RX_PORT, UART1_RX_PIN, GPIO_TYPE_IN_FLOATING);
+
+    UART_Init
+    (
+      UART2,
+      gPortB.lineCoding->dwBaudRate,
+      uart_FifoPutB,
+      uart_FifoGetB
+    );
+    UART_RxStart(UART2);
+  }
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets CDC Port according to USB Interface Number
+ *  @param aInterface - USB Interface Number
+ *  @return Pointer to the CDC Port Context
+ */
+
+static CDC_PORT * cdc_GetPort(U16 aInterface)
+{
+  CDC_PORT * result = &gPortA;
+  
+  if (USB_CDC_IF_NUM0 == aInterface)
+  {
+    result = &gPortA;
+  }
+#if (USB_CDD)
+  else
+  {
+    result = &gPortB;
+  }
+#endif
+  
+  return (result);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Sets DTR/RTS signals
+ *  @param pUART - UART Number
+ *  @param aValue - DTR/RTS signals state
+ *  @return None
+ */
+
+static void uart_DTR_RTS_Set(UART_t aUART, U16 aValue)
+{
+  if (UART1 == aUART)
+  {
+    /* DTR signal */
+    if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_DTR)) )
+    {
+      GPIO_Lo(UART1_DTR_PORT, UART1_DTR_PIN);
+    }
+    else
+    {
+      GPIO_Hi(UART1_DTR_PORT, UART1_DTR_PIN);
+    }
+    
+    /* RTS signal */
+    if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_RTS)) )
+    {
+      GPIO_Lo(UART1_RTS_PORT, UART1_RTS_PIN);
+    }
+    else
+    {
+      GPIO_Hi(UART1_RTS_PORT, UART1_RTS_PIN);
+    }
+  }
+}
 
 //-----------------------------------------------------------------------------
 /** @brief Processes IRQ EP data
  *  @param pPort - Pointer to Port context
  *  @return None
  */
-void cdc_IrqInStage(CDC_PORT * pPort)
+
+static void cdc_IrqInStage(CDC_PORT * pPort)
 {
   U8 len = 0;
 
@@ -162,6 +277,7 @@ void cdc_IrqInStage(CDC_PORT * pPort)
  *  @param aState - Errors/Evetns state
  *  @return None
  */
+
 void cdc_NotifyState(CDC_PORT * pPort, U16 aState)
 {
   pPort->notification->Data.Raw = aState;
@@ -181,6 +297,7 @@ void cdc_NotifyState(CDC_PORT * pPort, U16 aState)
  *        buffer so requested data can be placed right there if it is not
  *        exceeds Control Endpoint Max Packet size
  */
+
 USB_CTRL_STAGE CDC_CtrlSetupReq
 (
   USB_SETUP_PACKET * pSetup,
@@ -189,6 +306,7 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
+  CDC_PORT * port;
 
   switch (pSetup->bRequest)
   {
@@ -196,34 +314,28 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
       LOG("CDC Setup: SetLineCoding: IF = %d L = %d\r\n",
             pSetup->wIndex.W, *pSize);
 
-      if (USB_CDC_IF_NUM0 == pSetup->wIndex.W)
-      {
-        *pData = (U8 *)gPortA.lineCoding;
-      }
-#if (USB_CDD)
-      else
-      {
-        *pData = (U8 *)gPortB.lineCoding;
-      }
-#endif
+      port = cdc_GetPort(pSetup->wIndex.W);
+      *pData = (U8 *)port->lineCoding;
+      
       result = USB_CTRL_STAGE_WAIT;
       break;
+
     case CDC_REQ_GET_LINE_CODING:
       LOG("CDC Setup: GetLineCoding: IF = %d\r\n", pSetup->wIndex.W);
-      if (USB_CDC_IF_NUM0 == pSetup->wIndex.W)
-      {
-        *pData = (U8 *)gPortA.lineCoding;
-      }
-#if (USB_CDD)
-      else
-      {
-        *pData = (U8 *)gPortB.lineCoding;
-      }
-#endif
+  
+      port = cdc_GetPort(pSetup->wIndex.W);
+      *pData = (U8 *)port->lineCoding;
+      
       result = USB_CTRL_STAGE_DATA;
       break;
+
     case CDC_REQ_SET_CONTROL_LINE_STATE:
-      LOG("CDC Setup: Set Ctrl Line State\r\n");
+      LOG("CDC Setup: Set Ctrl Line State: IF = %d Val = %04X\r\n",
+            pSetup->wIndex.W, pSetup->wValue.W);
+
+      port = cdc_GetPort(pSetup->wIndex.W);
+      uart_DTR_RTS_Set(port->uart, pSetup->wValue.W);
+
       result = USB_CTRL_STAGE_STATUS;
       break;
   }
@@ -232,13 +344,14 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
 }
 
 //-----------------------------------------------------------------------------
-/** @brief HID USB Out Request
+/** @brief CDC USB Out Request
  *  @param pSetup - Pointer to Setup Packet
  *  @param pData - Pointer to place for setting the pointer to requested data
  *  @param pSize - Pointer to place for setting the requested data size
  *  @return Stage that should be performed after calling this function
  *  @note Called when all the OUT packets have been already collected
  */
+
 USB_CTRL_STAGE CDC_CtrlOutReq
 (
   USB_SETUP_PACKET * pSetup,
@@ -247,22 +360,18 @@ USB_CTRL_STAGE CDC_CtrlOutReq
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
+  CDC_PORT * port = &gPortA;
   
   switch (pSetup->bRequest)
   {
     case CDC_REQ_SET_LINE_CODING:
-      if (USB_CDC_IF_NUM0 == pSetup->wIndex.W)
-      {
-        LOG("CDC Out: Set Line Coding: Baud = %d, Len = %d\r\n",
-              gPortA.lineCoding->dwBaudRate, *pSize);
-      }
-#if (USB_CDD)
-      else
-      {
-        LOG("CDC Out: Set Line Coding: Baud = %d, Len = %d\r\n",
-              gPortB.lineCoding->dwBaudRate, *pSize);
-      }
-#endif
+      port = cdc_GetPort(pSetup->wIndex.W);
+      uart_Init(port->uart);
+      port->ready = FW_TRUE;
+
+      LOG("CDC Out: Set Line Coding: IF = %d Baud = %d, Len = %d\r\n",
+            pSetup->wIndex.W, port->lineCoding->dwBaudRate, *pSize);
+
       result = USB_CTRL_STAGE_STATUS;
       break;
   }
@@ -271,217 +380,110 @@ USB_CTRL_STAGE CDC_CtrlOutReq
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Processes OUT EP data
+/** @brief Processes OUT EP data (Rx via USB)
  *  @param pPort - Pointer to Port context
  *  @return None
  */
-void cdc_OutStage(CDC_PORT * pPort)
+
+static void cdc_OutStage(CDC_PORT * pPort)
 {
-  U32 len, i = 0;
+  U32 len;
 
   /* Read from OUT EP */
-  len = USB_EpRead(pPort->epBlkO, pPort->rxBuffer, USB_CDC_PACKET_SIZE);
-  LOG("CDC OUT: len = %d\r\n", len);
-
-//  /* If there is no reading in progress - ignore */
-//  LOG(" EAST Rx:");
-//  while ((FW_TRUE == gVcpReading) && (i < len))
-//  {
-//    LOG(" %0.2X", gOBuffer[i]);
-//    EAST_PutByte(&gVcpRxState, gOBuffer[i++]);
-//  }
-//  LOG("\r\n");
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Processes IN EP data
- *  @param pPort - Pointer to Port context
- *  @return None
- */
-void cdc_InStage(CDC_PORT * pPort)
-{
-  U8 data, len = 0;
-
-//  LOG(" EAST Tx:");
-//  while
-//  (
-//    (len < USB_CDC_PACKET_SIZE) &&
-//    (FW_TRUE == EAST_GetByte(&gVcpTxState, &data))
-//  )
-//  {
-//    LOG(" %0.2X", data);
-//    gIBuffer[len++] = data;
-//  }
-//  LOG("\r\n");
-
-  if (0 < len)
+//  LOG("CDC OUT:\r\n   - ");
+  len = USB_EpReadWsCb
+        (
+          pPort->epBlkO,
+          pPort->rxFifoPutCb,
+          FIFO_Free(&pPort->rxFifo)
+        );
+//  LOG(" : Len = %d\r\n", len);
+  
+  /* Write to UART */
+  if (0 < FIFO_Count(&pPort->rxFifo))
   {
-    len = USB_EpWrite(pPort->epBlkI, pPort->txBuffer, len);
-    LOG("CDC IN: len = %d\r\n", len);
+    UART_TxStart(UART1);
   }
 }
 
+//-----------------------------------------------------------------------------
+/** @brief Processes IN EP data (Tx via USB)
+ *  @param pPort - Pointer to Port context
+ *  @return None
+ */
 
+static void cdc_InStage(CDC_PORT * pPort)
+{
+  U32 len = 0;
 
-
-
-
-
-
+  /* If there are some data in FIFO */
+  if (0 < FIFO_Count(&pPort->txFifo))
+  {
+    /* Write to IN EP */
+//    LOG("CDC IN:\r\n   - ");
+    len = USB_EpWriteWsCb
+          (
+            pPort->epBlkI,
+            pPort->txFifoGetCb,
+            FIFO_Count(&pPort->txFifo)
+          );
+//    LOG(" : Len = %d\r\n", len);
+  }
+}
 
 //-----------------------------------------------------------------------------
-/** @brief Opens Virtual COM Port
- *  @param None
- *  @return TRUE - Port opened, FALSE - Error
+/** @brief Processes Rx/Tx data if present in I/O Buffers
+ *  @param pPort - Pointer to the Port context
+ *  @return None
  */
-U32 VCP_Open(void)
+
+static void cdc_ProcessCollectedData(CDC_PORT * pPort)
 {
-  /* Check if VCP Semaphore/Mutex were created successfuly */
-//  if ( (NULL == gVcpSemRx) || (NULL == gVcpMutRx) ||
-//       (NULL == gVcpSemTx) || (NULL == gVcpMutTx) )
-//  {
-//    return FW_FALSE;
-//  }
-//
-//  /* Indicate that there is no reading in progress */
-//  gVcpReading = FW_FALSE;
+  U32 len;
   
-  return FW_TRUE;
+  /* Check if there are some unprocessed data */
+  if (FW_TRUE == pPort->ready)
+  {
+    len = USB_EpIsDataAvailable(pPort->epBlkO);
+    if (0 < len)
+    {
+      cdc_OutStage(pPort);
+      LOG("SOF %d Overflow = %d\r\n", (U8)pPort->uart, len);
+    }
+    
+    len = USB_EpIsDataTransmitted(pPort->epBlkI);
+    if (0 == len)
+    {
+      cdc_InStage(pPort);
+    }
+    else
+    {
+      LOG("CDC SOF: Data Not Transmitted - %d\r\n", len);
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Callback function - VCP read completed
+/** @brief Called on each USB Start Of Frame (every 1 ms)
  *  @param None
  *  @return None
  */
-void cdc_OutCompleted(void)
+
+void CDC_SOF(void)
 {
-//  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-//  gVcpReading = FW_FALSE;
-//  xSemaphoreGiveFromISR(gVcpSemRx, &xHigherPriorityTaskWoken);
+  cdc_ProcessCollectedData(&gPortA);
+#if (USB_CDD)
+  cdc_ProcessCollectedData(&gPortB);
+#endif
 }
-
-
-
-//-----------------------------------------------------------------------------
-/** @brief Reads from Vortual COM Port
- *  @param pData - Buffer for data to be read
- *  @param aSize - Size of data to be read
- *  @param aTimeout - Time to waiting a data
- *  @return Number of bytes read
- */
-U32 VCP_Read(U8 * pData, U32 aSize, U32 aTimeout)
-{
-  U32 result = 0;
-
-//  if (pdFALSE == xSemaphoreTake(gVcpMutRx, portMAX_DELAY))
-//  {
-//    return 0;
-//  }
-//
-//  /* Init EAST state for reading */
-//  gVcpRxState.MaxSize = aSize;
-//  gVcpRxState.ActSize = 0;
-//  gVcpRxState.Index = 0;
-//  gVcpRxState.Buffer = pData;
-//  gVcpRxState.OnComplete = cdc_OutCompleted;
-//
-//  /* Indicate VCP reading is in progress */
-//  gVcpReading = FW_TRUE;
-//
-//  /* Wait for Rx Complete */
-//  if (pdTRUE == xSemaphoreTake(gVcpSemRx, aTimeout))
-//  {
-//    result = gVcpRxState.ActSize;
-//  }
-//  else
-//  {
-//    result = 0;
-//  }
-//
-//  xSemaphoreGive(gVcpMutRx);
-
-  return result;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Callback function - VCP write completed
- *  @param None
- *  @return None
- */
-void cdc_InCompleted(void)
-{
-//  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-//  xSemaphoreGiveFromISR(gVcpSemTx, &xHigherPriorityTaskWoken);
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Writes to Virtual COM Port
- *  @param pData - Buffer of data to be written
- *  @param aSize - Size of data to be written
- *  @return Number of bytes written
- */
-U32 VCP_Write(U8 * pData, U32 aSize, U32 aTimeout)
-{
-  U32 result = 0;
-
-//  if (pdFALSE == xSemaphoreTake(gVcpMutTx, portMAX_DELAY))
-//  {
-//    return 0;
-//  }
-//
-//  /* Init EAST state for writing */
-//  gVcpTxState.MaxSize = aSize;
-//  gVcpTxState.ActSize = 0;
-//  gVcpTxState.Index = 0;
-//  gVcpTxState.Buffer = pData;
-//  gVcpTxState.OnComplete = cdc_InCompleted;
-//
-//  /* Process IN EP */
-//  cdc_InStage();
-//
-//  /* Wait for Tx complete */
-//  if (pdTRUE == xSemaphoreTake(gVcpSemTx, aTimeout))
-//  {
-//    result = gVcpTxState.ActSize;
-//  }
-//  else
-//  {
-//    result = 0;
-//  }
-//
-//  xSemaphoreGive(gVcpMutTx);
-
-  return result;
-}
-
-//-----------------------------------------------------------------------------
-/** @brief Closes Virtual COM Port
- *  @param None
- *  @return None
- */
-void VCP_Close(void)
-{
-  /* Indicate that there is no reading in progress */
-//  gVcpReading = FW_FALSE;
-}
-
-
-
-
-
-
-
-
-
-
 
 //-----------------------------------------------------------------------------
 /** @brief CDC Interrupt In Callback
  *  @param aEvent - Event
  *  @return None
  */
-void cdc_InterruptAIn(U32 aEvent)
+
+static void cdc_InterruptAIn(U32 aEvent)
 {
   cdc_IrqInStage(&gPortA);
 }
@@ -491,9 +493,11 @@ void cdc_InterruptAIn(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
+
+//static 
 void cdc_BulkAIn(U32 aEvent)
 {
-  //cdc_InStage();
+  cdc_InStage(&gPortA);
 }
 
 //-----------------------------------------------------------------------------
@@ -501,9 +505,62 @@ void cdc_BulkAIn(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
-void cdc_BulkAOut(U32 aEvent)
+
+static void cdc_BulkAOut(U32 aEvent)
 {
-  //cdc_OutStage();
+  cdc_OutStage(&gPortA);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Puts received Byte from USB EP buffer to the Rx FIFO
+ *  @param pByte - Pointer to the container for Byte
+ *  @return None
+ */
+
+static void cdc_RxFifoPutA(U8 * pByte)
+{
+//LOG(" %0.2X", *pByte);
+  (void)FIFO_Put(&gPortA.rxFifo, pByte);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets Byte that need to be transmitted from the Tx FIFO
+ *  @param pByte - Pointer to the container for Byte
+ *  @return None
+ */
+
+static void cdc_TxFifoGetA(U8 * pByte)
+{
+  (void)FIFO_Get(&gPortA.txFifo, pByte);
+//LOG(" %0.2X", *pByte);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Puts received Byte from UART to the Tx FIFO
+ *  @param pByte - Pointer to the container for Byte
+ *  @return None
+ */
+
+static FW_BOOLEAN uart_FifoPutA(U8 * pByte)
+{
+  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPortA.txFifo, pByte));
+//  if (0x64 == *pByte)
+//  {
+//    for (U32 i = 0; i < 183; i++) FIFO_Put(&gPortA.txFifo, (U8 *)&i);
+//    cdc_BulkAIn(0);
+//  }
+//  return FW_FALSE;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets Byte that need to be transmitted from the Rx FIFO
+ *  @param pByte - Pointer to the container for Byte
+ *  @return None
+ */
+
+static FW_BOOLEAN uart_FifoGetA(U8 * pByte)
+{
+  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortA.rxFifo, pByte));
 }
 
 #if (USB_CDD)
@@ -512,7 +569,8 @@ void cdc_BulkAOut(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
-void cdc_InterruptBIn(U32 aEvent)
+
+static void cdc_InterruptBIn(U32 aEvent)
 {
   cdc_IrqInStage(&gPortB);
 }
@@ -522,9 +580,10 @@ void cdc_InterruptBIn(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
-void cdc_BulkBIn(U32 aEvent)
+
+static void cdc_BulkBIn(U32 aEvent)
 {
-  //cdc_InStage();
+  cdc_InStage(&gPortB);
 }
 
 //-----------------------------------------------------------------------------
@@ -532,9 +591,56 @@ void cdc_BulkBIn(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
-void cdc_BulkBOut(U32 aEvent)
+
+static void cdc_BulkBOut(U32 aEvent)
 {
-  //cdc_OutStage();
+  cdc_OutStage(&gPortB);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Puts received Byte from USB EP buffer to the Rx FIFO
+ *  @param pByte - Pointer to the container for Byte
+ *  @return None
+ */
+
+static void cdc_RxFifoPutB(U8 * pByte)
+{
+//  LOG(" %0.2X", *pByte);
+  (void)FIFO_Put(&gPortB.rxFifo, pByte);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets Byte that need to be transmitted from the Tx FIFO
+ *  @param pByte - Pointer to the container for Byte
+ *  @return None
+ */
+
+static void cdc_TxFifoGetB(U8 * pByte)
+{
+//  LOG(" %0.2X", *pByte);
+  (void)FIFO_Get(&gPortB.txFifo, pByte);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Puts received Byte from UART to the Tx FIFO
+ *  @param pByte - Pointer to the container for Byte
+ *  @return None
+ */
+
+static FW_BOOLEAN uart_FifoPutB(U8 * pByte)
+{
+  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPortB.txFifo, pByte));
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets Byte that need to be transmitted from the Rx FIFO
+ *  @param pByte - Pointer to the container for Byte
+ *  @return None
+ */
+
+static FW_BOOLEAN uart_FifoGetB(U8 * pByte)
+{
+  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortB.rxFifo, pByte));
 }
 #endif /* USB_CDD */
 
@@ -543,6 +649,7 @@ void cdc_BulkBOut(U32 aEvent)
  *  @param None
  *  @return None
  */
+
 void CDC_Init(void)
 {
   /* Register appropriate EP callbacks */
@@ -551,6 +658,8 @@ void CDC_Init(void)
   USB_SetCb_Ep(USB_CDC_EP_IRQ_I, cdc_InterruptAIn);
   /* Clear Port context */
   memset(&gPortA, 0, sizeof(gPortA));
+  /* Port is not ready yet */
+  gPortA.ready = FW_FALSE;
   /* Initialize Endpoints */
   gPortA.epBlkO = USB_CDC_EP_BLK_O;
   gPortA.epBlkI = USB_CDC_EP_BLK_I;
@@ -558,17 +667,23 @@ void CDC_Init(void)
   /* Initialize FIFOs */
   FIFO_Init(&gPortA.rxFifo, gPortA.rxBuffer, sizeof(gPortA.rxBuffer));
   FIFO_Init(&gPortA.txFifo, gPortA.txBuffer, sizeof(gPortA.txBuffer));
+  gPortA.rxFifoPutCb = cdc_RxFifoPutA;
+  gPortA.txFifoGetCb = cdc_TxFifoGetA;
   /* Initialize pointers */
   gPortA.lineCoding = &gLineCodingA;
   gPortA.notification = &gNotificationA;
+  /* Initialize UART Number */
+  gPortA.uart = UART1;
   
 #if (USB_CDD)
   /* Register appropriate EP callbacks */
-  USB_SetCb_Ep(USB_CDC_EP_BLK_O, cdc_BulkBOut);
-  USB_SetCb_Ep(USB_CDC_EP_BLK_I, cdc_BulkBIn);
-  USB_SetCb_Ep(USB_CDC_EP_IRQ_I, cdc_InterruptBIn);
+  USB_SetCb_Ep(USB_CDD_EP_BLK_O, cdc_BulkBOut);
+  USB_SetCb_Ep(USB_CDD_EP_BLK_I, cdc_BulkBIn);
+  USB_SetCb_Ep(USB_CDD_EP_IRQ_I, cdc_InterruptBIn);
   /* Clear Port context */
   memset(&gPortB, 0, sizeof(gPortB));
+  /* Port is not ready yet */
+  gPortB.ready = FW_FALSE;
   /* Initialize Endpoints */
   gPortB.epBlkO = USB_CDD_EP_BLK_O;
   gPortB.epBlkI = USB_CDD_EP_BLK_I;
@@ -576,14 +691,12 @@ void CDC_Init(void)
   /* Initialize FIFOs */
   FIFO_Init(&gPortB.rxFifo, gPortB.rxBuffer, sizeof(gPortB.rxBuffer));
   FIFO_Init(&gPortB.txFifo, gPortB.txBuffer, sizeof(gPortB.txBuffer));
+  gPortB.rxFifoPutCb = cdc_RxFifoPutB;
+  gPortB.txFifoGetCb = cdc_TxFifoGetB;
   /* Initialize pointers */
   gPortB.lineCoding = &gLineCodingB;
   gPortB.notification = &gNotificationB;
+  /* Initialize UART Number */
+  gPortB.uart = UART2;
 #endif
-
-  /* Create Semaphores/Mutex for VCP */
-//  gVcpSemRx = xSemaphoreCreateBinary();
-//  gVcpMutRx = xSemaphoreCreateMutex();
-//  gVcpSemTx = xSemaphoreCreateBinary();
-//  gVcpMutTx = xSemaphoreCreateMutex();
 }
