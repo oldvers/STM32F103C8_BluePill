@@ -32,6 +32,80 @@
 //  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&tx, data));
 //}
 
+
+
+
+
+
+
+
+
+
+
+
+const U8 step[8] = {0x09, 0x01, 0x03, 0x02, 0x06, 0x04, 0x0C, 0x08};
+
+
+//// One revolution CW using half step mode
+//for (cycle = 0; cycle < 512; cycle++)
+//{
+//    GPIO_Write(GPIOB, 0x9000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x1000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x3000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x2000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x6000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x4000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0xC000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x8000);
+//    delay(5);
+//}
+// 
+//delay(1000);
+// 
+//// One revolution CCW using half step mode
+//for (cycle = 0; cycle < 512; cycle++)
+//{
+//    GPIO_Write(GPIOB, 0x8000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0xC000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x4000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x6000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x2000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x3000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x1000);
+//    delay(5);
+//    GPIO_Write(GPIOB, 0x9000);
+//    delay(5);
+//}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void vLEDTask(void * pvParameters)
 {
 //    /* UART1: PA9 - Tx, PA10 - Rx*/
@@ -75,6 +149,8 @@ void vJTAGICEmkIITask(void * pvParameters)
 //  U8  Rx[130];
 //  U16 RxLen = 0;
 //  U32 time;
+    U32 cycle = 0;
+    U16 temp = 0;
 
     LOG("JTAG ICE mkII Task Started\r\n");
 
@@ -84,31 +160,24 @@ void vJTAGICEmkIITask(void * pvParameters)
     AFIO->MAPR |= (2 << 24);    
     /* Init PB3 */
     GPIO_Init(GPIOB,  3, GPIO_TYPE_OUT_PP_50MHZ);
-    GPIO_Init(GPIOA,  7, GPIO_TYPE_OUT_PP_50MHZ);
-    GPIO_Init(GPIOB, 11, GPIO_TYPE_OUT_PP_50MHZ);
-    GPIO_Hi(GPIOB, 3);
-    GPIO_Hi(GPIOB, 3);
-    GPIO_Hi(GPIOB, 3);
-    GPIO_Hi(GPIOB, 3);
-    GPIO_Hi(GPIOB, 3);
-    GPIO_Hi(GPIOB, 3);
-    GPIO_Lo(GPIOB, 3);
-    
 
-    /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
-    GPIO_Init(GPIOB, 2, GPIO_TYPE_OUT_OD_2MHZ);
-    GPIO_Hi(GPIOB, 2);
+    GPIO_Init(GPIOB, 6, GPIO_TYPE_OUT_PP_2MHZ);
+    GPIO_Init(GPIOB, 7, GPIO_TYPE_OUT_PP_2MHZ);
+    GPIO_Init(GPIOB, 8, GPIO_TYPE_OUT_PP_2MHZ);
+    GPIO_Init(GPIOB, 9, GPIO_TYPE_OUT_PP_2MHZ);
 
-    /* Delay */
-    vTaskDelay(200);
-
-    /* Init USB. Switch-on 1k5 PullUp to USB D+ - connect USB device */
-    USBD_Init();
-    GPIO_Lo(GPIOB, 2);
-
-//  if (TRUE == VCP_Open())
-//  {
-    vTaskDelay(5000);
+//    /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
+//    GPIO_Init(GPIOB, 2, GPIO_TYPE_OUT_OD_2MHZ);
+//    GPIO_Hi(GPIOB, 2);
+//
+//    /* Delay */
+//    vTaskDelay(200);
+//
+//    /* Init USB. Switch-on 1k5 PullUp to USB D+ - connect USB device */
+//    USBD_Init();
+//    GPIO_Lo(GPIOB, 2);
+//
+//    vTaskDelay(5000);
       
     while(FW_TRUE)
     {
@@ -128,7 +197,19 @@ void vJTAGICEmkIITask(void * pvParameters)
 //      {
 //        LOG("VCP Rx: Timout\r\n");
 //      }
-        vTaskDelay(5000);
+      
+        // One revolution CW using half step mode
+        for (cycle = 0; cycle < 100000; cycle++)
+        {
+            temp = GPIOB->IDR;
+            temp &= ~(0x0F << 6);
+            temp |= (step[cycle % 8] << 6);
+            GPIOB->ODR = temp;
+            vTaskDelay(1);
+            //for (U16 delay = 0; delay < 5000; delay++) {};
+        }
+      
+        vTaskDelay(2000);
     }
 //  }
 //  VCP_Close();
