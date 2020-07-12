@@ -15,28 +15,28 @@
 #  define IRQ_LOG(...)
 #endif
 
-//void Fault(U32 stack[])
-//{
-//    enum {r0, r1, r2, r3, r12, lr, pc, psr};
-//
-//    LOG("Hard Fault\r\n");
-//    LOG("  SHCSR    = 0x%08x\r\n", SCB->SHCSR);
-//    LOG("  CFSR     = 0x%08x\r\n", SCB->CFSR);
-//    LOG("  HFSR     = 0x%08x\r\n", SCB->HFSR);
-//    LOG("  MMFAR    = 0x%08x\r\n", SCB->MMFAR);
-//    LOG("  BFAR     = 0x%08x\r\n", SCB->BFAR);
-//
-//    LOG("  R0       = 0x%08x\r\n", stack[r0]);
-//    LOG("  R1       = 0x%08x\r\n", stack[r1]);
-//    LOG("  R2       = 0x%08x\r\n", stack[r2]);
-//    LOG("  R3       = 0x%08x\r\n", stack[r3]);
-//    LOG("  R12      = 0x%08x\r\n", stack[r12]);
-//    LOG("  LR [R14] = 0x%08x - Subroutine call return address\r\n", stack[lr]);
-//    LOG("  PC [R15] = 0x%08x - Program counter\r\n", stack[pc]);
-//    LOG("  PSR      = 0x%08x\r\n", stack[psr]);
-//
-//    while(FW_TRUE) {};
-//}
+void Fault(U32 stack[])
+{
+    enum {r0, r1, r2, r3, r12, lr, pc, psr};
+
+    LOG("Hard Fault\r\n");
+    LOG("  SHCSR    = 0x%08x\r\n", SCB->SHCSR);
+    LOG("  CFSR     = 0x%08x\r\n", SCB->CFSR);
+    LOG("  HFSR     = 0x%08x\r\n", SCB->HFSR);
+    LOG("  MMFAR    = 0x%08x\r\n", SCB->MMFAR);
+    LOG("  BFAR     = 0x%08x\r\n", SCB->BFAR);
+
+    LOG("  R0       = 0x%08x\r\n", stack[r0]);
+    LOG("  R1       = 0x%08x\r\n", stack[r1]);
+    LOG("  R2       = 0x%08x\r\n", stack[r2]);
+    LOG("  R3       = 0x%08x\r\n", stack[r3]);
+    LOG("  R12      = 0x%08x\r\n", stack[r12]);
+    LOG("  LR [R14] = 0x%08x - Subroutine call return address\r\n", stack[lr]);
+    LOG("  PC [R15] = 0x%08x - Program counter\r\n", stack[pc]);
+    LOG("  PSR      = 0x%08x\r\n", stack[psr]);
+
+    while(FW_TRUE) {};
+}
 
 //                IMPORT  Fault
 //HardFault_Handler\
@@ -64,14 +64,14 @@ void NMI_Handler(void)
   //
 }
 
-void HardFault_Handler(void)
-{
-  /* Go to infinite loop when Hard Fault exception occurs */
-  while (1)
-  {
-    //
-  }
-}
+//void HardFault_Handler(void)
+//{
+//  /* Go to infinite loop when Hard Fault exception occurs */
+//  while (1)
+//  {
+//    //
+//  }
+//}
 
 void MemManage_Handler(void)
 {

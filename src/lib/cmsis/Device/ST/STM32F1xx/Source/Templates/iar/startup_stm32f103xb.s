@@ -65,7 +65,8 @@
         SECTION .intvec:CODE:NOROOT(2)
 
         EXTERN  __iar_program_start
-        EXTERN  ApplicationInit        
+        EXTERN  ApplicationInit
+        EXTERN  Fault
         PUBLIC  __vector_table
 
         DATA
@@ -154,7 +155,12 @@ NMI_Handler
         PUBWEAK HardFault_Handler
         SECTION .text:CODE:REORDER:NOROOT(1)
 HardFault_Handler
-        B HardFault_Handler
+        TST     LR, #4
+        ITE     EQ
+        MRSEQ   R0, MSP
+        MRSNE   R0, PSP
+        B       Fault
+;       B HardFault_Handler
 
         PUBWEAK MemManage_Handler
         SECTION .text:CODE:REORDER:NOROOT(1)

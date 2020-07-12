@@ -93,7 +93,7 @@ static const U8 USB_ConfigDescriptor[] =
   WBVAL((                            /* wTotalLength */  //1*9+2*9+3*7+1*9
    USB_CONFIGUARTION_DESC_SIZE * (1)                                         +
    USB_INTERFACE_DESC_SIZE     * (USB_IF_CNT)                                +
-   USB_ENDPOINT_DESC_SIZE      * (USB_EP_CNT - 1)                            +
+   USB_ENDPOINT_DESC_SIZE      * (USB_EP_CNT - USB_CTRL_EP_CNT)              +
    USB_HID_DESC_SIZE           * (USB_HID)                                   +
    USB_IF_ASSOC_DESC_SIZE      * (USB_MSC + USB_CDC + USB_HID + USB_CDD - 1) +
    CDC_FNC_DESC_SUM_SIZE       * (USB_CDC + USB_CDD)

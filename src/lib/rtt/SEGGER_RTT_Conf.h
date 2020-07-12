@@ -77,7 +77,7 @@ Revision: $Rev: 15929 $
 
 #define SEGGER_RTT_PRINTF_BUFFER_SIZE             (64u)    // Size of buffer for RTT printf to bulk-send chars via RTT     (Default: 64)
 
-#define SEGGER_RTT_MODE_DEFAULT                   SEGGER_RTT_MODE_NO_BLOCK_SKIP // Mode for pre-initialized terminal channel (buffer 0)
+#define SEGGER_RTT_MODE_DEFAULT                   SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL // Mode for pre-initialized terminal channel (buffer 0)
 
 /*********************************************************************
 *
@@ -114,7 +114,7 @@ Revision: $Rev: 15929 $
 // or define SEGGER_RTT_LOCK() to completely disable interrupts.
 //
 
-#define SEGGER_RTT_MAX_INTERRUPT_PRIORITY         (0x20)   // Interrupt priority to lock on SEGGER_RTT_LOCK on Cortex-M3/4 (Default: 0x20)
+#define SEGGER_RTT_MAX_INTERRUPT_PRIORITY         (0x00)   // Interrupt priority to lock on SEGGER_RTT_LOCK on Cortex-M3/4 (Default: 0x20)
 
 /*********************************************************************
 *

@@ -30,6 +30,9 @@
 /* USB Power - Default Power Setting (0 - Bus-powered, 1 - Self-powered) */
 #define USB_POWER                 (0)
 
+/* Count of Control Endpoints */
+#define USB_CTRL_EP_CNT           (2)
+
 /* Max Control Endpoint Packet Size (8, 16, 32 or 64 Bytes) */
 #define USB_CTRL_PACKET_SIZE      (8)
 /* Max MSC Bulk In/Out Endpoint Packet Size */
@@ -37,7 +40,7 @@
 /* Max CDC Interrupt Endpoint Packet Size */
 #define USB_CDC_IRQ_PACKET_SIZE   (8)
 /* Max CDC Bulk In/Out Endpoint Packet Size */
-#define USB_CDC_PACKET_SIZE       (64)
+#define USB_CDC_PACKET_SIZE       (48)
 /* Max HID Endpoint Packet Size */
 #define USB_HID_PACKET_SIZE       (4)
 
@@ -118,7 +121,7 @@
 #define USB_EP_CNT           (USB_MSC * USB_MSC_EP_CNT + \
                               USB_CDC * USB_CDC_EP_CNT + \
                               USB_HID * USB_HID_EP_CNT + \
-                              USB_CDD * USB_CDD_EP_CNT + 1)
+                              USB_CDD * USB_CDD_EP_CNT + USB_CTRL_EP_CNT)
 
 #if (0 == (USB_MSC + USB_CDC + USB_HID + USB_CDD))
 #  error "At least one USB Device Class should be selected!"

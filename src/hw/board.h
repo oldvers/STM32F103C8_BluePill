@@ -17,4 +17,20 @@
 #define UART2_RX_PORT        GPIOA
 #define UART2_RX_PIN         3
 
+/* WiFi: PB7 - En */
+#define WIFI_EN_PORT         GPIOB
+#define WIFI_EN_PIN          7
+
+/* SWD - SWO */
+#define SWD_SWO_PORT         GPIOB
+#define SWD_SWO_PIN          3
+
+/* USB - Pull Up */
+#define USB_PUP_PORT         GPIOB
+#define USB_PUP_PIN          2
+
+/* LED */
+#define LED_PORT             GPIOC
+#define LED_PIN              13
+
 #endif  /* __BOARD_H__ */

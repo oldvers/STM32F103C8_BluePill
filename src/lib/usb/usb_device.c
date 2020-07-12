@@ -316,7 +316,7 @@ void USBD_Init(void)
   LOG("    EP 1 Ctl O  = 0x%02X\r\n", EP0_O);
 
   /* Init Hardware */
-  USB_Init(USB_EP_CNT, USB_CTRL_PACKET_SIZE);
+  USB_Init(USB_CTRL_PACKET_SIZE);
   /* Register Callback for Control Endpoint */
   USB_SetCb_Ep(EP0_O, USBC_ControlInOut);
   USB_SetCb_Ep(EP0_I, USBC_ControlInOut);
