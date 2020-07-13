@@ -2,7 +2,7 @@
 #include "system.h"
 #include "interrupts.h"
 #include "uart.h"
-#include "debug.h"
+//#include "debug.h"
 #include "gpio.h"
 
 //-----------------------------------------------------------------------------
@@ -129,9 +129,9 @@ void UART_Init
   gUARTCtx[aUART].HW->BRR = brr;
 
   /* Setup Control Registers */
-  gUARTCtx[aUART].HW->CR1 = ( USART_CR1_UE );
   gUARTCtx[aUART].HW->CR2 = ( 0 );
   gUARTCtx[aUART].HW->CR3 = ( 0 );
+  gUARTCtx[aUART].HW->CR1 = ( USART_CR1_UE );
 }
 
 //-----------------------------------------------------------------------------
@@ -195,7 +195,7 @@ void UART_DeInit(UART_t aUART)
 
 void UART_IRQHandler(UART_t aUART)
 {
-  GPIO_Hi(GPIOA, 7);
+//  GPIO_Hi(GPIOA, 7);
 
   U32 sr     = gUARTCtx[aUART].HW->SR;
   U32 cr1    = gUARTCtx[aUART].HW->CR1;
@@ -211,29 +211,31 @@ void UART_IRQHandler(UART_t aUART)
     if ((0 != (sr & USART_SR_RXNE)) && (0 != (cr1 & USART_CR1_RXNEIE)))
     {
       data = gUARTCtx[aUART].HW->DR;
+      GPIO_Hi(GPIOA, 7);
       if (NULL != gUARTCtx[aUART].RxByteCb)
       {
         (void)gUARTCtx[aUART].RxByteCb((U8 *)&data);
       }
+      GPIO_Lo(GPIOA, 7);
     }
   }
   else
   {
     if (0 != (sr & USART_SR_PE))
     {
-      LOG("UART: Parity Error!\r\n");
+      //LOG("UART: Parity Error!\r\n");
     }
     if (0 != (sr & USART_SR_NE))
     {
-      LOG("UART: Noise Error!\r\n");
+      //LOG("UART: Noise Error!\r\n");
     }
     if (0 != (sr & USART_SR_FE))
     {
-      LOG("UART: Frame Error!\r\n");
+      //LOG("UART: Frame Error!\r\n");
     }
     if (0 != (sr & USART_SR_ORE))
     { 
-      LOG("UART: Overrun Error!\r\n");
+      //LOG("UART: Overrun Error!\r\n");
     }
     data = gUARTCtx[aUART].HW->DR;
 
@@ -356,7 +358,7 @@ void UART_IRQHandler(UART_t aUART)
     gUARTCtx[aUART].HW->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
   }
   
-  GPIO_Lo(GPIOA, 7);
+//  GPIO_Lo(GPIOA, 7);
 }
 
 //-----------------------------------------------------------------------------
@@ -373,7 +375,7 @@ void UART_TxStart(UART_t aUART)
   if (0 != (gUARTCtx[aUART].HW->CR1 & USART_CR1_TE)) return;
 
   gUARTCtx[aUART].HW->CR1 |= (USART_CR1_TE | USART_CR1_TXEIE);
-  LOG("UART: Tx Start\r\n");
+  //LOG("UART: Tx Start\r\n");
 }
 
 //-----------------------------------------------------------------------------
@@ -390,5 +392,5 @@ void UART_RxStart(UART_t aUART)
   if (0 != (gUARTCtx[aUART].HW->CR1 & USART_CR1_RE)) return;
 
   gUARTCtx[aUART].HW->CR1 |= (USART_CR1_RE | USART_CR1_RXNEIE);
-  LOG("UART: Rx Start\r\n");
+  //LOG("UART: Rx Start\r\n");
 }

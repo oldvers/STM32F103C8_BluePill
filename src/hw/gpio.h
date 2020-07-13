@@ -41,22 +41,21 @@
 #define GPIO_TYPE_ALT_OD_2MHZ              ((U32)0x0E)
 #define GPIO_TYPE_ALT_OD_50MHZ             ((U32)0x0F)
 
-typedef struct
-{
-  volatile U32 CR[2];
-  volatile U32 IDR;
-  volatile U32 ODR;
-  volatile U32 BSRR;
-  volatile U32 BRR;
-  volatile U32 LCKR;
-} GPIO;
+//typedef struct
+//{
+//  volatile U32 CR[2];
+//  volatile U32 IDR;
+//  volatile U32 ODR;
+//  volatile U32 BSRR;
+//  volatile U32 BRR;
+//  volatile U32 LCKR;
+//} GPIO;
 
-
-#define GPIO_Init(port,pin,mode) \
-  RCC->APB2ENR |= \
-  (U32)((1 << (((U32)port >> 10) & 0x0F)) | (RCC_APB2ENR_AFIOEN * (U8)(mode > 8))); \
-  ((GPIO *)port)->CR[pin / 8] &= ~(GPIO_TYPE_MASK << ((pin % 8) * 4)); \
-	((GPIO *)port)->CR[pin / 8] |= (mode << ((pin % 8) * 4));
+//#define GPIO_Init(port,pin,mode) \
+//  RCC->APB2ENR |= \
+//  (U32)((1 << (((U32)port >> 10) & 0x0F)) | (RCC_APB2ENR_AFIOEN * (U8)(mode > 8))); \
+//  ((GPIO *)port)->CR[pin / 8] &= ~(GPIO_TYPE_MASK << ((pin % 8) * 4)); \
+//	((GPIO *)port)->CR[pin / 8] |= (mode << ((pin % 8) * 4));
 
 #define GPIO_Hi(port,pin) \
   (port->BSRR = (1 << pin))
@@ -67,4 +66,6 @@ typedef struct
 #define GPIO_In(port,pin) \
   ((port->IDR >> pin) & 1)
 
+void GPIO_Init(GPIO_TypeDef * pPort, U8 aPin, U8 aMode, U8 aValue);
+  
 #endif /* __GPIO_H__ */

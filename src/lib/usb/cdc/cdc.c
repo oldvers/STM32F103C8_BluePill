@@ -155,11 +155,12 @@ static void uart_Init(UART_t aUART)
   if (UART1 == aUART)
   {
     /* UART1: PA9 - Tx, PA10 - Rx, DTR - PB8, RTS - PB6 */
-    GPIO_Init(UART1_TX_PORT,  UART1_TX_PIN,  GPIO_TYPE_ALT_PP_10MHZ);
-    GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_FLOATING);
-    GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_OUT_PP_10MHZ);
-    GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_OUT_PP_10MHZ);
-
+    GPIO_Init(UART1_TX_PORT,  UART1_TX_PIN,  GPIO_TYPE_OUT_PP_10MHZ, 1);
+    GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_PUP_PDN,   1);
+    GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
+    GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
+   
+    UART_DeInit(UART1);
     UART_Init
     (
       UART1,
@@ -167,14 +168,22 @@ static void uart_Init(UART_t aUART)
       uart_FifoPutA,
       uart_FifoGetA
     );
+    
+    /* UART1: PA9 - Tx, PA10 - Rx, DTR - PB8, RTS - PB6 */
+    GPIO_Init(UART1_TX_PORT,  UART1_TX_PIN,  GPIO_TYPE_ALT_PP_10MHZ, 1);
+    GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_PUP_PDN,   1);
+    GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_OUT_OD_10MHZ, 1);
+    GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_OUT_PP_10MHZ, 1);
+    
     UART_RxStart(UART1);
   }
   else
   {
     /* UART2: PA2 - Tx, PA3 - Rx */
-    GPIO_Init(UART2_TX_PORT, UART2_TX_PIN, GPIO_TYPE_ALT_PP_10MHZ);
-    GPIO_Init(UART2_RX_PORT, UART2_RX_PIN, GPIO_TYPE_IN_FLOATING);
-
+    GPIO_Init(UART2_TX_PORT, UART2_TX_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
+    GPIO_Init(UART2_RX_PORT, UART2_RX_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
+    
+    UART_DeInit(UART2);
     UART_Init
     (
       UART2,
@@ -182,6 +191,11 @@ static void uart_Init(UART_t aUART)
       uart_FifoPutB,
       uart_FifoGetB
     );
+    
+    /* UART2: PA2 - Tx, PA3 - Rx */
+    GPIO_Init(UART2_TX_PORT, UART2_TX_PIN, GPIO_TYPE_ALT_PP_10MHZ, 1);
+    GPIO_Init(UART2_RX_PORT, UART2_RX_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
+
     UART_RxStart(UART2);
   }
 }
@@ -224,21 +238,21 @@ static void uart_DTR_RTS_Set(UART_t aUART, U16 aValue)
     /* DTR signal */
     if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_DTR)) )
     {
-      GPIO_Lo(UART1_DTR_PORT, UART1_DTR_PIN);
+      GPIO_Hi(UART1_DTR_PORT, UART1_DTR_PIN);
     }
     else
     {
-      GPIO_Hi(UART1_DTR_PORT, UART1_DTR_PIN);
+      GPIO_Lo(UART1_DTR_PORT, UART1_DTR_PIN);
     }
 
     /* RTS signal */
     if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_RTS)) )
     {
-      GPIO_Lo(UART1_RTS_PORT, UART1_RTS_PIN);
+      GPIO_Hi(UART1_RTS_PORT, UART1_RTS_PIN);
     }
     else
     {
-      GPIO_Hi(UART1_RTS_PORT, UART1_RTS_PIN);
+      GPIO_Lo(UART1_RTS_PORT, UART1_RTS_PIN);
     }
   }
 }
@@ -264,7 +278,7 @@ static void cdc_IrqInStage(CDC_PORT * pPort)
     len = pPort->irqBuffLen;
   }
 
-  LOG("CDC IRQ IN: len = %d\r\n", len);
+  //LOG("CDC IRQ IN: len = %d\r\n", len);
   USB_EpWrite(pPort->epIrqI, pPort->irqBuff, len);
 
   pPort->irqBuff += len;
@@ -311,8 +325,8 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
   switch (pSetup->bRequest)
   {
     case CDC_REQ_SET_LINE_CODING:
-      LOG("CDC Setup: SetLineCoding: IF = %d L = %d\r\n",
-            pSetup->wIndex.W, *pSize);
+      //LOG("CDC Setup: SetLineCoding: IF = %d L = %d\r\n",
+      //      pSetup->wIndex.W, *pSize);
 
       port = cdc_GetPort(pSetup->wIndex.W);
       *pData = (U8 *)port->lineCoding;
@@ -321,7 +335,7 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
       break;
 
     case CDC_REQ_GET_LINE_CODING:
-      LOG("CDC Setup: GetLineCoding: IF = %d\r\n", pSetup->wIndex.W);
+      //LOG("CDC Setup: GetLineCoding: IF = %d\r\n", pSetup->wIndex.W);
 
       port = cdc_GetPort(pSetup->wIndex.W);
       *pData = (U8 *)port->lineCoding;
@@ -330,8 +344,8 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
       break;
 
     case CDC_REQ_SET_CONTROL_LINE_STATE:
-      LOG("CDC Setup: Set Ctrl Line State: IF = %d Val = %04X\r\n",
-            pSetup->wIndex.W, pSetup->wValue.W);
+      //LOG("CDC Setup: Set Ctrl Line State: IF = %d Val = %04X\r\n",
+      //      pSetup->wIndex.W, pSetup->wValue.W);
 
       port = cdc_GetPort(pSetup->wIndex.W);
       uart_DTR_RTS_Set(port->uart, pSetup->wValue.W);
@@ -366,11 +380,13 @@ USB_CTRL_STAGE CDC_CtrlOutReq
   {
     case CDC_REQ_SET_LINE_CODING:
       port = cdc_GetPort(pSetup->wIndex.W);
+      GPIO_Hi(GPIOB, 3);
       uart_Init(port->uart);
+      GPIO_Lo(GPIOB, 3);
       port->ready = FW_TRUE;
 
-      LOG("CDC Out: Set Line Coding: IF = %d Baud = %d, Len = %d\r\n",
-            pSetup->wIndex.W, port->lineCoding->dwBaudRate, *pSize);
+      //LOG("CDC Out: Set Line Coding: IF = %d Baud = %d, Len = %d\r\n",
+      //      pSetup->wIndex.W, port->lineCoding->dwBaudRate, *pSize);
 
       result = USB_CTRL_STAGE_STATUS;
       break;

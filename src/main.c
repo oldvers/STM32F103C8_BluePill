@@ -18,7 +18,7 @@
 void vLEDTask(void * pvParameters)
 {
     /* LED */
-    GPIO_Init(LED_PORT, LED_PIN, GPIO_TYPE_OUT_OD_2MHZ);
+    GPIO_Init(LED_PORT, LED_PIN, GPIO_TYPE_OUT_OD_2MHZ, 1);
 
     while(FW_TRUE)
     {
@@ -42,24 +42,22 @@ void vDualUartTask(void * pvParameters)
     AFIO->MAPR |= (2 << 24);
 
     /* Init PB3 */
-    GPIO_Init(SWD_SWO_PORT, SWD_SWO_PIN, GPIO_TYPE_OUT_PP_50MHZ);
+    GPIO_Init(SWD_SWO_PORT, SWD_SWO_PIN, GPIO_TYPE_OUT_PP_50MHZ, 0);
 
     /* Enable WiFi Module */
-    GPIO_Init(WIFI_EN_PORT, WIFI_EN_PIN, GPIO_TYPE_OUT_PP_2MHZ);
-    GPIO_Hi(WIFI_EN_PORT, WIFI_EN_PIN);
+    GPIO_Init(WIFI_EN_PORT, WIFI_EN_PIN, GPIO_TYPE_OUT_PP_2MHZ, 1);
 
 
 
     /* Test Pins */
-    GPIO_Init(GPIOA,  7, GPIO_TYPE_OUT_PP_50MHZ);
-    GPIO_Init(GPIOB, 11, GPIO_TYPE_OUT_PP_50MHZ);
+    GPIO_Init(GPIOA,  7, GPIO_TYPE_OUT_PP_50MHZ, 0);
+    GPIO_Init(GPIOB, 11, GPIO_TYPE_OUT_PP_50MHZ, 0);
 
 
 
 
     /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
-    GPIO_Init(USB_PUP_PORT, USB_PUP_PIN, GPIO_TYPE_OUT_OD_2MHZ);
-    GPIO_Hi(USB_PUP_PORT, USB_PUP_PIN);
+    GPIO_Init(USB_PUP_PORT, USB_PUP_PIN, GPIO_TYPE_OUT_OD_2MHZ, 1);
 
     /* Delay */
     vTaskDelay(200);

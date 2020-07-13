@@ -7,7 +7,7 @@
 //-----------------------------------------------------------------------------
 /* Private definitions */
 
-#define ENABLE_IRQ_DEBUG
+//#define ENABLE_IRQ_DEBUG
 
 #ifdef ENABLE_IRQ_DEBUG
 #  define IRQ_LOG(...)       LOG(__VA_ARGS__)

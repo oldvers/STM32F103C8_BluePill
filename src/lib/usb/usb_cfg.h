@@ -47,7 +47,7 @@
 /* HID Interrupt Endpoint Polling Interval (ms) */
 #define USB_HID_IRQ_INTERVAL      (32)
 /* CDC Interrupt Endpoint Polling Interval (ms) */
-#define USB_CDC_IRQ_INTERVAL      (16)
+#define USB_CDC_IRQ_INTERVAL      (1)
 
 /* USB Class Support */
 /* Mass Storage Device Class (MSC) (0 - Disabled, 1 - Enabled) */

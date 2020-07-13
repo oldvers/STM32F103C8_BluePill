@@ -1,6 +1,6 @@
 #include "fifo.h"
-#include "interrupts.h"
-#include "gpio.h"
+//#include "interrupts.h"
+//#include "gpio.h"
 
 /* Very simple queue
  * These are FIFO queues which discard the new data when full.
@@ -27,22 +27,22 @@
 
 FW_RESULT FIFO_Put(FIFO_p pFIFO, U8 * pByte)
 {
-  IRQ_SAFE_AREA();
-  GPIO_Hi(GPIOB, 3);
+//  IRQ_SAFE_AREA();
+//  GPIO_Hi(GPIOB, 3);
 
   if (pFIFO->I == ((pFIFO->O - 1 + pFIFO->S) % pFIFO->S))
   {
     return FW_FULL;
   }
 
-  IRQ_DISABLE();
+//  IRQ_DISABLE();
   
   pFIFO->B[pFIFO->I] = *pByte;
 
   pFIFO->I = (pFIFO->I + 1) % pFIFO->S;
   
-  IRQ_RESTORE();
-  GPIO_Lo(GPIOB, 3);
+//  IRQ_RESTORE();
+//  GPIO_Lo(GPIOB, 3);
   return FW_SUCCESS;
 }
 
@@ -55,22 +55,22 @@ FW_RESULT FIFO_Put(FIFO_p pFIFO, U8 * pByte)
 
 FW_RESULT FIFO_Get(FIFO_p pFIFO, U8 * pByte)
 {
-  IRQ_SAFE_AREA();
-  GPIO_Hi(GPIOB, 3);
+//  IRQ_SAFE_AREA();
+//  GPIO_Hi(GPIOB, 3);
 
   if (pFIFO->I == pFIFO->O)
   {
     return FW_EMPTY;
   }
 
-  IRQ_DISABLE();
+//  IRQ_DISABLE();
 
   *pByte = pFIFO->B[pFIFO->O];
 
   pFIFO->O = (pFIFO->O + 1) % pFIFO->S;
 
-  IRQ_RESTORE();
-  GPIO_Lo(GPIOB, 3);
+//  IRQ_RESTORE();
+//  GPIO_Lo(GPIOB, 3);
 
   return FW_SUCCESS;
 }
@@ -133,13 +133,13 @@ void FIFO_Init(FIFO_p pFIFO, U8 * pBuffer, U32 aSize)
 
 void FIFO_Clear(FIFO_p pFIFO)
 {
-  IRQ_SAFE_AREA();
+//  IRQ_SAFE_AREA();
 
-  IRQ_DISABLE();
+//  IRQ_DISABLE();
 
   pFIFO->I = 0;
   pFIFO->O = 0;
   for(U32 i = 0; i < pFIFO->S; i++) pFIFO->B[i] = 0;
   
-  IRQ_RESTORE();
+//  IRQ_RESTORE();
 }
