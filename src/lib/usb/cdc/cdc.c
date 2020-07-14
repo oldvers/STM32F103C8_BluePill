@@ -216,7 +216,7 @@ typedef __packed struct COMM_PROP_RSP_S
   U8 uniProvName[15];
 } COMM_PROP_RSP_t, * COMM_PROP_RSP_p;
 
-static COMM_PROP_RSP_t gCommPropRspA =
+static COMM_PROP_RSP_t gCommPropA =
 {
   .wLength            = sizeof(COMM_PROP_RSP_t),
   .bcdVersion         = COMM_PROP_RSP_VERSION,
@@ -253,7 +253,7 @@ static COMM_PROP_RSP_t gCommPropRspA =
   .uniProvName        = "SILABS USB V2.0",
 };
 
-static COMM_PROP_RSP_t gCommPropRspB =
+static COMM_PROP_RSP_t gCommPropB =
 {
   .wLength            = sizeof(COMM_PROP_RSP_t),
   .bcdVersion         = COMM_PROP_RSP_VERSION,
@@ -336,10 +336,115 @@ static COMM_PROP_RSP_t gCommPropRspB =
 #define LINE_CTRL_WORD_LEN_7                (7 << LINE_CTRL_WORD_LEN_POS)
 #define LINE_CTRL_WORD_LEN_8                (8 << LINE_CTRL_WORD_LEN_POS)
 
+//-----------------------------------------------------------------------------
+/* Flow Control State Setting/Response */
+typedef __packed struct FLOW_CTRL_STATE_RSP_S
+{
+  /* Control handshake:
+     Bit  Name                   Size   Value  Description
+     0-1  SERIAL_DTR_MASK        2      Code   This field controls the state
+                                               of the DTR output for this
+                                               interface. The following binary
+                                               values are defined:
+                                                 00: DTR is held inactive.
+                                                 01: DTR is held active.
+                                                 10: DTR is controlled by the
+                                                     CP210x device.
+                                                 11: Reserved
+     2    Reserved               1      Flag   Reserved—must always be zero.
+     3    SERIAL_CTS_HANDSHAKE   1      Flag   Controls how the CP210x
+                                               interprets CTS from the end
+                                               device:
+                                                 0: CTS is simply a status input
+                                                 1: CTS is a handshake line
+     4    SERIAL_DSR_HANDSHAKE   1      Flag   Controls how the CP210x
+                                               interprets DSR:
+                                                 0: DSR is simply a status input
+                                                 1: DSR is a handshake line
+     5    SERIAL_DCD_HANDSHAKE   1      Flag   Controls how the CP210x
+                                               interprets DCD from the end
+                                               device:
+                                                 0: DCD is simply a status input
+                                                 1: DCD is a handshake line
+     6    SERIAL_DSR_SENSITIVITY 1     Flag   Controls whether DSR controls
+                                              input data reception:
+                                              0: DSR is simply a status input.
+                                              1: DSR low discards data
+     7-31 Reserved 25 Reserved */
+  U32 ulControlHandshake;
+  /* Control handshake:
+     Bit  Name                   Size  Value  Description
+     0    SERIAL_AUTO_TRANSMIT   1     Flag   Controls whether the CP210x acts
+                                              on XON/XOFF characters received
+                                              from the end device.
+                                                0: No XON/XOFF processing.
+                                                1: XON/XOFF start/stop output
+                                                   to serial port.
+     1    SERIAL_AUTO_RECEIVE    1     Flag   Controls whether the CP210x will
+                                              try to transmit XON/XOFF in order
+                                              to start/stop the reception of
+                                              data from an endl device.
+                                              If set, XOFF (as defined by the
+                                              SET_CHARS command) will be sent by
+                                              the CP210x to the end device when
+                                              the CP210x’s buffers are more
+                                              than 80% full (or as selected by
+                                              the XOFF threshold). XON will be
+                                              sent when the interface’s buffers
+                                              drop below the XON threshold, as
+                                              long as it is fine to do so.
+     2    SERIAL_ERROR_CHAR      1     Flag   Controls how CP210x handles
+                                              characters that are received with
+                                              errors:
+                                                0: The character is discarded.
+                                                1: The character is discarded,
+                                                   and the ERROR special-
+                                                   character is inserted.
+                                                   The ERROR character must be
+                                                   programmed by the host using
+                                                   the SET_CHARS messages
+                                                   (Section 5.22).
+     3    SERIAL_NULL_STRIPPING  1     Flag   If set, any NULL characters
+                                              received by the CP210x from the
+                                              end device will be discarded and
+                                              will not be passed to the host.
+                                              If clear, NULL characters are 
+                                              treated as data.
+     4    SERIAL_BREAK_CHAR      1     Flag   If set, a received break condition
+                                              causes the CP210x to insert a
+                                              BREAK special character 
+                                              (section 5.18) in the receive
+                                              data stream. If clear, BREAK does
+                                              not affect the input data stream.
+                                              In either case, a received break
+                                              always causes the appropriate bit
+                                              of the error mask to be set.
+     5    Reserved               1     Rsrvd  Reserved
+     6–7  SERIAL_RTS_MASK        2     Code   This field controls the RTS line.
+                                                00: RTS is statically inactive.
+                                                01: RTS is statically active.
+                                                10: RTS is used for receive 
+                                                    flow control.
+                                                11: RTS is transmit active
+                                                    signal.AN571
+     8–30 Reserved               23    Zero   Reserved—must be written as zero.
+     31   SERIAL_XOFF_CONTINUE   1     Flag   If set, then the CP210x will send
+                                              XON/XOFF receive flow control
+                                              characters to the end device,
+                                              even if the end device has
+                                              sent XOFF to suspend output and
+                                              has not yet sent XON to resume */
+  U32 ulFlowReplace;
+  /* Threshold for sending XON. When the available space rises above this
+     amount, XON will be sent (if in auto-receive mode) */
+  U32 ulXonLimit;
+  /* Threshold for sending XOFF. When available space drops below this amount,
+     XOFF will be sent (if in auto receive mode) */
+  U32 ulXoffLimit;
+} FLOW_CTRL_STATE_RSP_t, * FLOW_CTRL_STATE_RSP_p;
 
-
-
-
+static FLOW_CTRL_STATE_RSP_t gFlowCtrlStateA = {0};
+static FLOW_CTRL_STATE_RSP_t gFlowCtrlStateB = {0};
 
 
 
@@ -390,21 +495,21 @@ static COMM_PROP_RSP_t gCommPropRspB =
 /* CDC Port Context */
 typedef struct _CDC_PORT
 {
-  U8                epBlkO;
-  U8                epBlkI;
+  U8                    epBlkO;
+  U8                    epBlkI;
 //  U8                epIrqI;
 //  U8                irqBuffLen;
-  FIFO_t            rxFifo;
-  FIFO_t            txFifo;
-  USB_CbByte        rxFifoPutCb;
-  USB_CbByte        txFifoGetCb;
-  U8                rxBuffer[USB_CDC_FIFO_SIZE + 1];
-  U8                txBuffer[USB_CDC_FIFO_SIZE + 1];
-  COMM_PROP_RSP_p   pCommPropRsp;
-//  CDC_LINE_CODING  *lineCoding;
+  FIFO_t                rxFifo;
+  FIFO_t                txFifo;
+  USB_CbByte            rxFifoPutCb;
+  USB_CbByte            txFifoGetCb;
+  U8                    rxBuffer[USB_CDC_FIFO_SIZE + 1];
+  U8                    txBuffer[USB_CDC_FIFO_SIZE + 1];
+  COMM_PROP_RSP_p       pCommProp;
+  FLOW_CTRL_STATE_RSP_p pFlowCtrlState;
 //  CDC_SERIAL_STATE *notification;
-  UART_t            uart;
-  FW_BOOLEAN        ready;
+  UART_t                uart;
+  FW_BOOLEAN            ready;
 } CDC_PORT;
 
 //-----------------------------------------------------------------------------
@@ -662,7 +767,7 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
     case CDC_REQ_GET_PROPS:
       CDC_LOG(" - Get Props\r\n");
 
-      *pData = (U8 *)port->pCommPropRsp;
+      *pData = (U8 *)port->pCommProp;
 
       result = USB_CTRL_STAGE_DATA;
       break;
@@ -678,6 +783,14 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
 
       //uart_DTR_RTS_Set(port->uart, pSetup->wValue.W);
       result = USB_CTRL_STAGE_STATUS;
+      break;
+      
+    case CDC_REQ_SET_FLOW:
+      CDC_LOG(" - Set Flow Control State\r\n");
+
+      *pData = (U8 *)port->pFlowCtrlState;
+
+      result = USB_CTRL_STAGE_WAIT;
       break;
   }
 
@@ -701,7 +814,7 @@ USB_CTRL_STAGE CDC_CtrlOutReq
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
-//  CDC_PORT * port = &gPortA;
+  CDC_PORT * port = cdc_GetPort(pSetup->wIndex.W);
 
   CDC_LOG
   (
@@ -710,8 +823,20 @@ USB_CTRL_STAGE CDC_CtrlOutReq
     *((U32 *)*pData)
   );
   
-//  switch (pSetup->bRequest)
-//  {
+  switch (pSetup->bRequest)
+  {
+    case CDC_REQ_SET_FLOW:
+      CDC_LOG
+      (
+        " - Set Flow: CH = %d FR = %d, XNL = %d XFL = %d\r\n",
+        port->pFlowCtrlState->ulControlHandshake,
+        port->pFlowCtrlState->ulFlowReplace,
+        port->pFlowCtrlState->ulXonLimit,
+        port->pFlowCtrlState->ulXoffLimit
+      );
+            
+      break;
+
 //    case CDC_REQ_SET_LINE_CODING:
 //      port = cdc_GetPort(pSetup->wIndex.W);
 //      GPIO_Hi(GPIOB, 3);
@@ -724,7 +849,7 @@ USB_CTRL_STAGE CDC_CtrlOutReq
 //
 //      result = USB_CTRL_STAGE_STATUS;
 //      break;
-//  }
+  }
 
   return result;
 }
@@ -994,7 +1119,8 @@ void CDC_Init(void)
   /* Initialize pointers */
 //  gPortA.lineCoding = &gLineCodingA;
 //  gPortA.notification = &gNotificationA;
-  gPortA.pCommPropRsp = &gCommPropRspA;
+  gPortA.pCommProp = &gCommPropA;
+  gPortA.pFlowCtrlState = &gFlowCtrlStateA;
   /* Initialize UART Number */
   gPortA.uart = UART1;
 
@@ -1019,7 +1145,8 @@ void CDC_Init(void)
   /* Initialize pointers */
 //  gPortB.lineCoding = &gLineCodingB;
 //  gPortB.notification = &gNotificationB;
-  gPortB.pCommPropRsp = &gCommPropRspB;
+  gPortB.pCommProp = &gCommPropB;
+  gPortB.pFlowCtrlState = &gFlowCtrlStateB;
   /* Initialize UART Number */
   gPortB.uart = UART2;
 //#endif
