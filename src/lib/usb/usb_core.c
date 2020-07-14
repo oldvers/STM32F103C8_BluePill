@@ -657,8 +657,9 @@ void USBC_ControlInOut(U32 aEvent)
   {
     case USB_EVNT_EP_SETUP:
       usbc_SetupStage();
-      USB_EpDirCtrl(gCSetupPkt.bmRequestType.BM.Dir);
+
       gCData.Count = gCSetupPkt.wLength;
+
       result = FW_FALSE;
       switch (gCSetupPkt.bmRequestType.BM.Type)
       {
@@ -710,10 +711,8 @@ void USBC_ControlInOut(U32 aEvent)
           break;
 
         case REQUEST_CLASS:
-          result = usbc_CtrlSetupReqClass();
-          break;
-
         case REQUEST_VENDOR:
+          result = usbc_CtrlSetupReqClass();
           break;
 
         default:
@@ -728,7 +727,7 @@ void USBC_ControlInOut(U32 aEvent)
       break;
 
     case USB_EVNT_EP_OUT:
-      if (gCSetupPkt.bmRequestType.BM.Dir == 0)
+      if (gCSetupPkt.bmRequestType.BM.Dir == REQUEST_HOST_TO_DEVICE)
       {
         if (gCData.Count)
         {
@@ -742,9 +741,10 @@ void USBC_ControlInOut(U32 aEvent)
                 break;
 
               case REQUEST_CLASS:
+              case REQUEST_VENDOR:
                 result = usbc_CtrlOutReqClass();
                 break;
-
+                
               default:
                 break;
             }
@@ -763,7 +763,7 @@ void USBC_ControlInOut(U32 aEvent)
       break;
 
     case USB_EVNT_EP_IN:
-      if (gCSetupPkt.bmRequestType.BM.Dir == 1)
+      if (gCSetupPkt.bmRequestType.BM.Dir == REQUEST_DEVICE_TO_HOST)
       {
         usbc_DataInStage();
       }

@@ -157,21 +157,9 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
 
   if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
   {
-    switch (pSetup->wIndex.WB.L)
-    {
-#if USB_CDC
-      case USB_CDC_IF_NUM:
-        result = CDC_CtrlSetupReq(pSetup, pData, pSize);
-        break;
+#if (0 < (USB_CDC + USB_CDD))
+    result = CDC_CtrlSetupReq(pSetup, pData, pSize);
 #endif
-#if USB_CDD
-      case USB_CDD_IF_NUM:
-        result = CDC_CtrlSetupReq(pSetup, pData, pSize);
-        break;
-#endif
-      default:
-        break;
-    }
   }
   else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
   {
@@ -200,21 +188,9 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
 
   if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
   {
-    switch (pSetup->wIndex.WB.L)
-    {
-#if USB_CDC
-      case USB_CDC_IF_NUM:
-        result = CDC_CtrlOutReq(pSetup, pData, pSize);
-        break;
+#if (0 < (USB_CDC + USB_CDD))
+    result = CDC_CtrlOutReq(pSetup, pData, pSize);
 #endif
-#if USB_CDD
-      case USB_CDD_IF_NUM:
-        result = CDC_CtrlOutReq(pSetup, pData, pSize);
-        break;
-#endif
-      default:
-        break;
-    }
   }
   else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
   {
