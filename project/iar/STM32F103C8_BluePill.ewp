@@ -2250,27 +2250,51 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\east.c</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\east.h</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\hid\hid.c</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\hid\hid.h</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\hid\hid_defs.h</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\msc\msc.c</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\msc\msc.h</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\msc\msc_defs.h</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\usb_cfg.h</name>
@@ -2316,6 +2340,9 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\vcp.h</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
         </file>
     </group>
     <group>

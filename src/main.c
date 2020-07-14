@@ -14,6 +14,8 @@
 #include "usb_device.h"
 #include "fifo.h"
 
+#include "usb_defs.h"
+#include "usb_cfg.h"
 
 void vLEDTask(void * pvParameters)
 {
@@ -32,26 +34,55 @@ void vLEDTask(void * pvParameters)
     //vTaskDelete(NULL);
 }
 
+extern const U8 USB_ConfigDescriptor[];
+
 void vDualUartTask(void * pvParameters)
 {
+    USB_CONFIGURATION_DESCRIPTOR * cd;
+
     LOG("Double UART Converter Task Started\r\n");
+    
+    cd = (USB_CONFIGURATION_DESCRIPTOR *)USB_ConfigDescriptor;
+    
+    LOG("Config Desc Total Length = 0x%04X = %d\r\n",
+        cd->wTotalLength, cd->wTotalLength);
+    
+    LOG("--- CDC 1 ------------------------------------\r\n");
+    LOG("Interface Count = %d\r\n",     USB_CDC_IF_CNT);
+    LOG("    IF Num 0    = %d\r\n",     USB_CDC_IF_NUM);
+    LOG("Endpoint Count  = %d\r\n",     USB_CDC_EP_CNT);
+    LOG("    EP 0 Blk O  = 0x%02X\r\n", USB_CDC_EP_BLK_O);
+    LOG("    EP 1 Blk I  = 0x%02X\r\n", USB_CDC_EP_BLK_I);
+    
+    LOG("--- CDC 2 ------------------------------------\r\n");
+    LOG("Interface Count = %d\r\n",     USB_CDD_IF_CNT);
+    LOG("    IF Num 0    = %d\r\n",     USB_CDD_IF_NUM);
+    LOG("Endpoint Count  = %d\r\n",     USB_CDD_EP_CNT);
+    LOG("    EP 0 Blk O  = 0x%02X\r\n", USB_CDD_EP_BLK_O);
+    LOG("    EP 1 Blk I  = 0x%02X\r\n", USB_CDD_EP_BLK_I);
+    
+    LOG("--- Total ------------------------------------\r\n");
+    LOG("Interface Count = %d\r\n",     USB_IF_CNT);
+    LOG("Endpoint Count  = %d\r\n",     USB_EP_CNT);
+    LOG("    EP 0 Ctl I  = 0x%02X\r\n", EP0_I);
+    LOG("    EP 1 Ctl O  = 0x%02X\r\n", EP0_O);
 
-    /* Free PB3 from JTAG */
-    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
-    AFIO->MAPR &= ~(7 << 24);
-    AFIO->MAPR |= (2 << 24);
-
-    /* Init PB3 */
-    GPIO_Init(SWD_SWO_PORT, SWD_SWO_PIN, GPIO_TYPE_OUT_PP_50MHZ, 0);
-
-    /* Enable WiFi Module */
-    GPIO_Init(WIFI_EN_PORT, WIFI_EN_PIN, GPIO_TYPE_OUT_PP_2MHZ, 1);
-
-
-
-    /* Test Pins */
-    GPIO_Init(GPIOA,  7, GPIO_TYPE_OUT_PP_50MHZ, 0);
-    GPIO_Init(GPIOB, 11, GPIO_TYPE_OUT_PP_50MHZ, 0);
+//    /* Free PB3 from JTAG */
+//    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+//    AFIO->MAPR &= ~(7 << 24);
+//    AFIO->MAPR |= (2 << 24);
+//
+//    /* Init PB3 */
+//    GPIO_Init(SWD_SWO_PORT, SWD_SWO_PIN, GPIO_TYPE_OUT_PP_50MHZ, 0);
+//
+//    /* Enable WiFi Module */
+//    GPIO_Init(WIFI_EN_PORT, WIFI_EN_PIN, GPIO_TYPE_OUT_PP_2MHZ, 1);
+//
+//
+//
+//    /* Test Pins */
+//    GPIO_Init(GPIOA,  7, GPIO_TYPE_OUT_PP_50MHZ, 0);
+//    GPIO_Init(GPIOB, 11, GPIO_TYPE_OUT_PP_50MHZ, 0);
 
 
 

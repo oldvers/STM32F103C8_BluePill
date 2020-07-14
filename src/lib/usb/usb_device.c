@@ -159,23 +159,13 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
   {
     switch (pSetup->wIndex.WB.L)
     {
-#if (USB_MSC)
-      case USB_MSC_IF_NUM:
-        result = MSC_CtrlSetupReq(pSetup, pData, pSize);
-        break;
-#endif
 #if USB_CDC
-      case USB_CDC_IF_NUM0:
+      case USB_CDC_IF_NUM:
         result = CDC_CtrlSetupReq(pSetup, pData, pSize);
         break;
 #endif
-#if USB_HID
-      case USB_HID_IF_NUM:
-        result = HID_CtrlSetupReq(pSetup, pData, pSize);
-        break;
-#endif
 #if USB_CDD
-      case USB_CDD_IF_NUM0:
+      case USB_CDD_IF_NUM:
         result = CDC_CtrlSetupReq(pSetup, pData, pSize);
         break;
 #endif
@@ -213,17 +203,12 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
     switch (pSetup->wIndex.WB.L)
     {
 #if USB_CDC
-      case USB_CDC_IF_NUM0:
+      case USB_CDC_IF_NUM:
         result = CDC_CtrlOutReq(pSetup, pData, pSize);
         break;
 #endif
-#if USB_HID
-      case USB_HID_IF_NUM:
-        result = HID_CtrlOutReq(pSetup, pData, pSize);
-        break;
-#endif
 #if USB_CDD
-      case USB_CDD_IF_NUM0:
+      case USB_CDD_IF_NUM:
         result = CDC_CtrlOutReq(pSetup, pData, pSize);
         break;
 #endif
@@ -278,62 +263,15 @@ void USBD_Init(void)
   USB_SetCb_Error(usbd_CbError);
 #endif
 
-  LOG("--- MSC --------------------------------------\r\n");
-  LOG("Interface Count = %d\r\n",     USB_MSC_IF_CNT);
-  LOG("    IF Num 0    = %d\r\n",     USB_MSC_IF_NUM);
-  LOG("Endpoint Count  = %d\r\n",     USB_MSC_EP_CNT);
-  LOG("    EP 0 Blk I  = 0x%02X\r\n", USB_MSC_EP_BLK_I);
-  LOG("    EP 1 Blk O  = 0x%02X\r\n", USB_MSC_EP_BLK_O);
-
-  LOG("--- CDC 1 ------------------------------------\r\n");
-  LOG("Interface Count = %d\r\n",     USB_CDC_IF_CNT);
-  LOG("    IF Num 0    = %d\r\n",     USB_CDC_IF_NUM0);
-  LOG("    IF Num 1    = %d\r\n",     USB_CDC_IF_NUM1);
-  LOG("Endpoint Count  = %d\r\n",     USB_CDC_EP_CNT);
-  LOG("    EP 0 Blk O  = 0x%02X\r\n", USB_CDC_EP_BLK_O);
-  LOG("    EP 1 Blk I  = 0x%02X\r\n", USB_CDC_EP_BLK_I);
-  LOG("    EP 2 Irq I  = 0x%02X\r\n", USB_CDC_EP_IRQ_I);
-  
-  LOG("--- HID --------------------------------------\r\n");
-  LOG("Interface Count = %d\r\n",     USB_HID_IF_CNT);
-  LOG("    IF Num 0    = %d\r\n",     USB_HID_IF_NUM);
-  LOG("Endpoint Count  = %d\r\n",     USB_HID_EP_CNT);
-  LOG("    EP 0 Irq I  = 0x%02X\r\n", USB_HID_EP_IRQ_I);
-  
-  LOG("--- CDC 2 ------------------------------------\r\n");
-  LOG("Interface Count = %d\r\n",     USB_CDD_IF_CNT);
-  LOG("    IF Num 0    = %d\r\n",     USB_CDD_IF_NUM0);
-  LOG("    IF Num 1    = %d\r\n",     USB_CDD_IF_NUM1);
-  LOG("Endpoint Count  = %d\r\n",     USB_CDD_EP_CNT);
-  LOG("    EP 0 Blk O  = 0x%02X\r\n", USB_CDD_EP_BLK_O);
-  LOG("    EP 1 Blk I  = 0x%02X\r\n", USB_CDD_EP_BLK_I);
-  LOG("    EP 2 Irq I  = 0x%02X\r\n", USB_CDD_EP_IRQ_I);
-  
-  LOG("--- Total ------------------------------------\r\n");
-  LOG("Interface Count = %d\r\n",     USB_IF_CNT);
-  LOG("Endpoint Count  = %d\r\n",     USB_EP_CNT);
-  LOG("    EP 0 Ctl I  = 0x%02X\r\n", EP0_I);
-  LOG("    EP 1 Ctl O  = 0x%02X\r\n", EP0_O);
-
   /* Init Hardware */
   USB_Init(USB_CTRL_PACKET_SIZE);
   /* Register Callback for Control Endpoint */
   USB_SetCb_Ep(EP0_O, USBC_ControlInOut);
   USB_SetCb_Ep(EP0_I, USBC_ControlInOut);
 
-#if (USB_MSC)
-  /* Init Mass Storage Device */
-  MSC_Init();
-#endif
-
 #if (0 < (USB_CDC + USB_CDD))
   /* Init Communication Device Class */
   CDC_Init();
-#endif
-
-#if (USB_HID)
-  /* Init Human Interface Device */
-  HID_Init();
 #endif
 
   /* Init Core */

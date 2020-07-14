@@ -106,7 +106,7 @@ STATIC CDC_SERIAL_STATE  gNotificationA =
   {REQUEST_TO_INTERFACE, REQUEST_CLASS, REQUEST_DEVICE_TO_HOST},
   CDC_NTF_SERIAL_STATE, /* bNotification */
   0,                    /* wValue */
-  USB_CDC_IF_NUM0,      /* wIndex */
+  USB_CDC_IF_NUM,       /* wIndex */
   2,                    /* wLength */
   0,                    /* Data */
 };
@@ -128,7 +128,7 @@ STATIC CDC_SERIAL_STATE  gNotificationB =
   {REQUEST_TO_INTERFACE, REQUEST_CLASS, REQUEST_DEVICE_TO_HOST},
   CDC_NTF_SERIAL_STATE, /* bNotification */
   0,                    /* wValue */
-  USB_CDC_IF_NUM0,      /* wIndex */
+  USB_CDC_IF_NUM,       /* wIndex */
   2,                    /* wLength */
   0,                    /* Data */
 };
@@ -210,7 +210,7 @@ static CDC_PORT * cdc_GetPort(U16 aInterface)
 {
   CDC_PORT * result = &gPortA;
 
-  if (USB_CDC_IF_NUM0 == aInterface)
+  if (USB_CDC_IF_NUM == aInterface)
   {
     result = &gPortA;
   }
@@ -269,14 +269,14 @@ static void cdc_IrqInStage(CDC_PORT * pPort)
 
   if (0 == pPort->irqBuffLen) return;
 
-  if (USB_CDC_IRQ_PACKET_SIZE < pPort->irqBuffLen)
-  {
-    len = USB_CDC_IRQ_PACKET_SIZE;
-  }
-  else
-  {
-    len = pPort->irqBuffLen;
-  }
+  //if (USB_CDC_IRQ_PACKET_SIZE < pPort->irqBuffLen)
+  //{
+  //  len = USB_CDC_IRQ_PACKET_SIZE;
+  //}
+  //else
+  //{
+  //  len = pPort->irqBuffLen;
+  //}
 
   //LOG("CDC IRQ IN: len = %d\r\n", len);
   USB_EpWrite(pPort->epIrqI, pPort->irqBuff, len);
@@ -643,7 +643,7 @@ void CDC_Init(void)
   /* Register appropriate EP callbacks */
   USB_SetCb_Ep(USB_CDC_EP_BLK_O, cdc_BulkAOut);
   USB_SetCb_Ep(USB_CDC_EP_BLK_I, cdc_BulkAIn);
-  USB_SetCb_Ep(USB_CDC_EP_IRQ_I, cdc_InterruptAIn);
+  //USB_SetCb_Ep(USB_CDC_EP_IRQ_I, cdc_InterruptAIn);
   /* Clear Port context */
   memset(&gPortA, 0, sizeof(gPortA));
   /* Port is not ready yet */
@@ -651,7 +651,7 @@ void CDC_Init(void)
   /* Initialize Endpoints */
   gPortA.epBlkO = USB_CDC_EP_BLK_O;
   gPortA.epBlkI = USB_CDC_EP_BLK_I;
-  gPortA.epIrqI = USB_CDC_EP_IRQ_I;
+//  gPortA.epIrqI = USB_CDC_EP_IRQ_I;
   /* Initialize FIFOs */
   FIFO_Init(&gPortA.rxFifo, gPortA.rxBuffer, sizeof(gPortA.rxBuffer));
   FIFO_Init(&gPortA.txFifo, gPortA.txBuffer, sizeof(gPortA.txBuffer));
@@ -667,7 +667,7 @@ void CDC_Init(void)
   /* Register appropriate EP callbacks */
   USB_SetCb_Ep(USB_CDD_EP_BLK_O, cdc_BulkBOut);
   USB_SetCb_Ep(USB_CDD_EP_BLK_I, cdc_BulkBIn);
-  USB_SetCb_Ep(USB_CDD_EP_IRQ_I, cdc_InterruptBIn);
+//  USB_SetCb_Ep(USB_CDD_EP_IRQ_I, cdc_InterruptBIn);
   /* Clear Port context */
   memset(&gPortB, 0, sizeof(gPortB));
   /* Port is not ready yet */
@@ -675,7 +675,7 @@ void CDC_Init(void)
   /* Initialize Endpoints */
   gPortB.epBlkO = USB_CDD_EP_BLK_O;
   gPortB.epBlkI = USB_CDD_EP_BLK_I;
-  gPortB.epIrqI = USB_CDD_EP_IRQ_I;
+  //gPortB.epIrqI = USB_CDD_EP_IRQ_I;
   /* Initialize FIFOs */
   FIFO_Init(&gPortB.rxFifo, gPortB.rxBuffer, sizeof(gPortB.rxBuffer));
   FIFO_Init(&gPortB.txFifo, gPortB.txBuffer, sizeof(gPortB.txBuffer));
