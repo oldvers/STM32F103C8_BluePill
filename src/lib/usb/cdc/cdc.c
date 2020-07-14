@@ -446,6 +446,30 @@ typedef __packed struct FLOW_CTRL_STATE_RSP_S
 static FLOW_CTRL_STATE_RSP_t gFlowCtrlStateA = {0};
 static FLOW_CTRL_STATE_RSP_t gFlowCtrlStateB = {0};
 
+//-----------------------------------------------------------------------------
+/* Special Characters Response */
+typedef __packed struct SPEC_CHARS_S
+{
+  /* The character that indicates EOF (on the input) */
+  U8 bEofChar;
+  /* Number The character that should be inserted in the input stream when
+     an error occurs */
+  U8 bErrorChar;
+  /* The character that should be inserted in the input stream when a break is
+     detected */
+  U8 bBreakChar;
+  /* Number The special character that causes bit 2 of the event-occurred mask
+     to be set whenever it is received */
+  U8 bEventChar;
+  /* The character used for XON */
+  U8 bXonChar;
+  /* The character used for XOFF */
+  U8 bXoffChar;
+} SPEC_CHARS_t, * SPEC_CHARS_p;
+
+static SPEC_CHARS_t gSpecCharsA = {0};
+static SPEC_CHARS_t gSpecCharsB = {0};
+
 
 
 
@@ -507,7 +531,7 @@ typedef struct _CDC_PORT
   U8                    txBuffer[USB_CDC_FIFO_SIZE + 1];
   COMM_PROP_RSP_p       pCommProp;
   FLOW_CTRL_STATE_RSP_p pFlowCtrlState;
-//  CDC_SERIAL_STATE *notification;
+  SPEC_CHARS_p          pSpecChars;
   UART_t                uart;
   FW_BOOLEAN            ready;
 } CDC_PORT;
@@ -792,6 +816,14 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
 
       result = USB_CTRL_STAGE_WAIT;
       break;
+      
+    case CDC_REQ_SET_CHARS:
+      CDC_LOG(" - Set Spec Chars\r\n");
+
+      *pData = (U8 *)port->pSpecChars;
+
+      result = USB_CTRL_STAGE_WAIT;
+      break;
   }
 
   return result;
@@ -834,7 +866,15 @@ USB_CTRL_STAGE CDC_CtrlOutReq
         port->pFlowCtrlState->ulXonLimit,
         port->pFlowCtrlState->ulXoffLimit
       );
-            
+      break;
+      
+    case CDC_REQ_SET_CHARS:
+      CDC_LOG
+      (
+        " - Set Spec Chars: Xon = 0x%02X Xoff = 0x%02X\r\n",
+        port->pSpecChars->bXonChar,
+        port->pSpecChars->bXoffChar
+      );
       break;
 
 //    case CDC_REQ_SET_LINE_CODING:
@@ -1121,6 +1161,7 @@ void CDC_Init(void)
 //  gPortA.notification = &gNotificationA;
   gPortA.pCommProp = &gCommPropA;
   gPortA.pFlowCtrlState = &gFlowCtrlStateA;
+  gPortA.pSpecChars = &gSpecCharsA;
   /* Initialize UART Number */
   gPortA.uart = UART1;
 
@@ -1147,6 +1188,7 @@ void CDC_Init(void)
 //  gPortB.notification = &gNotificationB;
   gPortB.pCommProp = &gCommPropB;
   gPortB.pFlowCtrlState = &gFlowCtrlStateB;
+  gPortB.pSpecChars = &gSpecCharsB;
   /* Initialize UART Number */
   gPortB.uart = UART2;
 //#endif
