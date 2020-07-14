@@ -290,6 +290,59 @@ static COMM_PROP_RSP_t gCommPropRspB =
   .uniProvName        = "SILABS USB V2.0",
 };
 
+//-----------------------------------------------------------------------------
+/* Line control settings */
+/* This command adjusts the line control settings for the selected CP210x
+   interface, according to the value of wValue. The settings will only take
+   effect if the selection is valid for the interface (see the specific
+   CP210x data sheet for more details). If an invalid setting is selected,
+   the CP210x will issue a USB procedural stall. The settings are as
+   follows:
+     Bits 3-0: Stop bits:
+       0 = 1 stop bit
+       1 = 1.5 stop bits
+       2 = 2 stop bits
+       Other values reserved.
+     Bits 7-4: Parity setting:
+       0 = none.
+       1 = odd.
+       2 = even.
+       3 = mark.
+       4 = space.
+       Other values reserved.
+     Bits 15-8: Word length, legal values are:
+       5 = 5 Bits
+       6 = 6 Bits
+       7 = 7 Bits
+       8 = 8 Bits */
+#define LINE_CTRL_STOP_BITS_POS             (0)
+#define LINE_CTRL_STOP_BITS_MASK            (0x0F << LINE_CTRL_STOP_BITS_POS)
+#define LINE_CTRL_STOP_BITS_10              (0 << LINE_CTRL_STOP_BITS_POS)
+#define LINE_CTRL_STOP_BITS_15              (1 << LINE_CTRL_STOP_BITS_POS)
+#define LINE_CTRL_STOP_BITS_20              (2 << LINE_CTRL_STOP_BITS_POS)
+
+#define LINE_CTRL_PARITY_POS                (4)
+#define LINE_CTRL_PARITY_MASK               (0x0F << LINE_CTRL_PARITY_POS)
+#define LINE_CTRL_PARITY_NONE               (0 << LINE_CTRL_PARITY_POS)
+#define LINE_CTRL_PARITY_ODD                (1 << LINE_CTRL_PARITY_POS)
+#define LINE_CTRL_PARITY_EVEN               (2 << LINE_CTRL_PARITY_POS)
+#define LINE_CTRL_PARITY_MARK               (3 << LINE_CTRL_PARITY_POS)
+#define LINE_CTRL_PARITY_SPACE              (4 << LINE_CTRL_PARITY_POS)
+
+#define LINE_CTRL_WORD_LEN_POS              (8)
+#define LINE_CTRL_WORD_LEN_MASK             (0xFF << LINE_CTRL_WORD_LEN_POS)
+#define LINE_CTRL_WORD_LEN_5                (5 << LINE_CTRL_WORD_LEN_POS)
+#define LINE_CTRL_WORD_LEN_6                (6 << LINE_CTRL_WORD_LEN_POS)
+#define LINE_CTRL_WORD_LEN_7                (7 << LINE_CTRL_WORD_LEN_POS)
+#define LINE_CTRL_WORD_LEN_8                (8 << LINE_CTRL_WORD_LEN_POS)
+
+
+
+
+
+
+
+
 
 
 
@@ -608,22 +661,24 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
 
     case CDC_REQ_GET_PROPS:
       CDC_LOG(" - Get Props\r\n");
-//
-//      port = cdc_GetPort(pSetup->wIndex.W);
+
       *pData = (U8 *)port->pCommPropRsp;
-//
+
       result = USB_CTRL_STAGE_DATA;
       break;
 
-//    case CDC_REQ_SET_CONTROL_LINE_STATE:
-//      //CDC_LOG("CDC Setup: Set Ctrl Line State: IF = %d Val = %04X\r\n",
-//      //      pSetup->wIndex.W, pSetup->wValue.W);
-//
-//      port = cdc_GetPort(pSetup->wIndex.W);
-//      uart_DTR_RTS_Set(port->uart, pSetup->wValue.W);
-//
-//      result = USB_CTRL_STAGE_STATUS;
-//      break;
+    case CDC_REQ_SET_LINE_CTL:
+      CDC_LOG
+      (
+        " - Set Line Ctrl: Stop = %d, Parity = %d, WordLen = %d\r\n",
+        (pSetup->wValue.W & LINE_CTRL_STOP_BITS_MASK),
+        (pSetup->wValue.W & LINE_CTRL_PARITY_MASK) >> LINE_CTRL_PARITY_POS,
+        (pSetup->wValue.W & LINE_CTRL_WORD_LEN_MASK) >> LINE_CTRL_WORD_LEN_POS
+      );
+
+      //uart_DTR_RTS_Set(port->uart, pSetup->wValue.W);
+      result = USB_CTRL_STAGE_STATUS;
+      break;
   }
 
   return result;
