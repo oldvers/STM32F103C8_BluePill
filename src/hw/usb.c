@@ -727,6 +727,15 @@ void USB_IRQHandler(void)
 {
   U32 istr, num, val;
 
+  istr = USB->ISTR;
+
+  /* Start of Frame */
+  if (istr & USB_ISTR_SOF)
+  {
+    if (NULL != pUSB_CbSOF) pUSB_CbSOF();
+    USB->ISTR = (U16)~(USB_ISTR_SOF);
+  }
+
   /* Endpoint Interrupts */
   while ((istr = USB->ISTR) & USB_ISTR_CTR)
   {
@@ -759,8 +768,6 @@ void USB_IRQHandler(void)
       }
     }
   }
-  
-  istr = USB->ISTR;
 
   /* USB Reset Request */
   if (istr & USB_ISTR_RESET)
@@ -786,18 +793,17 @@ void USB_IRQHandler(void)
     USB->ISTR = (U16)~(USB_ISTR_WKUP);
   }
 
-  /* Start of Frame */
-  if (istr & USB_ISTR_SOF)
-  {
-    if (NULL != pUSB_CbSOF) pUSB_CbSOF();
-    USB->ISTR = (U16)~(USB_ISTR_SOF);
-  }
-
   /* PMA Over/underrun */
   if (istr & USB_ISTR_PMAOVR)
   {
     if (NULL != pUSB_CbError) pUSB_CbError(1);
     USB->ISTR = (U16)~(USB_ISTR_PMAOVR);
+  }
+  
+  /* Expected Start of Frame */
+  if (istr & USB_ISTR_ESOF)
+  {
+    USB->ISTR = (U16)~(USB_ISTR_ESOF);
   }
 
   /* Error: No Answer, CRC Error, Bit Stuff Error, Frame Format Error */

@@ -42,6 +42,8 @@ void vDualUartTask(void * pvParameters)
 
     LOG("Double UART Converter Task Started\r\n");
     
+    /* --------- */
+
     cd = (USB_CONFIGURATION_DESCRIPTOR *)USB_ConfigDescriptor;
     
     LOG("Config Desc Total Length = 0x%04X = %d\r\n",
@@ -67,25 +69,25 @@ void vDualUartTask(void * pvParameters)
     LOG("    EP 0 Ctl I  = 0x%02X\r\n", EP0_I);
     LOG("    EP 1 Ctl O  = 0x%02X\r\n", EP0_O);
 
-//    /* Free PB3 from JTAG */
-//    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
-//    AFIO->MAPR &= ~(7 << 24);
-//    AFIO->MAPR |= (2 << 24);
-//
-//    /* Init PB3 */
-//    GPIO_Init(SWD_SWO_PORT, SWD_SWO_PIN, GPIO_TYPE_OUT_PP_50MHZ, 0);
-//
-//    /* Enable WiFi Module */
-//    GPIO_Init(WIFI_EN_PORT, WIFI_EN_PIN, GPIO_TYPE_OUT_PP_2MHZ, 1);
-//
-//
-//
-//    /* Test Pins */
-//    GPIO_Init(GPIOA,  7, GPIO_TYPE_OUT_PP_50MHZ, 0);
-//    GPIO_Init(GPIOB, 11, GPIO_TYPE_OUT_PP_50MHZ, 0);
+    /* --------- */
+    /* Free PB3 from JTAG */
+    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+    AFIO->MAPR &= ~(7 << 24);
+    AFIO->MAPR |= (2 << 24);
 
+    /* Init PB3 */
+    GPIO_Init(SWD_SWO_PORT, SWD_SWO_PIN, GPIO_TYPE_OUT_PP_50MHZ, 0);
 
+    /* Enable WiFi Module */
+    GPIO_Init(WIFI_EN_PORT, WIFI_EN_PIN, GPIO_TYPE_OUT_PP_2MHZ, 1);
 
+    /* Test Pins */
+    GPIO_Init(GPIOA,  7, GPIO_TYPE_OUT_PP_50MHZ, 0);
+    GPIO_Init(GPIOA,  6, GPIO_TYPE_OUT_PP_50MHZ, 0);
+    GPIO_Init(GPIOA,  5, GPIO_TYPE_OUT_PP_50MHZ, 0);
+    GPIO_Init(GPIOB, 11, GPIO_TYPE_OUT_PP_50MHZ, 0);
+
+    /* --------- */
 
     /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
     GPIO_Init(USB_PUP_PORT, USB_PUP_PIN, GPIO_TYPE_OUT_OD_2MHZ, 1);

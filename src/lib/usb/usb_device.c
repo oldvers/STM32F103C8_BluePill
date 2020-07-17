@@ -8,7 +8,7 @@
 #include "hid.h"
 #include "cdc.h"
 
-#include "debug.h"
+//#include "debug.h"
 
 //-----------------------------------------------------------------------------
 /** @brief USB Device Reset Event Callback
@@ -155,16 +155,7 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
 
-  if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
-  {
-#if (0 < (USB_CDC + USB_CDD))
-    result = CDC_CtrlSetupReq(pSetup, pData, pSize);
-#endif
-  }
-  else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
-  {
-    //
-  }
+  result = CDC_CtrlSetupReq(pSetup, pData, pSize);
 
   return result;
 }
@@ -186,16 +177,7 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
 
-  if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
-  {
-#if (0 < (USB_CDC + USB_CDD))
-    result = CDC_CtrlOutReq(pSetup, pData, pSize);
-#endif
-  }
-  else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
-  {
-    //
-  }
+  result = CDC_CtrlOutReq(pSetup, pData, pSize);
 
   return result;
 }

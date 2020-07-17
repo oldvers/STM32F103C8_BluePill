@@ -5,7 +5,6 @@
 #include "usb_cfg.h"
 #include "usb_descr.h"
 #include "usb_core.h"
-#include "debug.h"
 
 /* USB Endpoint Data Structure */
 typedef struct _USB_CTRL_DATA
@@ -719,6 +718,7 @@ void USBC_ControlInOut(U32 aEvent)
           break;
 
       }
+
       if (FW_TRUE != result)
       {
         USB_EpSetStall(EP0_I);
