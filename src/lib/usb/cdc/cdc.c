@@ -22,9 +22,6 @@
 //-----------------------------------------------------------------------------
 /* Private definitions */
 
-//#define CDC_CTRL_LINE_STATE_DTR   (0)
-//#define CDC_CTRL_LINE_STATE_RTS   (1)
-
 #define CDC_DEBUG
 
 #ifdef CDC_DEBUG
@@ -160,7 +157,7 @@ typedef __packed struct COMM_PROP_RSP_S
        9: Supports 16-bit mode (always 0)
      All other bits are reserved */
   U32 ulProvCapabilities;
-  /* BitMask - Settable parameters mask. Bits are: 
+  /* BitMask - Settable parameters mask. Bits are:
        0: Can set parity type
        1: Can set baud
        2: Can set number of data bits
@@ -170,7 +167,7 @@ typedef __packed struct COMM_PROP_RSP_S
        6: Can set carrier-detect checking
      All other bits are reserved */
   U32 ulSettableParams;
-  /* BitMask - Settable baud rates mask. Bits are: 
+  /* BitMask - Settable baud rates mask. Bits are:
        0 : 75 baud
        1 : 110 baud
        2 : 134.5 baud
@@ -196,7 +193,7 @@ typedef __packed struct COMM_PROP_RSP_S
            are, other than by trying to select them.)
        29-31: reserved */
   U32 ulSettableBaud;
-  /* BitMask - Capabilities mask for permissible data bit settings: 
+  /* BitMask - Capabilities mask for permissible data bit settings:
        0: 5 data bits
        1: 6 data bits
        2: 7 data bits
@@ -233,8 +230,7 @@ static COMM_PROP_RSP_t gCommPropA =
                         COMM_PROP_RSP_SETBL_PARAM_DATA_BITS |
                         COMM_PROP_RSP_SETBL_PARAM_STOP_BITS |
                         COMM_PROP_RSP_SETBL_PARAM_HANDSHAKE |
-                        COMM_PROP_RSP_SETBL_PARAM_PARITY |
-                        COMM_PROP_RSP_SETBL_PARAM_CARRIER_DET,
+                        COMM_PROP_RSP_SETBL_PARAM_PARITY,
   .ulSettableBaud     = COMM_PROP_RSP_BAUD_1200   |
                         COMM_PROP_RSP_BAUD_1800   |
                         COMM_PROP_RSP_BAUD_2400   |
@@ -270,8 +266,7 @@ static COMM_PROP_RSP_t gCommPropB =
                         COMM_PROP_RSP_SETBL_PARAM_DATA_BITS |
                         COMM_PROP_RSP_SETBL_PARAM_STOP_BITS |
                         COMM_PROP_RSP_SETBL_PARAM_HANDSHAKE |
-                        COMM_PROP_RSP_SETBL_PARAM_PARITY |
-                        COMM_PROP_RSP_SETBL_PARAM_CARRIER_DET,
+                        COMM_PROP_RSP_SETBL_PARAM_PARITY,
   .ulSettableBaud     = COMM_PROP_RSP_BAUD_1200   |
                         COMM_PROP_RSP_BAUD_1800   |
                         COMM_PROP_RSP_BAUD_2400   |
@@ -338,6 +333,20 @@ static COMM_PROP_RSP_t gCommPropB =
 
 //-----------------------------------------------------------------------------
 /* Flow Control State Setting/Response */
+
+#define FLOW_CTRL_HDSHAKE_DTR_POS              (0)
+#define FLOW_CTRL_HDSHAKE_DTR_MASK             (3 << FLOW_CTRL_HDSHAKE_DTR_POS)
+#define FLOW_CTRL_HDSHAKE_DTR_HELD_INACTIVE    (0 << FLOW_CTRL_HDSHAKE_DTR_POS)
+#define FLOW_CTRL_HDSHAKE_DTR_HELD_ACTIVE      (1 << FLOW_CTRL_HDSHAKE_DTR_POS)
+#define FLOW_CTRL_HDSHAKE_DTR_CTRL_BY_CP210X   (2 << FLOW_CTRL_HDSHAKE_DTR_POS)
+
+#define FLOW_CTRL_REPLACE_RTS_POS              (6)
+#define FLOW_CTRL_REPLACE_RTS_MASK             (3 << FLOW_CTRL_REPLACE_RTS_POS)
+#define FLOW_CTRL_REPLACE_RTS_STATIC_INACTIVE  (0 << FLOW_CTRL_REPLACE_RTS_POS)
+#define FLOW_CTRL_REPLACE_RTS_STATIC_ACTIVE    (1 << FLOW_CTRL_REPLACE_RTS_POS)
+#define FLOW_CTRL_REPLACE_RTS_USED_FOR_RX      (2 << FLOW_CTRL_REPLACE_RTS_POS)
+#define FLOW_CTRL_REPLACE_RTS_TX_ACTIVE        (3 << FLOW_CTRL_REPLACE_RTS_POS)
+
 typedef __packed struct FLOW_CTRL_STATE_RSP_S
 {
   /* Control handshake:
@@ -408,11 +417,11 @@ typedef __packed struct FLOW_CTRL_STATE_RSP_S
                                               received by the CP210x from the
                                               end device will be discarded and
                                               will not be passed to the host.
-                                              If clear, NULL characters are 
+                                              If clear, NULL characters are
                                               treated as data.
      4    SERIAL_BREAK_CHAR      1     Flag   If set, a received break condition
                                               causes the CP210x to insert a
-                                              BREAK special character 
+                                              BREAK special character
                                               (section 5.18) in the receive
                                               data stream. If clear, BREAK does
                                               not affect the input data stream.
@@ -423,7 +432,7 @@ typedef __packed struct FLOW_CTRL_STATE_RSP_S
      6–7  SERIAL_RTS_MASK        2     Code   This field controls the RTS line.
                                                 00: RTS is statically inactive.
                                                 01: RTS is statically active.
-                                                10: RTS is used for receive 
+                                                10: RTS is used for receive
                                                     flow control.
                                                 11: RTS is transmit active
                                                     signal.AN571
@@ -574,49 +583,7 @@ SERIAL_STATUS_t gSerialStatusB = {0};
 
 static U8 gPartNumber = CP210X_PARTNUM_CP2105;
 
-
-
-///* Line Coding Structure */
-//typedef __packed struct _CDC_LINE_CODING
-//{
-//  U32 dwBaudRate;       /* Number Data terminal rate, in bits per second */
-//  U8  bCharFormat;      /* Number of Stop bits */
-//                        /*   0 - 1 Stop bit    *
-//                         *   1 - 1.5 Stop bits *
-//                         *   2 - 2 Stop bits   */
-//  U8  bParityType;      /* Number Parity */
-//                        /*   0 - None    *
-//                         *   1 - Odd     *
-//                         *   2 - Even    *
-//                         *   3 - Mark    *
-//                         *   4 - Space   */
-//  U8  bDataBits;        /* Number Data Bits (5, 6, 7, 8 or 16) */
-//} CDC_LINE_CODING;
-
-///* Serial State Notification Structure */
-//typedef __packed struct _CDC_SERIAL_STATE
-//{
-//  REQUEST_TYPE bmRequestType;
-//  U8  bNotification;
-//  U16 wValue;
-//  U16 wIndex;
-//  U16 wLength;
-//  __packed union
-//  {
-//    U16 Raw;
-//    __packed struct
-//    {
-//      U16 bRxCarrier : 1;
-//      U16 bTxCarrier : 1;
-//      U16 bBreak : 1;
-//      U16 bRingSignal : 1;
-//      U16 bFraming : 1;
-//      U16 bParity : 1;
-//      U16 bOverRun : 1;
-//    } Bit;
-//  } Data;
-//} CDC_SERIAL_STATE;
-
+//-----------------------------------------------------------------------------
 /* CDC Port Context */
 typedef struct _CDC_PORT
 {
@@ -642,49 +609,8 @@ typedef struct _CDC_PORT
 //-----------------------------------------------------------------------------
 /* Global Variables */
 
-//STATIC CDC_LINE_CODING   gLineCodingA =
-//{
-//  115200,               /* dwBaudRate */
-//  0,                    /* bCharFormat */
-//  0,                    /* bParityType */
-//  8,                    /* bDataBits */
-//};
-
-//STATIC CDC_SERIAL_STATE  gNotificationA =
-//{
-//  /* bmRequestType */
-//  {REQUEST_TO_INTERFACE, REQUEST_CLASS, REQUEST_DEVICE_TO_HOST},
-//  CDC_NTF_SERIAL_STATE, /* bNotification */
-//  0,                    /* wValue */
-//  USB_CDC_IF_NUM,       /* wIndex */
-//  2,                    /* wLength */
-//  0,                    /* Data */
-//};
-
 STATIC CDC_PORT          gPortA = {0};
-
-//#if (USB_CDD)
-//STATIC CDC_LINE_CODING   gLineCodingB =
-//{
-//  115200,               /* dwBaudRate */
-//  0,                    /* bCharFormat */
-//  0,                    /* bParityType */
-//  8,                    /* bDataBits */
-//};
-
-//STATIC CDC_SERIAL_STATE  gNotificationB =
-//{
-//  /* bmRequestType */
-//  {REQUEST_TO_INTERFACE, REQUEST_CLASS, REQUEST_DEVICE_TO_HOST},
-//  CDC_NTF_SERIAL_STATE, /* bNotification */
-//  0,                    /* wValue */
-//  USB_CDC_IF_NUM,       /* wIndex */
-//  2,                    /* wLength */
-//  0,                    /* Data */
-//};
-
 STATIC CDC_PORT          gPortB = {0};
-//#endif /* USB_CDD */
 
 //-----------------------------------------------------------------------------
 /* Private Functions declarations */
@@ -693,62 +619,6 @@ static FW_BOOLEAN uart_FifoPutA(U8 * pByte);
 static FW_BOOLEAN uart_FifoGetA(U8 * pByte);
 static FW_BOOLEAN uart_FifoPutB(U8 * pByte);
 static FW_BOOLEAN uart_FifoGetB(U8 * pByte);
-
-//-----------------------------------------------------------------------------
-/** @brief Initializes the UART
- *  @param pUART - UART Number
- *  @return None
- */
-
-//static void uart_Init(UART_t aUART)
-//{
-//  if (UART1 == aUART)
-//  {
-//    /* UART1: PA9 - Tx, PA10 - Rx, DTR - PB8, RTS - PB6 */
-//    GPIO_Init(UART1_TX_PORT,  UART1_TX_PIN,  GPIO_TYPE_OUT_PP_10MHZ, 1);
-//    GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_PUP_PDN,   1);
-//    GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
-//    GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
-//   
-//    UART_DeInit(UART1);
-//    UART_Init
-//    (
-//      UART1,
-//      gPortA.lineCoding->dwBaudRate,
-//      uart_FifoPutA,
-//      uart_FifoGetA
-//    );
-//    
-//    /* UART1: PA9 - Tx, PA10 - Rx, DTR - PB8, RTS - PB6 */
-//    GPIO_Init(UART1_TX_PORT,  UART1_TX_PIN,  GPIO_TYPE_ALT_PP_10MHZ, 1);
-//    GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_PUP_PDN,   1);
-//    GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_OUT_OD_10MHZ, 1);
-//    GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_OUT_PP_10MHZ, 1);
-//    
-//    UART_RxStart(UART1);
-//  }
-//  else
-//  {
-//    /* UART2: PA2 - Tx, PA3 - Rx */
-//    GPIO_Init(UART2_TX_PORT, UART2_TX_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
-//    GPIO_Init(UART2_RX_PORT, UART2_RX_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
-//    
-//    UART_DeInit(UART2);
-//    UART_Init
-//    (
-//      UART2,
-//      gPortB.lineCoding->dwBaudRate,
-//      uart_FifoPutB,
-//      uart_FifoGetB
-//    );
-//    
-//    /* UART2: PA2 - Tx, PA3 - Rx */
-//    GPIO_Init(UART2_TX_PORT, UART2_TX_PIN, GPIO_TYPE_ALT_PP_10MHZ, 1);
-//    GPIO_Init(UART2_RX_PORT, UART2_RX_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
-//
-//    UART_RxStart(UART2);
-//  }
-//}
 
 //-----------------------------------------------------------------------------
 /** @brief Gets CDC Port according to USB Interface Number
@@ -773,81 +643,212 @@ static CDC_PORT * cdc_GetPort(U16 aInterface)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Gets DTR/RTS signals' state
+ *  @param pPort - COM Port context
+ *  @return Pointer to DTR/RTS signals' state value
+ */
+
+static U8 * cdc_GetUartDtrRts(CDC_PORT * pPort)
+{
+  /* Bit 0 - DTR state, Bit 1 - RTS state */
+  if (UART1 == pPort->uart)
+  {
+    if (0 == GPIO_In(UART1_DTR_PORT, UART1_DTR_PIN))
+    {
+      pPort->modemStatus |= MODEM_STATUS_DTR;
+    }
+    else
+    {
+      pPort->modemStatus &= ~MODEM_STATUS_DTR;
+    }
+
+    if (0 == GPIO_In(UART1_RTS_PORT, UART1_RTS_PIN))
+    {
+      pPort->modemStatus |= MODEM_STATUS_RTS;
+    }
+    else
+    {
+      pPort->modemStatus &= ~MODEM_STATUS_RTS;
+    }
+  }
+
+  return (U8 *)&pPort->modemStatus;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets COM Port status (rx/tx queue, errors, hold reasons)
+ *  @param pPort - COM Port context
+ *  @return Pointer to COM Port status structure
+ */
+static U8 * cdc_GetUartStatus(CDC_PORT * pPort)
+{
+  /* COM Port Rx/Tx Queue Status */
+  pPort->pSerialStatus->ulAmountInInQueue = FIFO_Count(&pPort->txFifo);
+  pPort->pSerialStatus->ulAmountInOutQueue = FIFO_Count(&pPort->rxFifo);
+  /* Errors not implemented yet */
+  //pPort->pSerialStatus->ulErrors = 0;
+  //pPort->pSerialStatus->ulHoldReasons = 0;
+
+  return (U8 *)pPort->pSerialStatus;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Sets COM Port Parameters
+ *  @param pPort - COM Port context
+ *  @return None
+ */
+
+static void cdc_SetUartParameters(CDC_PORT * pPort, U16 aValue)
+{
+  /* Not implemented yet */
+  (void)pPort;
+  (void)aValue;
+  /* Stop bits, Parity, Word length */
+  //pSetup->wValue.W & LINE_CTRL_STOP_BITS_MASK
+  //pSetup->wValue.W & LINE_CTRL_PARITY_MASK) >> LINE_CTRL_PARITY_POS
+  //pSetup->wValue.W & LINE_CTRL_WORD_LEN_MASK) >> LINE_CTRL_WORD_LEN_POS
+}
+
+//-----------------------------------------------------------------------------
+/** @brief In/Deitializes the UART
+ *  @param pPort - COM Port context
+ *  @param aValue - 0 - deinitialize COM Port, else - Initialize COM Port
+ *  @return None
+ */
+
+static void cdc_SetUartEnabled(CDC_PORT * pPort, U16 aValue)
+{
+  /* COM Port Open/Close */
+  if (0 == aValue)
+  {
+    if (UART1 == pPort->uart)
+    {
+      /* UART1: PA9 - Tx, PA10 - Rx, DTR - PB8, RTS - PB6 */
+      GPIO_Init(UART1_TX_PORT,  UART1_TX_PIN,  GPIO_TYPE_OUT_PP_10MHZ, 1);
+      GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_PUP_PDN,   1);
+      GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
+      GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
+    }
+    else
+    {
+      /* UART2: PA2 - Tx, PA3 - Rx */
+      GPIO_Init(UART2_TX_PORT, UART2_TX_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
+      GPIO_Init(UART2_RX_PORT, UART2_RX_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
+    }
+    UART_DeInit(pPort->uart);
+    pPort->ready = FW_FALSE;
+  }
+  else
+  {
+    if (UART1 == pPort->uart)
+    {
+      UART_Init
+      (
+        UART1,
+        gPortA.baudrate,
+        uart_FifoPutA,
+        uart_FifoGetA
+      );
+
+      /* UART1: PA9 - Tx, PA10 - Rx, DTR - PB8, RTS - PB6 */
+      GPIO_Init(UART1_TX_PORT,  UART1_TX_PIN,  GPIO_TYPE_ALT_PP_10MHZ, 1);
+      GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_PUP_PDN,   1);
+      GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_OUT_OD_10MHZ, 1);
+      GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_OUT_PP_10MHZ, 1);
+    }
+    else
+    {
+      UART_Init
+      (
+        UART2,
+        gPortB.baudrate,
+        uart_FifoPutB,
+        uart_FifoGetB
+      );
+
+      /* UART2: PA2 - Tx, PA3 - Rx */
+      GPIO_Init(UART2_TX_PORT, UART2_TX_PIN, GPIO_TYPE_ALT_PP_10MHZ, 1);
+      GPIO_Init(UART2_RX_PORT, UART2_RX_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
+    }
+    pPort->ready = FW_TRUE;
+    pPort->modemStatus = (MODEM_STATUS_DTR | MODEM_STATUS_RTS);
+    UART_RxStart(pPort->uart);
+  }
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Purges Rx/Tx buffers
+ *  @param pPort - COM Port context
+ *  @param aValue - Bitfield, identifies which buffer should be cleared
+ *  @return None
+ */
+
+static void cdc_UartPurge(CDC_PORT * pPort, U16 aValue)
+{
+  if (0 != (aValue & (PURGE_CLEAR_TX_QUEUE1 | PURGE_CLEAR_TX_QUEUE2)))
+  {
+    FIFO_Clear(&pPort->txFifo);
+  }
+
+  if (0 != (aValue & (PURGE_CLEAR_RX_QUEUE1 | PURGE_CLEAR_RX_QUEUE2)))
+  {
+    FIFO_Clear(&pPort->rxFifo);
+  }
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Sets DTR/RTS signals
- *  @param pUART - UART Number
+ *  @param pPort - COM Port context
  *  @param aValue - DTR/RTS signals state
  *  @return None
  */
 
-//static void uart_DTR_RTS_Set(UART_t aUART, U16 aValue)
-//{
-//  if (UART1 == aUART)
-//  {
-//    /* DTR signal */
-//    if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_DTR)) )
-//    {
-//      GPIO_Hi(UART1_DTR_PORT, UART1_DTR_PIN);
-//    }
-//    else
-//    {
-//      GPIO_Lo(UART1_DTR_PORT, UART1_DTR_PIN);
-//    }
-//
-//    /* RTS signal */
-//    if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_RTS)) )
-//    {
-//      GPIO_Hi(UART1_RTS_PORT, UART1_RTS_PIN);
-//    }
-//    else
-//    {
-//      GPIO_Lo(UART1_RTS_PORT, UART1_RTS_PIN);
-//    }
-//  }
-//}
+static void cdc_SetUartDtrRts(CDC_PORT * pPort, U16 aValue)
+{
+  pPort->modemHandshake = aValue;
+
+  if (UART1 != pPort->uart) return;
+
+  if (0 != (aValue & MODEM_HANDSHAKE_STATE_DTR_EN))
+  {
+    if (0 == (aValue & MODEM_HANDSHAKE_STATE_DTR))
+    {
+      CDC_LOG(" --- DTR Set\r\n");
+      GPIO_Hi(UART1_DTR_PORT, UART1_DTR_PIN);
+    }
+    else
+    {
+      CDC_LOG(" --- DTR Clear\r\n");
+      GPIO_Lo(UART1_DTR_PORT, UART1_DTR_PIN);
+    }
+  }
+
+  if (0 != (aValue & MODEM_HANDSHAKE_STATE_RTS_EN))
+  {
+    if (0 == (aValue & MODEM_HANDSHAKE_STATE_RTS))
+    {
+      CDC_LOG(" --- RTS Set\r\n");
+      GPIO_Hi(UART1_RTS_PORT, UART1_RTS_PIN);
+    }
+    else
+    {
+      CDC_LOG(" --- RTS Clear\r\n");
+      GPIO_Lo(UART1_RTS_PORT, UART1_RTS_PIN);
+    }
+  }
+}
 
 //-----------------------------------------------------------------------------
-/** @brief Processes IRQ EP data
- *  @param pPort - Pointer to Port context
+/** @brief Sets COM Port BaudRate
+ *  @param pPort - COM Port context
  *  @return None
  */
 
-//static void cdc_IrqInStage(CDC_PORT * pPort)
-//{
-//  U8 len = 0;
-//
-//  if (0 == pPort->irqBuffLen) return;
-//
-//  //if (USB_CDC_IRQ_PACKET_SIZE < pPort->irqBuffLen)
-//  //{
-//  //  len = USB_CDC_IRQ_PACKET_SIZE;
-//  //}
-//  //else
-//  //{
-//  //  len = pPort->irqBuffLen;
-//  //}
-//
-//  //CDC_LOG("CDC IRQ IN: len = %d\r\n", len);
-//  USB_EpWrite(pPort->epIrqI, pPort->irqBuff, len);
-//
-//  pPort->irqBuff += len;
-//  pPort->irqBuffLen -= len;
-//}
-
-//-----------------------------------------------------------------------------
-/** @brief Sends Serial State notification
- *  @param pPort - Pointer to Port context
- *  @param aState - Errors/Evetns state
- *  @return None
- */
-
-//void cdc_NotifyState(CDC_PORT * pPort, U16 aState)
-//{
-//  pPort->notification->Data.Raw = aState;
-//  pPort->irqBuff = (U8 *)pPort->notification;
-//  pPort->irqBuffLen = sizeof(CDC_SERIAL_STATE);
-//
-//  cdc_IrqInStage(pPort);
-//}
+static void cdc_SetUartBaudrate(CDC_PORT * pPort)
+{
+  /* Not Implemented yet */
+  UART_SetBaudrate(pPort->uart, pPort->baudrate);
+}
 
 //-----------------------------------------------------------------------------
 /** @brief CDC Control Setup USB Request
@@ -867,20 +868,32 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
   U16 *pSize
 )
 {
-  //GPIO_Hi(GPIOB, 11);
-    
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
   CDC_PORT * port = cdc_GetPort(pSetup->wIndex.W);
 
   switch (pSetup->bRequest)
   {
+    /* Get Requests */
+
     case CDC_REQ_GET_PROPS:
       CDC_LOG(" - Get Props\r\n");
-
       *pData = (U8 *)port->pCommProp;
-
       result = USB_CTRL_STAGE_DATA;
       break;
+
+    case CDC_REQ_GET_MDMSTS:
+      //CDC_LOG(" - Get Modem Status\r\n");
+      *pData = cdc_GetUartDtrRts(port);
+      result = USB_CTRL_STAGE_DATA;
+      break;
+
+    case CDC_REQ_GET_COMM_STATUS:
+      //CDC_LOG(" - Get Serial Status\r\n");
+      *pData = cdc_GetUartStatus(port);
+      result = USB_CTRL_STAGE_DATA;
+      break;
+
+    /* Set Requests without OUT stage */
 
     case CDC_REQ_SET_LINE_CTL:
       CDC_LOG
@@ -890,126 +903,66 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
         (pSetup->wValue.W & LINE_CTRL_PARITY_MASK) >> LINE_CTRL_PARITY_POS,
         (pSetup->wValue.W & LINE_CTRL_WORD_LEN_MASK) >> LINE_CTRL_WORD_LEN_POS
       );
-
+      cdc_SetUartParameters(port, pSetup->wValue.W);
       result = USB_CTRL_STAGE_STATUS;
       break;
-      
-    case CDC_REQ_SET_FLOW:
-      CDC_LOG(" - Set Flow Control State\r\n");
 
-      *pData = (U8 *)port->pFlowCtrlState;
-
-      result = USB_CTRL_STAGE_WAIT;
-      break;
-      
-    case CDC_REQ_SET_CHARS:
-      CDC_LOG(" - Set Spec Chars\r\n");
-
-      *pData = (U8 *)port->pSpecChars;
-
-      result = USB_CTRL_STAGE_WAIT;
-      break;
-      
-    case CDC_REQ_SET_BAUDRATE:
-      CDC_LOG(" - Set Baud Rate\r\n");
-
-      *pData = (U8 *)&port->baudrate;
-
-      result = USB_CTRL_STAGE_WAIT;
-      break;
-      
-    case CDC_REQ_GET_MDMSTS:
-      //CDC_LOG(" - Get Modem Status\r\n");
-
-      /* Bit 0 - DTR state, Bit 1 - RTS state */
-      *pData = (U8 *)&port->modemStatus;
-
-      result = USB_CTRL_STAGE_DATA;
-      break;
-      
     case CDC_REQ_IFC_ENABLE:
       CDC_LOG(" - Port %d Enable = %d\r\n", port->uart, pSetup->wValue.W);
-      
-      if (0 == pSetup->wValue.W)
-      {
-        port->ready = FW_FALSE;
-      }
-      else
-      {
-        port->ready = FW_TRUE;
-        port->modemStatus = (MODEM_STATUS_DTR | MODEM_STATUS_RTS);
-      }
-      
+      cdc_SetUartEnabled(port, pSetup->wValue.W);
       result = USB_CTRL_STAGE_STATUS;
       break;
-      
-    case CDC_REQ_GET_COMM_STATUS:
-      //CDC_LOG(" - Get Serial Status\r\n");
 
-      //port->pSerialStatus->ulErrors = 0;
-      //port->pSerialStatus->ulHoldReasons = 0;
-      port->pSerialStatus->ulAmountInInQueue = FIFO_Count(&port->txFifo);
-      port->pSerialStatus->ulAmountInOutQueue = FIFO_Count(&port->rxFifo);
-      *pData = (U8 *)port->pSerialStatus;
-
-      result = USB_CTRL_STAGE_DATA;
+    case CDC_REQ_PURGE:
+      CDC_LOG(" - Purge - 0x%04X\r\n", pSetup->wValue.W);
+      cdc_UartPurge(port, pSetup->wValue.W);
+      result = USB_CTRL_STAGE_STATUS;
       break;
-      
+
     case CDC_REQ_SET_MHS:
       CDC_LOG(" - Set Mdm Handshake = 0x%04X\r\n", pSetup->wValue.W);
-
-      port->modemHandshake = pSetup->wValue.W;
-      
-      if (0 != (pSetup->wValue.W & MODEM_HANDSHAKE_STATE_DTR_EN))
-      {
-        if (0 != (pSetup->wValue.W & MODEM_HANDSHAKE_STATE_DTR))
-        {
-          CDC_LOG(" --- DTR Set\r\n");
-        }
-        else
-        {
-          CDC_LOG(" --- DTR Clear\r\n");
-        }
-      }
-      
-      if (0 != (pSetup->wValue.W & MODEM_HANDSHAKE_STATE_RTS_EN))
-      {
-        if (0 != (pSetup->wValue.W & MODEM_HANDSHAKE_STATE_RTS))
-        {
-          CDC_LOG(" --- RTS Set\r\n");
-        }
-        else
-        {
-          CDC_LOG(" --- RTS Clear\r\n");
-        }
-      }
-              
+      cdc_SetUartDtrRts(port, pSetup->wValue.W);
       result = USB_CTRL_STAGE_STATUS;
       break;
-      
-    case CDC_REQ_PURGE:
-      CDC_LOG(" - Purge\r\n");
 
-      result = USB_CTRL_STAGE_STATUS;
+    /* Set Requests with OUT stage */
+
+    case CDC_REQ_SET_FLOW:
+      CDC_LOG(" - Set Flow Control State\r\n");
+      /* DTR/RTS operation mode: hardcoded as staticaly active both */
+      *pData = (U8 *)port->pFlowCtrlState;
+      result = USB_CTRL_STAGE_WAIT;
       break;
+
+    case CDC_REQ_SET_CHARS:
+      CDC_LOG(" - Set Spec Chars\r\n");
+      *pData = (U8 *)port->pSpecChars;
+      result = USB_CTRL_STAGE_WAIT;
+      break;
+
+    case CDC_REQ_SET_BAUDRATE:
+      CDC_LOG(" - Set Baud Rate\r\n");
+      *pData = (U8 *)&port->baudrate;
+      result = USB_CTRL_STAGE_WAIT;
+      break;
+
+    /* Vendor Specific */
 
     case CDC_REQ_VENDOR_SPECIFIC:
       switch(pSetup->wValue.W)
       {
         case CP210X_GET_PARTNUM:
           CDC_LOG(" - Get Part Number\r\n");
-          
           *pData = (U8 *)&gPartNumber;
-
           result = USB_CTRL_STAGE_DATA;
           break;
-            
+
         default:
           CDC_LOG(" - Vendor Specific - 0x%04X\r\n", pSetup->wValue.W);
           break;
       }
       break;
-    
+
     case CDC_REQ_SET_BAUDDIV:
     case CDC_REQ_GET_BAUDDIV:
     case CDC_REQ_GET_LINE_CTL:
@@ -1038,8 +991,6 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
       break;
   }
 
-  //GPIO_Lo(GPIOB, 11);
-    
   return result;
 }
 
@@ -1059,25 +1010,35 @@ USB_CTRL_STAGE CDC_CtrlOutReq
   U16 *pSize
 )
 {
-  GPIO_Hi(GPIOA, 7);
-
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
   CDC_PORT * port = cdc_GetPort(pSetup->wIndex.W);
+#ifdef CDC_DEBUG
+      U32 ctrlHndshake, flowReplace;
+#endif /* CDC_DEBUG */
 
   switch (pSetup->bRequest)
   {
     case CDC_REQ_SET_FLOW:
-      //CDC_LOG
-      //(
-      //  " - Set Flow: CH = %d FR = %d, XNL = %d XFL = %d\r\n",
-      //  port->pFlowCtrlState->ulControlHandshake,
-      //  port->pFlowCtrlState->ulFlowReplace,
-      //  port->pFlowCtrlState->ulXonLimit,
-      //  port->pFlowCtrlState->ulXoffLimit
-      //);
+#ifdef CDC_DEBUG
+      ctrlHndshake = port->pFlowCtrlState->ulControlHandshake;
+      ctrlHndshake &= FLOW_CTRL_HDSHAKE_DTR_MASK;
+      ctrlHndshake >>= FLOW_CTRL_HDSHAKE_DTR_POS;
+
+      flowReplace = port->pFlowCtrlState->ulFlowReplace;
+      flowReplace &= FLOW_CTRL_REPLACE_RTS_MASK;
+      flowReplace >>= FLOW_CTRL_REPLACE_RTS_POS;
+#endif /* CDC_DEBUG */
+
+      CDC_LOG
+      (
+        " - Set Flow Ctrl: DTR = %d RTS = %d\r\n",
+        ctrlHndshake,
+        flowReplace
+      );
+
       result = USB_CTRL_STAGE_STATUS;
       break;
-      
+
     case CDC_REQ_SET_CHARS:
       //CDC_LOG
       //(
@@ -1087,12 +1048,13 @@ USB_CTRL_STAGE CDC_CtrlOutReq
       //);
       result = USB_CTRL_STAGE_STATUS;
       break;
-      
+
     case CDC_REQ_SET_BAUDRATE:
-      //CDC_LOG(" - Set Baud Rate = %d\r\n", port->baudrate);
+      CDC_LOG(" --- Velue = %d\r\n", port->baudrate);
+      cdc_SetUartBaudrate(port);
       result = USB_CTRL_STAGE_STATUS;
       break;
-      
+
     default:
       CDC_LOG
       (
@@ -1102,8 +1064,6 @@ USB_CTRL_STAGE CDC_CtrlOutReq
       );
       break;
   }
-  
-  GPIO_Lo(GPIOA, 7);
 
   return result;
 }
@@ -1124,11 +1084,11 @@ static void cdc_OutStage(CDC_PORT * pPort)
     FIFO_Free(&pPort->rxFifo)
   );
 
-//  /* Write to UART */
-//  if (0 < FIFO_Count(&pPort->rxFifo))
-//  {
-//    UART_TxStart(pPort->uart);
-//  }
+  /* Write to UART */
+  if (0 < FIFO_Count(&pPort->rxFifo))
+  {
+    UART_TxStart(pPort->uart);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -1188,17 +1148,6 @@ void CDC_SOF(void)
   cdc_ProcessCollectedData(&gPortB);
 #endif
 }
-
-//-----------------------------------------------------------------------------
-/** @brief CDC Interrupt In Callback
- *  @param aEvent - Event
- *  @return None
- */
-
-//static void cdc_InterruptAIn(U32 aEvent)
-//{
-//  cdc_IrqInStage(&gPortA);
-//}
 
 //-----------------------------------------------------------------------------
 /** @brief CDC Bulk In Callback
@@ -1266,18 +1215,6 @@ static FW_BOOLEAN uart_FifoGetA(U8 * pByte)
   return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortA.rxFifo, pByte));
 }
 
-//#if (USB_CDD)
-//-----------------------------------------------------------------------------
-/** @brief CDC Interrupt In Callback
- *  @param aEvent - Event
- *  @return None
- */
-
-//static void cdc_InterruptBIn(U32 aEvent)
-//{
-//  cdc_IrqInStage(&gPortB);
-//}
-
 //-----------------------------------------------------------------------------
 /** @brief CDC Bulk In Callback
  *  @param aEvent - Event
@@ -1343,7 +1280,6 @@ static FW_BOOLEAN uart_FifoGetB(U8 * pByte)
 {
   return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortB.rxFifo, pByte));
 }
-//#endif /* USB_CDD */
 
 //-----------------------------------------------------------------------------
 /** @brief Initializes CDC
@@ -1356,7 +1292,6 @@ void CDC_Init(void)
   /* Register appropriate EP callbacks */
   USB_SetCb_Ep(USB_CDC_EP_BLK_O, cdc_BulkAOut);
   USB_SetCb_Ep(USB_CDC_EP_BLK_I, cdc_BulkAIn);
-  //USB_SetCb_Ep(USB_CDC_EP_IRQ_I, cdc_InterruptAIn);
   /* Clear Port context */
   memset(&gPortA, 0, sizeof(gPortA));
   /* Port is not ready yet */
@@ -1364,15 +1299,12 @@ void CDC_Init(void)
   /* Initialize Endpoints */
   gPortA.epBlkO = USB_CDC_EP_BLK_O;
   gPortA.epBlkI = USB_CDC_EP_BLK_I;
-//  gPortA.epIrqI = USB_CDC_EP_IRQ_I;
   /* Initialize FIFOs */
   FIFO_Init(&gPortA.rxFifo, gPortA.rxBuffer, sizeof(gPortA.rxBuffer));
   FIFO_Init(&gPortA.txFifo, gPortA.txBuffer, sizeof(gPortA.txBuffer));
   gPortA.rxFifoPutCb = cdc_RxFifoPutA;
   gPortA.txFifoGetCb = cdc_TxFifoGetA;
   /* Initialize pointers */
-//  gPortA.lineCoding = &gLineCodingA;
-//  gPortA.notification = &gNotificationA;
   gPortA.pCommProp = &gCommPropA;
   gPortA.pFlowCtrlState = &gFlowCtrlStateA;
   gPortA.pSpecChars = &gSpecCharsA;
@@ -1380,11 +1312,9 @@ void CDC_Init(void)
   /* Initialize UART Number */
   gPortA.uart = UART1;
 
-//#if (USB_CDD)
   /* Register appropriate EP callbacks */
   USB_SetCb_Ep(USB_CDD_EP_BLK_O, cdc_BulkBOut);
   USB_SetCb_Ep(USB_CDD_EP_BLK_I, cdc_BulkBIn);
-//  USB_SetCb_Ep(USB_CDD_EP_IRQ_I, cdc_InterruptBIn);
   /* Clear Port context */
   memset(&gPortB, 0, sizeof(gPortB));
   /* Port is not ready yet */
@@ -1392,20 +1322,16 @@ void CDC_Init(void)
   /* Initialize Endpoints */
   gPortB.epBlkO = USB_CDD_EP_BLK_O;
   gPortB.epBlkI = USB_CDD_EP_BLK_I;
-  //gPortB.epIrqI = USB_CDD_EP_IRQ_I;
   /* Initialize FIFOs */
   FIFO_Init(&gPortB.rxFifo, gPortB.rxBuffer, sizeof(gPortB.rxBuffer));
   FIFO_Init(&gPortB.txFifo, gPortB.txBuffer, sizeof(gPortB.txBuffer));
   gPortB.rxFifoPutCb = cdc_RxFifoPutB;
   gPortB.txFifoGetCb = cdc_TxFifoGetB;
   /* Initialize pointers */
-//  gPortB.lineCoding = &gLineCodingB;
-//  gPortB.notification = &gNotificationB;
   gPortB.pCommProp = &gCommPropB;
   gPortB.pFlowCtrlState = &gFlowCtrlStateB;
   gPortB.pSpecChars = &gSpecCharsB;
   gPortB.pSerialStatus = &gSerialStatusB;
   /* Initialize UART Number */
   gPortB.uart = UART2;
-//#endif
 }

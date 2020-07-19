@@ -44,6 +44,45 @@ UART_Context_t gUARTCtx[UARTS_COUNT] =
 };
 
 //-----------------------------------------------------------------------------
+/** @brief Changes UART baud rate
+ *  @param aUART - UART Port Number
+ *  @param aValue - Baud rate
+ *  @return None
+ */
+
+void UART_SetBaudrate(UART_t aUART, U32 aValue)
+{
+  U32 brr, mantissa, fraction;
+
+  switch (aUART)
+  {
+    case UART1:
+      /* Pre-get clock */
+      brr = APB2Clock / aValue;
+      break;
+
+    case UART2:
+      /* Pre-get clock */
+      brr = APB1Clock / aValue;
+      break;
+
+    case UART3:
+      /* Pre-get clock */
+      brr = APB1Clock / aValue;
+      break;
+  }
+
+  /* Setup Baud Rate */
+  gUARTCtx[aUART].BaudRate = aValue;
+
+  mantissa = brr / 16;
+  fraction = brr % 16;
+  brr = (mantissa << 4) | fraction;
+
+  gUARTCtx[aUART].HW->BRR = brr;
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Initializes the UART peripheral
  *  @param aUART - UART Port Number
  *  @param aBaudRate - Baud Rate
@@ -64,8 +103,6 @@ void UART_Init
   UART_CbByte pTxByteCb
 )
 {
-  U32 brr, mantissa, fraction;
-
   switch (aUART)
   {
     case UART1:
@@ -78,9 +115,6 @@ void UART_Init
 
       /* Enable UART Interrupts */
       IRQ_USART1_Enable();
-      
-      /* Pre-get clock */
-      brr = APB2Clock / aBaudRate;
 
       break;
     case UART2:
@@ -93,9 +127,6 @@ void UART_Init
 
       /* Enable UART Interrupts */
       IRQ_USART2_Enable();
-      
-      /* Pre-get clock */
-      brr = APB1Clock / aBaudRate;
 
       break;
     case UART3:
@@ -108,25 +139,16 @@ void UART_Init
 
       /* Enable UART Interrupts */
       IRQ_USART3_Enable();
-      
-      /* Pre-get clock */
-      brr = APB1Clock / aBaudRate;
 
       break;
   }
-  
+
   /* Setup Callbacks */
   gUARTCtx[aUART].RxByteCb = pRxByteCb;
   gUARTCtx[aUART].TxByteCb = pTxByteCb;
-  
+
   /* Setup Baud Rate */
-  gUARTCtx[aUART].BaudRate = aBaudRate;
-
-  mantissa = brr / 16;
-  fraction = brr % 16;
-  brr = (mantissa << 4) | fraction;
-
-  gUARTCtx[aUART].HW->BRR = brr;
+  UART_SetBaudrate(aUART, aBaudRate);
 
   /* Setup Control Registers */
   gUARTCtx[aUART].HW->CR2 = ( 0 );
@@ -147,11 +169,11 @@ void UART_DeInit(UART_t aUART)
     case UART1:
       /* Disable UART Interrupts */
       IRQ_USART1_Disable();
-      
+
       /* Reset UART peripheral */
       RCC->APB2RSTR |= RCC_APB2RSTR_USART1RST;
       RCC->APB2RSTR &= (~RCC_APB2RSTR_USART1RST);
-      
+
       /* Disable UART peripheral clock */
       RCC->APB2ENR &= (~RCC_APB2ENR_USART1EN);
 
@@ -159,11 +181,11 @@ void UART_DeInit(UART_t aUART)
     case UART2:
       /* Disable UART Interrupts */
       IRQ_USART2_Disable();
-      
+
       /* Reset UART peripheral */
       RCC->APB1RSTR |= RCC_APB1RSTR_USART2RST;
       RCC->APB1RSTR &= (~RCC_APB1RSTR_USART2RST);
-      
+
       /* Disable UART peripheral clock */
       RCC->APB1ENR &= (~RCC_APB1ENR_USART2EN);
 
@@ -171,17 +193,17 @@ void UART_DeInit(UART_t aUART)
     case UART3:
       /* Disable UART Interrupts */
       IRQ_USART3_Disable();
-      
+
       /* Reset UART peripheral */
       RCC->APB1RSTR |= RCC_APB1RSTR_USART3RST;
       RCC->APB1RSTR &= (~RCC_APB1RSTR_USART3RST);
-      
+
       /* Disable UART peripheral clock */
       RCC->APB1ENR &= (~RCC_APB1ENR_USART3EN);
 
       break;
   }
-  
+
   gUARTCtx[aUART].BaudRate = UART_BAUDRATE;
   gUARTCtx[aUART].RxByteCb = NULL;
   gUARTCtx[aUART].TxByteCb = NULL;
@@ -234,7 +256,7 @@ void UART_IRQHandler(UART_t aUART)
       //LOG("UART: Frame Error!\r\n");
     }
     if (0 != (sr & USART_SR_ORE))
-    { 
+    {
       //LOG("UART: Overrun Error!\r\n");
     }
     data = gUARTCtx[aUART].HW->DR;
@@ -263,7 +285,7 @@ void UART_IRQHandler(UART_t aUART)
 //
 //      /* UART Over-Run interrupt occurred */
 //      if ((0 != (sr & USART_SR_ORE)) && (0 != (cr3 & USART_CR3_EIE)))
-//      { 
+//      {
 ////        huart->ErrorCode |= HAL_UART_ERROR_ORE;
 //      }
 //
@@ -294,7 +316,7 @@ void UART_IRQHandler(UART_t aUART)
 //            /* Abort the UART DMA Rx channel */
 //            if(huart->hdmarx != NULL)
 //            {
-//              /* Set the UART DMA Abort callback : 
+//              /* Set the UART DMA Abort callback :
 //                 will lead to call HAL_UART_ErrorCallback() at end of DMA abort procedure */
 //              huart->hdmarx->XferAbortCallback = UART_DMAAbortOnError;
 //              if(HAL_DMA_Abort_IT(huart->hdmarx) != HAL_OK)
@@ -317,7 +339,7 @@ void UART_IRQHandler(UART_t aUART)
 //        }
 //        else
 //        {
-//          /* Non Blocking error : transfer could go on. 
+//          /* Non Blocking error : transfer could go on.
 //             Error is notified to user through user error callback */
 //          HAL_UART_ErrorCallback(huart);
 //          huart->ErrorCode = HAL_UART_ERROR_NONE;
@@ -357,7 +379,7 @@ void UART_IRQHandler(UART_t aUART)
     /* Disable UART Tx Interrupts */
     gUARTCtx[aUART].HW->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
   }
-  
+
 //  GPIO_Lo(GPIOA, 7);
 }
 
