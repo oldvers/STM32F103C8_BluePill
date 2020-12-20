@@ -34,7 +34,9 @@ void UART_Init
   UART_t      aUART,
   U32         aBaudRate,
   UART_CbByte pRxByteCb,
-  UART_CbByte pTxByteCb
+  UART_CbByte pRxCmpltCb,
+  UART_CbByte pTxByteCb,
+  UART_CbByte pTxCmpltCb
 );
 void UART_DeInit      (UART_t aUART);
 void UART_TxStart     (UART_t aUART);

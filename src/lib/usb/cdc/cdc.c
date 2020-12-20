@@ -22,10 +22,10 @@
 //-----------------------------------------------------------------------------
 /* Private definitions */
 
-#define CDC_DEBUG
+//#define CDC_DEBUG
 
 #ifdef CDC_DEBUG
-#  define CDC_LOG(...)      printf(__VA_ARGS__)
+#  define CDC_LOG           LOG
 #else
 #  define CDC_LOG(...)
 #endif
@@ -591,6 +591,7 @@ typedef struct _CDC_PORT
   U8                    epBlkI;
   U16                   modemHandshake;
   U8                    modemStatus;
+  FW_BOOLEAN            rxComplete;
   U32                   baudrate;
   FIFO_t                rxFifo;
   FIFO_t                txFifo;
@@ -617,8 +618,12 @@ STATIC CDC_PORT          gPortB = {0};
 
 static FW_BOOLEAN uart_FifoPutA(U8 * pByte);
 static FW_BOOLEAN uart_FifoGetA(U8 * pByte);
+static FW_BOOLEAN uart_RxCompleteA(U8 * pByte);
+static FW_BOOLEAN uart_TxCompleteA(U8 * pByte);
 static FW_BOOLEAN uart_FifoPutB(U8 * pByte);
 static FW_BOOLEAN uart_FifoGetB(U8 * pByte);
+static FW_BOOLEAN uart_RxCompleteB(U8 * pByte);
+static FW_BOOLEAN uart_TxCompleteB(U8 * pByte);
 
 //-----------------------------------------------------------------------------
 /** @brief Gets CDC Port according to USB Interface Number
@@ -680,6 +685,7 @@ static U8 * cdc_GetUartDtrRts(CDC_PORT * pPort)
  *  @param pPort - COM Port context
  *  @return Pointer to COM Port status structure
  */
+
 static U8 * cdc_GetUartStatus(CDC_PORT * pPort)
 {
   /* COM Port Rx/Tx Queue Status */
@@ -747,7 +753,9 @@ static void cdc_SetUartEnabled(CDC_PORT * pPort, U16 aValue)
         UART1,
         gPortA.baudrate,
         uart_FifoPutA,
-        uart_FifoGetA
+        uart_RxCompleteA,
+        uart_FifoGetA,
+        uart_TxCompleteA
       );
 
       /* UART1: PA9 - Tx, PA10 - Rx, DTR - PB8, RTS - PB6 */
@@ -763,7 +771,9 @@ static void cdc_SetUartEnabled(CDC_PORT * pPort, U16 aValue)
         UART2,
         gPortB.baudrate,
         uart_FifoPutB,
-        uart_FifoGetB
+        uart_RxCompleteB,
+        uart_FifoGetB,
+        uart_TxCompleteB
       );
 
       /* UART2: PA2 - Tx, PA3 - Rx */
@@ -846,7 +856,6 @@ static void cdc_SetUartDtrRts(CDC_PORT * pPort, U16 aValue)
 
 static void cdc_SetUartBaudrate(CDC_PORT * pPort)
 {
-  /* Not Implemented yet */
   UART_SetBaudrate(pPort->uart, pPort->baudrate);
 }
 
@@ -882,13 +891,13 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
       break;
 
     case CDC_REQ_GET_MDMSTS:
-      //CDC_LOG(" - Get Modem Status\r\n");
+      CDC_LOG(" - Get Modem Status\r\n");
       *pData = cdc_GetUartDtrRts(port);
       result = USB_CTRL_STAGE_DATA;
       break;
 
     case CDC_REQ_GET_COMM_STATUS:
-      //CDC_LOG(" - Get Serial Status\r\n");
+      CDC_LOG(" - Get Serial Status\r\n");
       *pData = cdc_GetUartStatus(port);
       result = USB_CTRL_STAGE_DATA;
       break;
@@ -1040,12 +1049,12 @@ USB_CTRL_STAGE CDC_CtrlOutReq
       break;
 
     case CDC_REQ_SET_CHARS:
-      //CDC_LOG
-      //(
-      //  " - Set Spec Chars: Xon = 0x%02X Xoff = 0x%02X\r\n",
-      //  port->pSpecChars->bXonChar,
-      //  port->pSpecChars->bXoffChar
-      //);
+      CDC_LOG
+      (
+        " - Set Spec Chars: Xon = 0x%02X Xoff = 0x%02X\r\n",
+        port->pSpecChars->bXonChar,
+        port->pSpecChars->bXoffChar
+      );
       result = USB_CTRL_STAGE_STATUS;
       break;
 
@@ -1110,6 +1119,10 @@ static void cdc_InStage(CDC_PORT * pPort)
       FIFO_Count(&pPort->txFifo)
     );
   }
+  else
+  {
+    pPort->rxComplete = FW_FALSE;
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -1128,7 +1141,9 @@ static void cdc_ProcessCollectedData(CDC_PORT * pPort)
       cdc_OutStage(pPort);
     }
 
-    if (FW_TRUE == USB_EpIsTxEmpty(pPort->epBlkI))
+    if (((FW_TRUE == pPort->rxComplete) ||
+         (USB_CDC_PACKET_SIZE < FIFO_Count(&pPort->txFifo))) &&
+        (FW_TRUE == USB_EpIsTxEmpty(pPort->epBlkI)))
     {
       cdc_InStage(pPort);
     }
@@ -1196,7 +1211,7 @@ static void cdc_TxFifoGetA(U8 * pByte)
 //-----------------------------------------------------------------------------
 /** @brief Puts received Byte from UART to the Tx FIFO
  *  @param pByte - Pointer to the container for Byte
- *  @return None
+ *  @return TRUE if byte has been put successfully
  */
 
 static FW_BOOLEAN uart_FifoPutA(U8 * pByte)
@@ -1205,14 +1220,37 @@ static FW_BOOLEAN uart_FifoPutA(U8 * pByte)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Receive complete callback
+ *  @param pByte - Optional pointer to the latest received byte (def. NULL)
+ *  @return TRUE, that means UART line idle is received
+ */
+
+static FW_BOOLEAN uart_RxCompleteA(U8 * pByte)
+{
+  gPortA.rxComplete = FW_TRUE;
+  return FW_TRUE;
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Gets Byte that need to be transmitted from the Rx FIFO
  *  @param pByte - Pointer to the container for Byte
- *  @return None
+ *  @return TRUE if byte has been gotten successfully
  */
 
 static FW_BOOLEAN uart_FifoGetA(U8 * pByte)
 {
   return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortA.rxFifo, pByte));
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Transmit complete callback
+ *  @param pByte - Optional pointer to the latest received byte (def. NULL)
+ *  @return TRUE, that means UART transmission is complete
+ */
+
+static FW_BOOLEAN uart_TxCompleteA(U8 * pByte)
+{
+  return FW_TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -1262,12 +1300,24 @@ static void cdc_TxFifoGetB(U8 * pByte)
 //-----------------------------------------------------------------------------
 /** @brief Puts received Byte from UART to the Tx FIFO
  *  @param pByte - Pointer to the container for Byte
- *  @return None
+ *  @return TRUE if byte has been put successfully
  */
 
 static FW_BOOLEAN uart_FifoPutB(U8 * pByte)
 {
   return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPortB.txFifo, pByte));
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Receive complete callback
+ *  @param pByte - Optional pointer to the latest received byte (def. NULL)
+ *  @return TRUE, that means UART line idle received
+ */
+
+static FW_BOOLEAN uart_RxCompleteB(U8 * pByte)
+{
+  gPortB.rxComplete = FW_TRUE;
+  return FW_TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -1279,6 +1329,17 @@ static FW_BOOLEAN uart_FifoPutB(U8 * pByte)
 static FW_BOOLEAN uart_FifoGetB(U8 * pByte)
 {
   return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortB.rxFifo, pByte));
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Transmit complete callback
+ *  @param pByte - Optional pointer to the latest received byte (def. NULL)
+ *  @return TRUE, that means UART transmission is complete
+ */
+
+static FW_BOOLEAN uart_TxCompleteB(U8 * pByte)
+{
+  return FW_TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -1296,6 +1357,7 @@ void CDC_Init(void)
   memset(&gPortA, 0, sizeof(gPortA));
   /* Port is not ready yet */
   gPortA.ready = FW_FALSE;
+  gPortA.rxComplete = FW_FALSE;
   /* Initialize Endpoints */
   gPortA.epBlkO = USB_CDC_EP_BLK_O;
   gPortA.epBlkI = USB_CDC_EP_BLK_I;
@@ -1319,6 +1381,7 @@ void CDC_Init(void)
   memset(&gPortB, 0, sizeof(gPortB));
   /* Port is not ready yet */
   gPortB.ready = FW_FALSE;
+  gPortB.rxComplete = FW_FALSE;
   /* Initialize Endpoints */
   gPortB.epBlkO = USB_CDD_EP_BLK_O;
   gPortB.epBlkI = USB_CDD_EP_BLK_I;

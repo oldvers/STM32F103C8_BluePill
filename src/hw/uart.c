@@ -2,10 +2,18 @@
 #include "system.h"
 #include "interrupts.h"
 #include "uart.h"
-//#include "debug.h"
 #include "gpio.h"
+#include "debug.h"
 
 //-----------------------------------------------------------------------------
+
+//#define UART_DEBUG
+
+#ifdef UART_DEBUG
+#  define UART_LOG           LOG
+#else
+#  define UART_LOG(...)
+#endif
 
 #define UART_BAUDRATE        (115200)
 
@@ -16,7 +24,9 @@ typedef struct UART_Context_s
   USART_TypeDef * HW;
   U32             BaudRate;
   UART_CbByte     RxByteCb;
+  UART_CbByte     RxCmpltCb;
   UART_CbByte     TxByteCb;
+  UART_CbByte     TxCmpltCb;
 } UART_Context_t, * UART_Context_p;
 
 //-----------------------------------------------------------------------------
@@ -100,7 +110,9 @@ void UART_Init
   UART_t      aUART,
   U32         aBaudRate,
   UART_CbByte pRxByteCb,
-  UART_CbByte pTxByteCb
+  UART_CbByte pRxCmpltCb,
+  UART_CbByte pTxByteCb,
+  UART_CbByte pTxCmpltCb
 )
 {
   switch (aUART)
@@ -144,8 +156,10 @@ void UART_Init
   }
 
   /* Setup Callbacks */
-  gUARTCtx[aUART].RxByteCb = pRxByteCb;
-  gUARTCtx[aUART].TxByteCb = pTxByteCb;
+  gUARTCtx[aUART].RxByteCb  = pRxByteCb;
+  gUARTCtx[aUART].RxCmpltCb = pRxCmpltCb;
+  gUARTCtx[aUART].TxByteCb  = pTxByteCb;
+  gUARTCtx[aUART].TxCmpltCb = pTxCmpltCb;
 
   /* Setup Baud Rate */
   UART_SetBaudrate(aUART, aBaudRate);
@@ -217,8 +231,6 @@ void UART_DeInit(UART_t aUART)
 
 void UART_IRQHandler(UART_t aUART)
 {
-//  GPIO_Hi(GPIOA, 7);
-
   U32 sr     = gUARTCtx[aUART].HW->SR;
   U32 cr1    = gUARTCtx[aUART].HW->CR1;
   U32 cr3    = gUARTCtx[aUART].HW->CR3;
@@ -233,31 +245,39 @@ void UART_IRQHandler(UART_t aUART)
     if ((0 != (sr & USART_SR_RXNE)) && (0 != (cr1 & USART_CR1_RXNEIE)))
     {
       data = gUARTCtx[aUART].HW->DR;
-      GPIO_Hi(GPIOA, 7);
       if (NULL != gUARTCtx[aUART].RxByteCb)
       {
         (void)gUARTCtx[aUART].RxByteCb((U8 *)&data);
       }
-      GPIO_Lo(GPIOA, 7);
+    }
+
+    /* UART Receive Complete */
+    if ((0 != (sr & USART_SR_IDLE)) && (0 != (cr1 & USART_CR1_IDLEIE)))
+    {
+      data = gUARTCtx[aUART].HW->DR;
+      if (NULL != gUARTCtx[aUART].RxCmpltCb)
+      {
+        (void)gUARTCtx[aUART].RxCmpltCb(NULL);
+      }
     }
   }
   else
   {
     if (0 != (sr & USART_SR_PE))
     {
-      //LOG("UART: Parity Error!\r\n");
+      UART_LOG("UART: Parity Error!\r\n");
     }
     if (0 != (sr & USART_SR_NE))
     {
-      //LOG("UART: Noise Error!\r\n");
+      UART_LOG("UART: Noise Error!\r\n");
     }
     if (0 != (sr & USART_SR_FE))
     {
-      //LOG("UART: Frame Error!\r\n");
+      UART_LOG("UART: Frame Error!\r\n");
     }
     if (0 != (sr & USART_SR_ORE))
     {
-      //LOG("UART: Overrun Error!\r\n");
+      UART_LOG("UART: Overrun Error!\r\n");
     }
     data = gUARTCtx[aUART].HW->DR;
 
@@ -378,9 +398,11 @@ void UART_IRQHandler(UART_t aUART)
   {
     /* Disable UART Tx Interrupts */
     gUARTCtx[aUART].HW->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
+    if (NULL != gUARTCtx[aUART].TxCmpltCb)
+    {
+      (void)gUARTCtx[aUART].TxCmpltCb(NULL);
+    }
   }
-
-//  GPIO_Lo(GPIOA, 7);
 }
 
 //-----------------------------------------------------------------------------
@@ -397,7 +419,7 @@ void UART_TxStart(UART_t aUART)
   if (0 != (gUARTCtx[aUART].HW->CR1 & USART_CR1_TE)) return;
 
   gUARTCtx[aUART].HW->CR1 |= (USART_CR1_TE | USART_CR1_TXEIE);
-  //LOG("UART: Tx Start\r\n");
+  UART_LOG("UART: Tx Start\r\n");
 }
 
 //-----------------------------------------------------------------------------
@@ -413,6 +435,7 @@ void UART_RxStart(UART_t aUART)
   /* Check if reception is in progress */
   if (0 != (gUARTCtx[aUART].HW->CR1 & USART_CR1_RE)) return;
 
-  gUARTCtx[aUART].HW->CR1 |= (USART_CR1_RE | USART_CR1_RXNEIE);
-  //LOG("UART: Rx Start\r\n");
+  gUARTCtx[aUART].HW->CR1 |= (USART_CR1_RXNEIE | USART_CR1_IDLEIE);
+  gUARTCtx[aUART].HW->CR1 |= (USART_CR1_RE);
+  UART_LOG("UART: Rx Start\r\n");
 }

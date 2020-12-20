@@ -1,7 +1,9 @@
 #include "stm32f1xx.h"
+#include "board.h"
 #include "types.h"
 #include "interrupts.h"
 #include "usb.h"
+#include "gpio.h"
 
 /* Address Mask */
 #define USB_EP_ADDR_MASK    (0xFFFE)
@@ -189,7 +191,11 @@ void USB_Init(U32 aCtrlEpMaxPacketSize)
 
   gCtrlEpMaxPacketSize = aCtrlEpMaxPacketSize;
   gEpFreeBuffAddr = USB_EP_QUANTITY * sizeof(EpBuffDescription_t);
-  
+
+  /* Setup GPIOs */
+  GPIO_Init(USB_DM_PORT, USB_DM_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
+  GPIO_Init(USB_DP_PORT, USB_DP_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
+
   /* Setup USB clock prescaler */
   if (72000000 > SystemCoreClock)
   {
@@ -277,10 +283,10 @@ void USB_Reset(void)
   gEpFreeBuffAddr += gCtrlEpMaxPacketSize;
   pEpBuffDscr[0].ADDR_RX = gEpFreeBuffAddr;
   gEpFreeBuffAddr += gCtrlEpMaxPacketSize;
-  
+
   USB_EpCfg[0].IMaxSize = gCtrlEpMaxPacketSize;
   USB_EpCfg[0].OMaxSize = gCtrlEpMaxPacketSize;
-  
+
   if (gCtrlEpMaxPacketSize > 62)
   {
     pEpBuffDscr[0].COUNT_RX = ((gCtrlEpMaxPacketSize << 5) - 1) | 0x8000;
@@ -502,12 +508,12 @@ FW_BOOLEAN USB_EpIsRxEmpty(U32 aNumber)
 
   num = aNumber & USB_EP_NUM_MASK;
   val = (EPREG(num) & USB_EPRX_STAT);
-  
+
   if (USB_EP_RX_VALID != val)
   {
     cnt = pEpBuffDscr[num].COUNT_RX & USB_EP_COUNT_MASK;
   }
-  
+
   if (0 != cnt)
   {
     result = FW_FALSE;
@@ -532,12 +538,12 @@ FW_BOOLEAN USB_EpIsTxEmpty(U32 aNumber)
 
   num = aNumber & USB_EP_NUM_MASK;
   val = (EPREG(num) & USB_EPTX_STAT);
-  
+
   if (USB_EP_TX_VALID == val)
   {
     cnt = pEpBuffDscr[num].COUNT_TX & USB_EP_COUNT_MASK;
   }
-  
+
   if (0 == cnt)
   {
     result = FW_TRUE;
@@ -631,7 +637,7 @@ U32 USB_EpReadWsCb(U32 aNumber, USB_CbByte pPutByteCb, U32 aSize)
   /* Double Buffering is not yet supported */
   U32 num, cnt, *pv, n;
   U8 data[2] = {0};
-  
+
   if (NULL == pPutByteCb)
   {
     return 0;
@@ -676,7 +682,7 @@ U32 USB_EpWriteWsCb(U32 aNumber, USB_CbByte pGetByteCb, U32 aSize)
   /* Double Buffering is not yet supported */
   U32 num, *pv, n;
   U8 data[2] = {0};
-  
+
   if (NULL == pGetByteCb)
   {
     return 0;
@@ -799,7 +805,7 @@ void USB_IRQHandler(void)
     if (NULL != pUSB_CbError) pUSB_CbError(1);
     USB->ISTR = (U16)~(USB_ISTR_PMAOVR);
   }
-  
+
   /* Expected Start of Frame */
   if (istr & USB_ISTR_ESOF)
   {

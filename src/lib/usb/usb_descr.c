@@ -47,7 +47,7 @@ const U8 USB_ConfigDescriptor[] =
 /* Configuration 1 */
   USB_CONFIGUARTION_DESC_SIZE,       /* bLength */
   USB_CONFIGURATION_DESCRIPTOR_TYPE, /* bDescriptorType */
-  WBVAL((                            /* wTotalLength */  //1*9+2*9+3*7+1*9
+  WBVAL((                            /* wTotalLength */
    USB_CONFIGUARTION_DESC_SIZE * (1)                                         +
    USB_INTERFACE_DESC_SIZE     * (USB_IF_CNT)                                +
    USB_ENDPOINT_DESC_SIZE      * (USB_EP_CNT - USB_CTRL_EP_CNT)
@@ -57,7 +57,7 @@ const U8 USB_ConfigDescriptor[] =
   0x00,                              /* iConfiguration */
   USB_CONFIG_BUS_POWERED /*|*/       /* bmAttributes */
   /*USB_CONFIG_REMOTE_WAKEUP*/,
-  USB_CONFIG_POWER_MA(400),          /* bMaxPower */
+  USB_CONFIG_POWER_MA(500),          /* bMaxPower */
 
 #if (USB_CDC)
 /* Interface 0, Alternate Setting 0, Vendor Specific Class */
@@ -111,7 +111,7 @@ const U8 USB_ConfigDescriptor[] =
   USB_ENDPOINT_TYPE_BULK,            /* bmAttributes */
   WBVAL(USB_CDC_PACKET_SIZE),        /* wMaxPacketSize */
   0,                                 /* bInterval */
-#endif  
+#endif
 
 /* Terminator */
   0                                  /* bLength */
