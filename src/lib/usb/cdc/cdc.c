@@ -159,22 +159,24 @@ static void uart_Init(UART_t aUART)
     GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_PUP_PDN,   1);
     GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
     GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
-   
+
     UART_DeInit(UART1);
     UART_Init
     (
       UART1,
       gPortA.lineCoding->dwBaudRate,
       uart_FifoPutA,
-      uart_FifoGetA
+      NULL,
+      uart_FifoGetA,
+      NULL
     );
-    
+
     /* UART1: PA9 - Tx, PA10 - Rx, DTR - PB8, RTS - PB6 */
     GPIO_Init(UART1_TX_PORT,  UART1_TX_PIN,  GPIO_TYPE_ALT_PP_10MHZ, 1);
     GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_PUP_PDN,   1);
     GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_OUT_OD_10MHZ, 1);
     GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_OUT_PP_10MHZ, 1);
-    
+
     UART_RxStart(UART1);
   }
   else
@@ -182,16 +184,18 @@ static void uart_Init(UART_t aUART)
     /* UART2: PA2 - Tx, PA3 - Rx */
     GPIO_Init(UART2_TX_PORT, UART2_TX_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
     GPIO_Init(UART2_RX_PORT, UART2_RX_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
-    
+
     UART_DeInit(UART2);
     UART_Init
     (
       UART2,
       gPortB.lineCoding->dwBaudRate,
       uart_FifoPutB,
-      uart_FifoGetB
+      NULL,
+      uart_FifoGetB,
+      NULL
     );
-    
+
     /* UART2: PA2 - Tx, PA3 - Rx */
     GPIO_Init(UART2_TX_PORT, UART2_TX_PIN, GPIO_TYPE_ALT_PP_10MHZ, 1);
     GPIO_Init(UART2_RX_PORT, UART2_RX_PIN, GPIO_TYPE_IN_PUP_PDN,   1);

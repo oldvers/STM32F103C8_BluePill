@@ -34,11 +34,14 @@ void UART_Init
   UART_t      aUART,
   U32         aBaudRate,
   UART_CbByte pRxByteCb,
-  UART_CbByte pTxByteCb
+  UART_CbByte pRxCmpltCb,
+  UART_CbByte pTxByteCb,
+  UART_CbByte pTxCmpltCb
 );
-void UART_DeInit     (UART_t aUART);
-void UART_TxStart    (UART_t aUART);
-void UART_RxStart    (UART_t aUART);
+void UART_DeInit      (UART_t aUART);
+void UART_TxStart     (UART_t aUART);
+void UART_RxStart     (UART_t aUART);
+void UART_SetBaudrate (UART_t aUART, U32 aValue);
 
 /* Interrupt Handler Declaration */
 void UART_IRQHandler (UART_t aUART);
