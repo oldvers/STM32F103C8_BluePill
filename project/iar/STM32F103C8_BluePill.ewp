@@ -2217,6 +2217,9 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_fifo.c</name>
+            <excluded>
+                <configuration>Tests</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_icemkii_msg.c</name>
@@ -2231,6 +2234,9 @@
             </excluded>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\tests\test_pool.c</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\tests\test_template.c</name>
             <excluded>
                 <configuration>Tests</configuration>
@@ -2239,6 +2245,9 @@
     </group>
     <group>
         <name>USB</name>
+        <excluded>
+            <configuration>Tests</configuration>
+        </excluded>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\cdc.c</name>
         </file>
@@ -2352,6 +2361,12 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\fifo\fifo.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\pool\pool.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\pool\pool.h</name>
         </file>
     </group>
 </project>
