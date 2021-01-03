@@ -59,6 +59,8 @@ static void vUpdateTestResult(FW_BOOLEAN aResult)
 
 static FW_BOOLEAN Test_InitSuccess(void)
 {
+    FW_BOOLEAN result = FW_FALSE;
+
     LOG("Block Queue Success Initialization Test\r\n");
     pQueue = BlockQueue_Init
              (
@@ -66,15 +68,19 @@ static FW_BOOLEAN Test_InitSuccess(void)
                  sizeof(QueueBuffer),
                  sizeof(Block_t)
              );
-    vUpdateTestResult((FW_BOOLEAN)(NULL != pQueue));
+    result = (FW_BOOLEAN)(NULL != pQueue);
 
-    return (FW_BOOLEAN)(NULL != pQueue);
+    vUpdateTestResult(result);
+
+    return result;
 }
 
 //-----------------------------------------------------------------------------
 
 static FW_BOOLEAN Test_InitSizeNotFit(void)
 {
+    FW_BOOLEAN result = FW_FALSE;
+
     LOG("Block Queue Size Not Fit Initialization Test\r\n");
     pQueue = BlockQueue_Init
              (
@@ -82,9 +88,55 @@ static FW_BOOLEAN Test_InitSizeNotFit(void)
                  32 + 12 + 8,
                  12
              );
-    vUpdateTestResult((FW_BOOLEAN)(NULL == pQueue));
+    result = (FW_BOOLEAN)(NULL == pQueue);
 
-    return (FW_BOOLEAN)(NULL == pQueue);
+    vUpdateTestResult(result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
+static FW_BOOLEAN Test_AllocateSuccess(void)
+{
+    FW_BOOLEAN result = FW_FALSE;
+    FW_RESULT status = FW_ERROR;
+    U8 * pBlock = NULL;
+    U32 size = 0;
+
+    LOG("Block Queue Success Allocation Test\r\n");
+
+    status = BlockQueue_Allocate(pQueue, &pBlock, &size);
+
+    result = (FW_BOOLEAN)(FW_SUCCESS == status);
+    result &= (FW_BOOLEAN)(NULL != pBlock);
+    result &= (FW_BOOLEAN)(0 != size);
+
+    vUpdateTestResult(result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
+static FW_BOOLEAN Test_AllocateError(void)
+{
+    FW_BOOLEAN result = FW_FALSE;
+    FW_RESULT status = FW_ERROR;
+    U8 * pBlock = NULL;
+    U32 size = 0;
+
+    LOG("Block Queue Error Allocation Test\r\n");
+
+    status = BlockQueue_Allocate(pQueue, &pBlock, &size);
+
+    result = (FW_BOOLEAN)(FW_ERROR == status);
+    result &= (FW_BOOLEAN)(NULL != pBlock);
+    result &= (FW_BOOLEAN)(0 != size);
+
+    vUpdateTestResult(result);
+
+    return result;
 }
 
 //-----------------------------------------------------------------------------
@@ -107,8 +159,10 @@ void vLEDTask(void * pvParameters)
 
 static const TestFunction_t gTests[] =
 {
+    Test_InitSizeNotFit,
     Test_InitSuccess,
-    Test_InitSizeNotFit
+    Test_AllocateSuccess,
+    Test_AllocateError,
 };
 
 void vTemplateTask(void * pvParameters)
@@ -137,7 +191,7 @@ void vTemplateTask(void * pvParameters)
 
     while(FW_TRUE)
     {
-        LOG("Template Task Iteration\r\n");
+        //LOG("Template Task Iteration\r\n");
         vTaskDelay(500);
     }
     //vTaskDelete(NULL);

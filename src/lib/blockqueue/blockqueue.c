@@ -31,34 +31,7 @@
 #  define QUEUE_LOG(...)
 #endif
 
-////-----------------------------------------------------------------------------
-///** @brief Puts Byte To The FIFO
-// *  @param pFIFO - Pointer to the FIFO context
-// *  @param pByte - Pointer to the container for Byte
-// *  @return FW_FULL / FW_SUCCESS
-// */
-//
-//FW_RESULT FIFO_Put(FIFO_p pFIFO, U8 * pByte)
-//{
-////  IRQ_SAFE_AREA();
-////  GPIO_Hi(GPIOB, 3);
-//
-//  if (pFIFO->I == ((pFIFO->O - 1 + pFIFO->S) % pFIFO->S))
-//  {
-//    return FW_FULL;
-//  }
-//
-////  IRQ_DISABLE();
-//
-//  pFIFO->B[pFIFO->I] = *pByte;
-//
-//  pFIFO->I = (pFIFO->I + 1) % pFIFO->S;
-//
-////  IRQ_RESTORE();
-////  GPIO_Lo(GPIOB, 3);
-//  return FW_SUCCESS;
-//}
-//
+
 ////-----------------------------------------------------------------------------
 ///** @brief Gets Byte from the FIFO
 // *  @param pFIFO - Pointer to the FIFO context
@@ -185,8 +158,8 @@ typedef struct BlockQueue_s
 
 //-----------------------------------------------------------------------------
 /** @brief Wrapper for RTOS queue create function
- *  @param aCapacity - Count of the Items in the Queue
- *  @param aItemSize - The size of the Item
+ *  @param[in] aCapacity - Count of the Items in the Queue
+ *  @param[in] aItemSize - The size of the Item
  *  @return Pointer to the created Queue or NULL
  */
 
@@ -200,10 +173,37 @@ static QueueHandle_t osal_QueueCreate(U32 aCapacity, U32 aItemSize)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Wrapper for RTOS queue put function
+ *  @param[in] pQueue - Pointer to the Block Queue
+ *  @param[in] pBlock - Pointer to the allocated block
+ *  @param[in] aBlockSize - Size of the Block
+ *  @return FW_TRUE if no error
+ */
+
+static FW_BOOLEAN osal_QueuePut(BlockQueue_p pQueue, U8* pBlock, U32 aBlockSize)
+{
+    BaseType_t status = pdFAIL;
+    BlockItem_t item = {0};
+
+    /* Fill the item fields */
+    item.Data = pBlock;
+    item.Size = aBlockSize;
+
+    /* Put the item to the queue */
+    status = xQueueSendToBack(pQueue->osQueue, (void *)&item, (TickType_t)0);
+    if (pdPASS != status)
+    {
+        return FW_FALSE;
+    }
+
+    return FW_TRUE;
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Initializes the Block Queue
- *  @param pBuffer - Memory container for the Queue
- *  @param aBufferSize - Memory container size
- *  @param aBlockSize - Size of the queue Item
+ *  @param[in] pBuffer - Memory container for the Queue
+ *  @param[in] aBufferSize - Memory container size
+ *  @param[in] aBlockSize - Size of the queue Item
  *  @return Pointer to the Block Queue structure or NULL in case of error
  */
 
@@ -321,14 +321,69 @@ U32 BlockQueue_GetCountOfFree(BlockQueue_p pQueue)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief
- *  @param
- *  @return
+/** @brief Allocates the block from the Queue
+ *  @param[in]  pQueue - Pointer to the used Queue
+ *  @param[out] pBlock - Pointer to the allocated Block
+ *  @param[out] pSize - Size of the allocated block
+ *  @return FW_SUCCESS - if no error happens
+ *          FW_FULL - if no space available for allocation the new block
+ *          FW_ERROR - if block is allocated but not enqueued yet
  */
 
-FW_RESULT BlockQueue_Allocate(BlockQueue_p pQueue, U8 * pBlock, U32 * pSize)
+FW_RESULT BlockQueue_Allocate(BlockQueue_p pQueue, U8** pBlock, U32 * pSize)
 {
-    return FW_ERROR;
+    U8 * block = NULL;
+
+    QUEUE_LOG("- BlockQueue_Allocate -\r\n");
+    QUEUE_LOG("--- State\r\n");
+    QUEUE_LOG("  I Position     = %d\r\n", pQueue->I);
+    QUEUE_LOG("  Capacity       = %d\r\n", pQueue->Capacity);
+    QUEUE_LOG("  Producer       = %08X\r\n", pQueue->CurrentProducer);
+    QUEUE_LOG("--- Internals\r\n");
+
+    /* No space for allocation */
+    if (pQueue->I == ((pQueue->O - 1 + pQueue->Capacity) % pQueue->Capacity))
+    {
+        *pBlock = NULL;
+        *pSize = 0;
+
+        QUEUE_LOG("  No Space\r\n");
+        QUEUE_LOG("  Block          = %08X\r\n", *pBlock);
+        QUEUE_LOG("  Block Size     = %d\r\n", *pSize);
+
+        return FW_FULL;
+    }
+
+    /* Previously allocated block should be enqueued
+       before allocation the next block */
+    if (NULL != pQueue->CurrentProducer)
+    {
+        *pBlock = pQueue->CurrentProducer;
+        *pSize = pQueue->BlockSize;
+
+        QUEUE_LOG("  Not Enqueued\r\n");
+        QUEUE_LOG("  Block          = %08X\r\n", *pBlock);
+        QUEUE_LOG("  Block Size     = %d\r\n", *pSize);
+
+        return FW_ERROR;
+    }
+
+    /* Allocate the block */
+    block = pQueue->BlocksBuffer + pQueue->I * pQueue->BlockSize;
+    pQueue->CurrentProducer = block;
+    *pBlock = block;
+    *pSize = pQueue->BlockSize;
+
+    /* Move the input position to the next block */
+    pQueue->I = (pQueue->I + 1) % pQueue->Capacity;
+
+    QUEUE_LOG("  I Position     = %d\r\n", pQueue->I);
+    QUEUE_LOG("  Capacity       = %d\r\n", pQueue->Capacity);
+    QUEUE_LOG("  Producer       = %08X\r\n", pQueue->CurrentProducer);
+    QUEUE_LOG("  Block          = %08X\r\n", *pBlock);
+    QUEUE_LOG("  Block Size     = %d\r\n", *pSize);
+
+    return FW_SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -339,6 +394,7 @@ FW_RESULT BlockQueue_Allocate(BlockQueue_p pQueue, U8 * pBlock, U32 * pSize)
 
 FW_RESULT BlockQueue_Enqueue(BlockQueue_p pQueue)
 {
+    //osal_QueuePut(BlockQueue_p pQueue, U8* pBlock, U32 aBlockSize)
     return FW_ERROR;
 }
 
@@ -348,7 +404,7 @@ FW_RESULT BlockQueue_Enqueue(BlockQueue_p pQueue)
  *  @return
  */
 
-FW_RESULT BlockQueue_Dequeue(BlockQueue_p pQueue, U8 * pBlock, U32 * pSize)
+FW_RESULT BlockQueue_Dequeue(BlockQueue_p pQueue, U8** pBlock, U32 * pSize)
 {
     return FW_ERROR;
 }
