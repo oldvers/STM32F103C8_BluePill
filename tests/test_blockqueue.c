@@ -141,6 +141,42 @@ static FW_BOOLEAN Test_AllocateError(void)
 
 //-----------------------------------------------------------------------------
 
+static FW_BOOLEAN Test_EnqueueSuccess(void)
+{
+    FW_BOOLEAN result = FW_FALSE;
+    FW_RESULT status = FW_ERROR;
+
+    LOG("Block Queue Success Enqueue Test\r\n");
+
+    status = BlockQueue_Enqueue(pQueue, sizeof(Block_t));
+
+    result = (FW_BOOLEAN)(FW_SUCCESS == status);
+
+    vUpdateTestResult(result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
+static FW_BOOLEAN Test_EnqueueError(void)
+{
+    FW_BOOLEAN result = FW_FALSE;
+    FW_RESULT status = FW_ERROR;
+
+    LOG("Block Queue Error Enqueue Test\r\n");
+
+    status = BlockQueue_Enqueue(pQueue, sizeof(Block_t));
+
+    result = (FW_BOOLEAN)(FW_ERROR == status);
+
+    vUpdateTestResult(result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
 void vLEDTask(void * pvParameters)
 {
     //LOG("LED Task Started\r\n");
@@ -163,6 +199,8 @@ static const TestFunction_t gTests[] =
     Test_InitSuccess,
     Test_AllocateSuccess,
     Test_AllocateError,
+    Test_EnqueueSuccess,
+    Test_EnqueueError,
 };
 
 void vTemplateTask(void * pvParameters)

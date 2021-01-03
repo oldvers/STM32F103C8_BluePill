@@ -12,7 +12,7 @@ U32          BlockQueue_GetCapacity         (BlockQueue_p pQueue);
 U32          BlockQueue_GetCountOfAllocated (BlockQueue_p pQueue);
 U32          BlockQueue_GetCountOfFree      (BlockQueue_p pQueue);
 FW_RESULT    BlockQueue_Allocate(BlockQueue_p pQueue, U8** pBlock, U32 * pSize);
-FW_RESULT    BlockQueue_Enqueue             (BlockQueue_p pQueue);
+FW_RESULT    BlockQueue_Enqueue             (BlockQueue_p pQueue, U32 aSize);
 FW_RESULT    BlockQueue_Dequeue (BlockQueue_p pQueue, U8** pBlock, U32 * pSize);
 FW_RESULT    BlockQueue_Free                (BlockQueue_p pQueue);
 

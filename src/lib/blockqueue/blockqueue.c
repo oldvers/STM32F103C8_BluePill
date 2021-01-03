@@ -284,7 +284,8 @@ BlockQueue_p BlockQueue_Init(U8 * pBuffer, U32 aBufferSize, U32 aBlockSize)
 
 void BlockQueue_Clear(BlockQueue_p pQueue)
 {
-    //
+    //xQueueReset( xQueue )
+    //UBaseType_t uxQueueSpacesAvailable( const QueueHandle_t xQueue )
 }
 
 //-----------------------------------------------------------------------------
@@ -387,15 +388,51 @@ FW_RESULT BlockQueue_Allocate(BlockQueue_p pQueue, U8** pBlock, U32 * pSize)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief
- *  @param
- *  @return
+/** @brief Enqueues the allocated block with specified size
+ *  @param[in] pQueue - Pointer to the Block Queue
+ *  @param[in] aSize - Size of the block payload
+ *  @return FW_SUCCESS - in no errors
+ *          FW_ERROR - in case of block is not allocated or RTOS error
  */
 
-FW_RESULT BlockQueue_Enqueue(BlockQueue_p pQueue)
+FW_RESULT BlockQueue_Enqueue(BlockQueue_p pQueue, U32 aSize)
 {
-    //osal_QueuePut(BlockQueue_p pQueue, U8* pBlock, U32 aBlockSize)
-    return FW_ERROR;
+    FW_BOOLEAN status = FW_FALSE;
+
+    QUEUE_LOG("- BlockQueue_Enqueue -\r\n");
+    QUEUE_LOG("--- Input\r\n");
+    QUEUE_LOG("  Size          = %d\r\n", aSize);
+    QUEUE_LOG("--- Internals\r\n");
+
+    /* The block should be previously allocated before it can be enqueued */
+    if (NULL == pQueue->CurrentProducer)
+    {
+        QUEUE_LOG("  Not Allocated\r\n");
+        return FW_ERROR;
+    }
+
+    /* Block boundaries must be checked outside this function to avoid
+       memory leaks. But still it's just the double-check */
+    if (aSize > pQueue->BlockSize)
+    {
+        QUEUE_LOG("  Wrong Block Size!\r\n");
+        return FW_ERROR;
+    }
+
+    /* Enqueue the block */
+    status = osal_QueuePut(pQueue, pQueue->CurrentProducer, aSize);
+    if (FW_FALSE == status)
+    {
+        QUEUE_LOG("  RTOS Queue Put error!\r\n");
+        return FW_ERROR;
+    }
+
+    /* Indicate that the next block can be allocated */
+    pQueue->CurrentProducer = NULL;
+
+    QUEUE_LOG("  Producer       = %08X\r\n", pQueue->CurrentProducer);
+
+    return FW_SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
