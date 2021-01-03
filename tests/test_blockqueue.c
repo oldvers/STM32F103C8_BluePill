@@ -79,12 +79,12 @@ static FW_BOOLEAN Test_InitSizeNotFit(void)
     pQueue = BlockQueue_Init
              (
                  QueueBuffer,
-                 sizeof(QueueBuffer),
-                 sizeof(Block_t)
+                 32 + 12 + 8,
+                 12
              );
-    vUpdateTestResult((FW_BOOLEAN)(NULL != pQueue));
+    vUpdateTestResult((FW_BOOLEAN)(NULL == pQueue));
 
-    return (FW_BOOLEAN)(NULL != pQueue);
+    return (FW_BOOLEAN)(NULL == pQueue);
 }
 
 //-----------------------------------------------------------------------------
