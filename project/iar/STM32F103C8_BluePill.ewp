@@ -1383,6 +1383,7 @@
                     <state>$PROJ_DIR$\..\..\src\lib\usb\msc</state>
                     <state>$PROJ_DIR$\..\..\src\lib\usb\hid</state>
                     <state>$PROJ_DIR$\..\..\src\lib\usb\cdc</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\blockqueue</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -2216,6 +2217,9 @@
             <name>$PROJ_DIR$\..\..\tests\main.c</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\tests\test_blockqueue.c</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\tests\test_fifo.c</name>
             <excluded>
                 <configuration>Tests</configuration>
@@ -2232,9 +2236,6 @@
             <excluded>
                 <configuration>Tests</configuration>
             </excluded>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\tests\test_pool.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_template.c</name>
@@ -2357,16 +2358,16 @@
     <group>
         <name>Utils</name>
         <file>
+            <name>$PROJ_DIR$\..\..\src\lib\blockqueue\blockqueue.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\blockqueue\blockqueue.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\lib\fifo\fifo.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\fifo\fifo.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\pool\pool.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\pool\pool.h</name>
         </file>
     </group>
 </project>
