@@ -31,55 +31,7 @@
 #  define QUEUE_LOG(...)
 #endif
 
-
-
-////-----------------------------------------------------------------------------
-///** @brief Returns free space in the FIFO
-// *  @param pFIFO - Pointer to the FIFO context
-// *  @return Free space in the FIFO
-// */
-//
-//U32 FIFO_Free(FIFO_p pFIFO)
-//{
-//  return (pFIFO->O - pFIFO->I - 1 + pFIFO->S) % pFIFO->S;
-//}
-
-////-----------------------------------------------------------------------------
-///** @brief Returns count of Bytes in the FIFO
-// *  @param pFIFO - Pointer to the FIFO context
-// *  @return Count of Bytes in the FIFO
-// */
-//
-//U32 FIFO_Count(FIFO_p pFIFO)
-//{
-//  return (pFIFO->I - pFIFO->O + pFIFO->S) % pFIFO->S;
-//}
-//
-////-----------------------------------------------------------------------------
-///** @brief Initializes the FIFO
-// *  @param pFIFO - Pointer to the FIFO context
-// *  @param pBuffer - Pointer to the FIFO buffer
-// *  @param aSize - Size of the FIFO buffer
-// *  @return None
-// */
-//
-//void FIFO_Init(FIFO_p pFIFO, U8 * pBuffer, U32 aSize)
-//{
-//  pFIFO->I = 0;
-//  pFIFO->O = 0;
-//  pFIFO->S = aSize;
-//  pFIFO->B = pBuffer;
-//  for(U32 i = 0; i < aSize; i++) pFIFO->B[i] = 0;
-//}
-//
-
-//static QueueHandle_t xPolledQueue;
-//const unsigned portBASE_TYPE uxQueueSize = 10;
-
-/* Create the queue used by the producer and consumer. */
-//xPolledQueue = xQueueCreate( uxQueueSize, ( unsigned portBASE_TYPE ) sizeof( unsigned short ) );
-//producer, the other a
-//consumer.
+//-----------------------------------------------------------------------------
 
 typedef struct BlockItem_s
 {
@@ -345,25 +297,25 @@ U32 BlockQueue_GetCapacity(BlockQueue_p pQueue)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief
- *  @param
- *  @return
+/** @brief Returns count of blocks allocated in the queue
+ *  @param pQueue - Pointer to the Block Queue
+ *  @return Count of blocks allocated
  */
 
 U32 BlockQueue_GetCountOfAllocated(BlockQueue_p pQueue)
 {
-    return 0;
+    return (pQueue->Capacity + pQueue->I - pQueue->O) % pQueue->Capacity;
 }
 
 //-----------------------------------------------------------------------------
-/** @brief
- *  @param
- *  @return
+/** @brief Returns count of free blocks in the queue
+ *  @param pQueue - Pointer to the Block Queue
+ *  @return Count of free blocks
  */
 
 U32 BlockQueue_GetCountOfFree(BlockQueue_p pQueue)
 {
-    return 0;
+    return (pQueue->Capacity + pQueue->O - pQueue->I - 1) % pQueue->Capacity;
 }
 
 //-----------------------------------------------------------------------------
