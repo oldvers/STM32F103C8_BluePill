@@ -189,6 +189,19 @@ BlockQueue_p BlockQueue_Init(U8 * pBuffer, U32 aBufferSize, U32 aBlockSize)
     U32          blockCount   = 0;
     U32          i            = 0;
 
+    QUEUE_LOG("- BlockQueue_Init() -\r\n");
+    QUEUE_LOG("--- Inputs\r\n");
+    QUEUE_LOG("  Buffer Address = %08X\r\n", pBuffer);
+    QUEUE_LOG("  Buffer Size    = %d\r\n", aBufferSize);
+    QUEUE_LOG("  Block Size     = %d\r\n", aBlockSize);
+    QUEUE_LOG("--- Internals\r\n");
+
+    if ((NULL == pBuffer) || (0 == aBufferSize) || (0 == aBlockSize))
+    {
+        QUEUE_LOG("  Input parameters error!\r\n");
+        return NULL;
+    }
+
     /* Calculate the block size with alignment equal to 4 bytes */
     aBlockSize = (aBlockSize + 3) / 4 * 4;
 
@@ -198,12 +211,6 @@ BlockQueue_p BlockQueue_Init(U8 * pBuffer, U32 aBufferSize, U32 aBlockSize)
     /* Calculate the first block address, aligned to 4 bytes */
     blockAddress = queueAddress + ((sizeof(BlockQueue_t) + 3) / 4 * 4);
 
-    QUEUE_LOG("- BlockQueue_Init -\r\n");
-    QUEUE_LOG("--- Inputs\r\n");
-    QUEUE_LOG("  Buffer Address = %08X\r\n", pBuffer);
-    QUEUE_LOG("  Buffer Size    = %d\r\n", aBufferSize);
-    QUEUE_LOG("  Block Size     = %d\r\n", aBlockSize);
-    QUEUE_LOG("--- Internals\r\n");
     QUEUE_LOG("  Queue Address  = %08X\r\n", queueAddress);
     QUEUE_LOG("  Block Address  = %08X\r\n", blockAddress);
     QUEUE_LOG("  Block Size     = %d\r\n", aBlockSize);
@@ -262,13 +269,19 @@ BlockQueue_p BlockQueue_Init(U8 * pBuffer, U32 aBufferSize, U32 aBlockSize)
 
 void BlockQueue_Reset(BlockQueue_p pQueue)
 {
-    QUEUE_LOG("- BlockQueue_Reset -\r\n");
+    QUEUE_LOG("- BlockQueue_Reset() -\r\n");
     QUEUE_LOG("--- State\r\n");
     QUEUE_LOG("  I Position     = %d\r\n", pQueue->I);
     QUEUE_LOG("  O Position     = %d\r\n", pQueue->O);
     QUEUE_LOG("  Produced       = %08X\r\n", pQueue->Produced);
     QUEUE_LOG("  Consumed       = %08X\r\n", pQueue->Consumed);
     QUEUE_LOG("--- Internals\r\n");
+
+    if (NULL == pQueue)
+    {
+        QUEUE_LOG("  Input parameters error!\r\n");
+        return;
+    }
 
     /* Reset the RTOS queue */
     osal_QueueReset(pQueue);
@@ -293,7 +306,11 @@ void BlockQueue_Reset(BlockQueue_p pQueue)
 
 U32 BlockQueue_GetCapacity(BlockQueue_p pQueue)
 {
-    return (pQueue->Capacity - 1);
+    if (NULL != pQueue)
+    {
+        return (pQueue->Capacity - 1);
+    }
+    return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -304,7 +321,11 @@ U32 BlockQueue_GetCapacity(BlockQueue_p pQueue)
 
 U32 BlockQueue_GetCountOfAllocated(BlockQueue_p pQueue)
 {
-    return (pQueue->Capacity + pQueue->I - pQueue->O) % pQueue->Capacity;
+    if (NULL != pQueue)
+    {
+        return (pQueue->Capacity + pQueue->I - pQueue->O) % pQueue->Capacity;
+    }
+    return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -315,7 +336,12 @@ U32 BlockQueue_GetCountOfAllocated(BlockQueue_p pQueue)
 
 U32 BlockQueue_GetCountOfFree(BlockQueue_p pQueue)
 {
-    return (pQueue->Capacity + pQueue->O - pQueue->I - 1) % pQueue->Capacity;
+    if (NULL != pQueue)
+    {
+        return (pQueue->Capacity + pQueue->O - pQueue->I - 1) %
+                                                             pQueue->Capacity;
+    }
+    return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -332,12 +358,18 @@ FW_RESULT BlockQueue_Allocate(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
 {
     U8 * block = NULL;
 
-    QUEUE_LOG("- BlockQueue_Allocate -\r\n");
+    QUEUE_LOG("- BlockQueue_Allocate() -\r\n");
     QUEUE_LOG("--- State\r\n");
     QUEUE_LOG("  I Position     = %d\r\n", pQueue->I);
     QUEUE_LOG("  Capacity       = %d\r\n", BlockQueue_GetCapacity(pQueue));
     QUEUE_LOG("  Produced       = %08X\r\n", pQueue->Produced);
     QUEUE_LOG("--- Internals\r\n");
+
+    if ((NULL == pQueue) || (NULL == ppBlock) || (NULL == pSize))
+    {
+        QUEUE_LOG("  Input parameters error!\r\n");
+        return FW_ERROR;
+    }
 
     /* No space for allocation */
     if (pQueue->I == ((pQueue->O - 1 + pQueue->Capacity) % pQueue->Capacity))
@@ -396,11 +428,17 @@ FW_RESULT BlockQueue_Enqueue(BlockQueue_p pQueue, U32 aSize)
 {
     FW_BOOLEAN status = FW_FALSE;
 
-    QUEUE_LOG("- BlockQueue_Enqueue -\r\n");
+    QUEUE_LOG("- BlockQueue_Enqueue() -\r\n");
     QUEUE_LOG("--- Input\r\n");
     QUEUE_LOG("  Size          = %d\r\n", aSize);
     QUEUE_LOG("--- Internals\r\n");
     QUEUE_LOG("  Produced       = %08X\r\n", pQueue->Produced);
+
+    if ((NULL == pQueue) || (0 == aSize))
+    {
+        QUEUE_LOG("  Input parameters error!\r\n");
+        return FW_ERROR;
+    }
 
     /* The block should be previously allocated before it can be enqueued */
     if (NULL == pQueue->Produced)
@@ -447,12 +485,18 @@ FW_RESULT BlockQueue_Dequeue(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
 {
     FW_BOOLEAN status = FW_FALSE;
 
-    QUEUE_LOG("- BlockQueue_Dequeue -\r\n");
+    QUEUE_LOG("- BlockQueue_Dequeue() -\r\n");
     QUEUE_LOG("--- State\r\n");
     QUEUE_LOG("  O Position     = %d\r\n", pQueue->O);
     QUEUE_LOG("  Capacity       = %d\r\n", BlockQueue_GetCapacity(pQueue));
     QUEUE_LOG("  Consumed       = %08X\r\n", pQueue->Consumed);
     QUEUE_LOG("--- Internals\r\n");
+
+    if ((NULL == pQueue) || (NULL == ppBlock) || (NULL == pSize))
+    {
+        QUEUE_LOG("  Input parameters error!\r\n");
+        return FW_ERROR;
+    }
 
     /* The block should be previously released before it can be dequeued */
     if (NULL != pQueue->Consumed)
@@ -496,12 +540,18 @@ FW_RESULT BlockQueue_Dequeue(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
 
 FW_RESULT BlockQueue_Release(BlockQueue_p pQueue)
 {
-    QUEUE_LOG("- BlockQueue_Release -\r\n");
+    QUEUE_LOG("- BlockQueue_Release() -\r\n");
     QUEUE_LOG("--- State\r\n");
     QUEUE_LOG("  O Position     = %d\r\n", pQueue->O);
     QUEUE_LOG("  Capacity       = %d\r\n", BlockQueue_GetCapacity(pQueue));
     QUEUE_LOG("  Consumed       = %08X\r\n", pQueue->Consumed);
     QUEUE_LOG("--- Internals\r\n");
+
+    if (NULL == pQueue)
+    {
+        QUEUE_LOG("  Input parameters error!\r\n");
+        return FW_ERROR;
+    }
 
     /* Previously dequeued block has been already released */
     if (NULL == pQueue->Consumed)

@@ -40,11 +40,16 @@ typedef struct FIFO_s
 /** @brief Puts Byte To The FIFO
  *  @param pFIFO - Pointer to the FIFO context
  *  @param pByte - Pointer to the container for Byte
- *  @return FW_FULL / FW_SUCCESS
+ *  @return FW_FULL / FW_SUCCESS / FW_ERROR
  */
 
 FW_RESULT FIFO_Put(FIFO_p pFIFO, U8 * pByte)
 {
+    if ((NULL == pFIFO) || (NULL == pByte))
+    {
+        return FW_ERROR;
+    }
+
     if (pFIFO->I == ((pFIFO->O - 1 + pFIFO->S) % pFIFO->S))
     {
         return FW_FULL;
@@ -61,11 +66,16 @@ FW_RESULT FIFO_Put(FIFO_p pFIFO, U8 * pByte)
 /** @brief Gets Byte from the FIFO
  *  @param pFIFO - Pointer to the FIFO context
  *  @param pByte - Pointer to the container for Byte
- *  @return FW_EMPTY / FW_SUCCESS
+ *  @return FW_EMPTY / FW_SUCCESS / FW_ERROR
  */
 
 FW_RESULT FIFO_Get(FIFO_p pFIFO, U8 * pByte)
 {
+    if ((NULL == pFIFO) || (NULL == pByte))
+    {
+        return FW_ERROR;
+    }
+
     if (pFIFO->I == pFIFO->O)
     {
         return FW_EMPTY;
@@ -86,7 +96,11 @@ FW_RESULT FIFO_Get(FIFO_p pFIFO, U8 * pByte)
 
 U32 FIFO_Free(FIFO_p pFIFO)
 {
-    return (pFIFO->O - pFIFO->I - 1 + pFIFO->S) % pFIFO->S;
+    if (NULL != pFIFO)
+    {
+        return (pFIFO->O - pFIFO->I - 1 + pFIFO->S) % pFIFO->S;
+    }
+    return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -97,7 +111,11 @@ U32 FIFO_Free(FIFO_p pFIFO)
 
 U32 FIFO_Size(FIFO_p pFIFO)
 {
-    return (pFIFO->S - 1);
+    if (NULL != pFIFO)
+    {
+        return (pFIFO->S - 1);
+    }
+    return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -108,7 +126,11 @@ U32 FIFO_Size(FIFO_p pFIFO)
 
 U32 FIFO_Count(FIFO_p pFIFO)
 {
-    return (pFIFO->I - pFIFO->O + pFIFO->S) % pFIFO->S;
+    if (NULL != pFIFO)
+    {
+        return (pFIFO->I - pFIFO->O + pFIFO->S) % pFIFO->S;
+    }
+    return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -126,6 +148,18 @@ FIFO_p FIFO_Init(U8 * pBuffer, U32 aSize)
     U32 dataAddress = 0;
     U32 dataLength  = 0;
 
+    FIFO_LOG("- FIFO_Init() -\r\n");
+    FIFO_LOG("--- Inputs\r\n");
+    FIFO_LOG("  Buffer Address = %08X\r\n", pBuffer);
+    FIFO_LOG("  Buffer Size    = %d\r\n", aSize);
+    FIFO_LOG("--- Internals\r\n");
+
+    if (NULL == pBuffer)
+    {
+        FIFO_LOG("  Input parameters error!\r\n");
+        return NULL;
+    }
+
     /* Calculate the FIFO structure address, aligned to 4 bytes */
     fifoAddress = ((U32)pBuffer + 3) & 0xFFFFFFFC;
 
@@ -135,11 +169,6 @@ FIFO_p FIFO_Init(U8 * pBuffer, U32 aSize)
     /* Calculate the FIFO length */
     dataLength = (U32)pBuffer + aSize - dataAddress;
 
-    FIFO_LOG("- FIFO_Init() -\r\n");
-    FIFO_LOG("--- Inputs\r\n");
-    FIFO_LOG("  Buffer Address = %08X\r\n", pBuffer);
-    FIFO_LOG("  Buffer Size    = %d\r\n", aSize);
-    FIFO_LOG("--- Internals\r\n");
     FIFO_LOG("  FIFO Address   = %08X\r\n", fifoAddress);
     FIFO_LOG("  Data Address   = %08X\r\n", dataAddress);
     FIFO_LOG("  FIFO Length    = %d\r\n", dataLength);
@@ -176,6 +205,8 @@ FIFO_p FIFO_Init(U8 * pBuffer, U32 aSize)
 
 void FIFO_Clear(FIFO_p pFIFO)
 {
+    if (NULL == pFIFO) return;
+
     pFIFO->I = 0;
     pFIFO->O = 0;
     for(U32 i = 0; i < pFIFO->S; i++) pFIFO->B[i] = 0;
