@@ -305,6 +305,42 @@ static FW_BOOLEAN Test_ErrorDequeue(void)
 
 //-----------------------------------------------------------------------------
 
+static FW_BOOLEAN Test_SuccessRelease(void)
+{
+    FW_BOOLEAN result = FW_TRUE;
+    FW_RESULT status = FW_ERROR;
+
+    LOG("Block Queue Success Release Test\r\n");
+
+    /* Release the block */
+    status = BlockQueue_Release(pQueue);
+    result &= (FW_BOOLEAN)(FW_SUCCESS == status);
+
+    vUpdateTestResult(result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
+static FW_BOOLEAN Test_ErrorRelease(void)
+{
+    FW_BOOLEAN result = FW_TRUE;
+    FW_RESULT status = FW_ERROR;
+
+    LOG("Block Queue Success Release Test\r\n");
+
+    /* Release the block */
+    status = BlockQueue_Release(pQueue);
+    result &= (FW_BOOLEAN)(FW_ERROR == status);
+
+    vUpdateTestResult(result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
 void vLEDTask(void * pvParameters)
 {
     //LOG("LED Task Started\r\n");
@@ -333,6 +369,8 @@ static const TestFunction_t gTests[] =
     Test_Full,
     Test_SuccessDequeue,
     Test_ErrorDequeue,
+    Test_SuccessRelease,
+    Test_ErrorRelease,
 };
 
 void vTemplateTask(void * pvParameters)

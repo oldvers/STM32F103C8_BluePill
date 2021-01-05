@@ -32,35 +32,7 @@
 #endif
 
 
-////-----------------------------------------------------------------------------
-///** @brief Gets Byte from the FIFO
-// *  @param pFIFO - Pointer to the FIFO context
-// *  @param pByte - Pointer to the container for Byte
-// *  @return FW_EMPTY / FW_SUCCESS
-// */
-//
-//FW_RESULT FIFO_Get(FIFO_p pFIFO, U8 * pByte)
-//{
-////  IRQ_SAFE_AREA();
-////  GPIO_Hi(GPIOB, 3);
-//
-//  if (pFIFO->I == pFIFO->O)
-//  {
-//    return FW_EMPTY;
-//  }
-//
-////  IRQ_DISABLE();
-//
-//  *pByte = pFIFO->B[pFIFO->O];
-//
-//  pFIFO->O = (pFIFO->O + 1) % pFIFO->S;
-//
-////  IRQ_RESTORE();
-////  GPIO_Lo(GPIOB, 3);
-//
-//  return FW_SUCCESS;
-//}
-//
+
 ////-----------------------------------------------------------------------------
 ///** @brief Returns free space in the FIFO
 // *  @param pFIFO - Pointer to the FIFO context
@@ -562,12 +534,51 @@ FW_RESULT BlockQueue_Dequeue(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief
- *  @param
- *  @return
+/** @brief Releases the block to the Queue
+ *  @param[in]  pQueue - Pointer to the used Queue
+ *  @return FW_SUCCESS - if block has been released successfuly
+ *          FW_ERROR - if block has been already released
+ *          FW_EMPTY - if there is no block to release
  */
 
-FW_RESULT BlockQueue_Free(BlockQueue_p pQueue)
+FW_RESULT BlockQueue_Release(BlockQueue_p pQueue)
 {
-    return FW_ERROR;
+    QUEUE_LOG("- BlockQueue_Release -\r\n");
+    QUEUE_LOG("--- State\r\n");
+    QUEUE_LOG("  O Position     = %d\r\n", pQueue->O);
+    QUEUE_LOG("  Capacity       = %d\r\n", BlockQueue_GetCapacity(pQueue));
+    QUEUE_LOG("  Consumed       = %08X\r\n", pQueue->Consumed);
+    QUEUE_LOG("--- Internals\r\n");
+
+    /* Previously dequeued block has been already released */
+    if (NULL == pQueue->Consumed)
+    {
+        QUEUE_LOG("  Nothing to release\r\n");
+
+        return FW_ERROR;
+    }
+
+    /* The queue is already empty so there is no block can be released.
+       It should be impossible case */
+    if (pQueue->I == pQueue->O)
+    {
+        pQueue->Consumed = NULL;
+
+        QUEUE_LOG("  Empty\r\n");
+        QUEUE_LOG("  Consumed       = %08X\r\n", pQueue->Consumed);
+
+        return FW_EMPTY;
+    }
+
+    /* Release the block */
+    pQueue->Consumed = NULL;
+
+    /* Move the output position to the next block */
+    pQueue->O = (pQueue->O + 1) % pQueue->Capacity;
+
+    QUEUE_LOG("  O Position     = %d\r\n", pQueue->O);
+    QUEUE_LOG("  Capacity       = %d\r\n", BlockQueue_GetCapacity(pQueue));
+    QUEUE_LOG("  Consumed       = %08X\r\n", pQueue->Consumed);
+
+    return FW_SUCCESS;
 }

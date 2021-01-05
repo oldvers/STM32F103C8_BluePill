@@ -14,6 +14,6 @@ U32        BlockQueue_GetCountOfFree      (BlockQueue_p pQueue);
 FW_RESULT  BlockQueue_Allocate(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize);
 FW_RESULT  BlockQueue_Enqueue             (BlockQueue_p pQueue, U32 aSize);
 FW_RESULT  BlockQueue_Dequeue (BlockQueue_p pQueue, U8** ppBlock, U32 * pSize);
-FW_RESULT  BlockQueue_Free                (BlockQueue_p pQueue);
+FW_RESULT  BlockQueue_Release             (BlockQueue_p pQueue);
 
 #endif /* __BLOCKQUEUE_H__ */
