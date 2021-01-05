@@ -2083,6 +2083,21 @@
         </file>
     </group>
     <group>
+        <name>EAST</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\east.c</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\east.h</name>
+            <excluded>
+                <configuration>Release</configuration>
+            </excluded>
+        </file>
+    </group>
+    <group>
         <name>Hardware</name>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\board.h</name>
@@ -2218,6 +2233,12 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_blockqueue.c</name>
+            <excluded>
+                <configuration>Tests</configuration>
+            </excluded>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\tests\test_east.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_fifo.c</name>
@@ -2257,18 +2278,6 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\cdc_defs.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\east.c</name>
-            <excluded>
-                <configuration>Release</configuration>
-            </excluded>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\east.h</name>
-            <excluded>
-                <configuration>Release</configuration>
-            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\usb\hid\hid.c</name>
