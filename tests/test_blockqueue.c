@@ -246,6 +246,65 @@ static FW_BOOLEAN Test_Full(void)
 
 //-----------------------------------------------------------------------------
 
+static FW_BOOLEAN Test_SuccessDequeue(void)
+{
+    FW_BOOLEAN result = FW_TRUE;
+    FW_RESULT status = FW_ERROR;
+    U8 * pEBlock = NULL, * pDBlock = NULL;
+    U32 eSize = 0, dSize = 0;
+
+    LOG("Block Queue Success Dequeue Test\r\n");
+
+    /* Reset the queue */
+    BlockQueue_Reset(pQueue);
+
+    /* Allocate the block */
+    status = BlockQueue_Allocate(pQueue, &pEBlock, &eSize);
+    result &= (FW_BOOLEAN)(FW_SUCCESS == status);
+    result &= (FW_BOOLEAN)(NULL != pEBlock);
+    result &= (FW_BOOLEAN)(0 != eSize);
+    if (FW_FALSE == result) return result;
+
+    /* Enqueue the block */
+    status = BlockQueue_Enqueue(pQueue, sizeof(Block_t));
+    result &= (FW_BOOLEAN)(FW_SUCCESS == status);
+    if (FW_FALSE == result) return result;
+
+    /* Dequeue the block */
+    status = BlockQueue_Dequeue(pQueue, &pDBlock, &dSize);
+    result &= (FW_BOOLEAN)(FW_SUCCESS == status);
+    result &= (FW_BOOLEAN)(pDBlock == pEBlock);
+    result &= (FW_BOOLEAN)(dSize == eSize);
+
+    vUpdateTestResult(result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
+static FW_BOOLEAN Test_ErrorDequeue(void)
+{
+    FW_BOOLEAN result = FW_TRUE;
+    FW_RESULT status = FW_ERROR;
+    U8 * pBlock = NULL;
+    U32 size = 0;
+
+    LOG("Block Queue Error Dequeue Test\r\n");
+
+    /* Dequeue the block */
+    status = BlockQueue_Dequeue(pQueue, &pBlock, &size);
+    result &= (FW_BOOLEAN)(FW_ERROR == status);
+    result &= (FW_BOOLEAN)(NULL == pBlock);
+    result &= (FW_BOOLEAN)(0 == size);
+
+    vUpdateTestResult(result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
 void vLEDTask(void * pvParameters)
 {
     //LOG("LED Task Started\r\n");
@@ -272,6 +331,8 @@ static const TestFunction_t gTests[] =
     Test_EnqueueError,
     Test_Reset,
     Test_Full,
+    Test_SuccessDequeue,
+    Test_ErrorDequeue,
 };
 
 void vTemplateTask(void * pvParameters)

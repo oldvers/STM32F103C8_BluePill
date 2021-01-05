@@ -547,7 +547,7 @@ FW_RESULT BlockQueue_Dequeue(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
         return FW_ERROR;
     }
 
-    QUEUE_LOG("  Size          = %d\r\n", *pSize);
+    QUEUE_LOG("  Size           = %d\r\n", *pSize);
 
     /* Indicate that the consumed block should be released */
     pQueue->Consumed = *ppBlock;
