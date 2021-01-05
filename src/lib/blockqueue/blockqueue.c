@@ -210,9 +210,9 @@ static FW_BOOLEAN osal_QueuePut(BlockQueue_p pQueue, U8* pBlock, U32 aBlockSize)
 //-----------------------------------------------------------------------------
 /** @brief Wrapper for RTOS queue get function
  *  @param[in] pQueue - Pointer to the Block Queue
- *  @param[out] ppBlock - Pointer to the allocated block
+ *  @param[out] ppBlock - Pointer to the block
  *  @param[out] pSize - Size of the Block
- *  @return FW_TRUE if no error, FW_FALSE - in case ot timeout or error
+ *  @return FW_TRUE if no error, FW_FALSE - in case of timeout or error
  */
 
 static FW_BOOLEAN osal_QueueGet(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
@@ -509,9 +509,13 @@ FW_RESULT BlockQueue_Enqueue(BlockQueue_p pQueue, U32 aSize)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief
- *  @param
- *  @return
+/** @brief Enqueues the block
+ *  @param[in] pQueue - Pointer to the Block Queue
+ *  @param[out] ppBlock - Pointer to the block
+ *  @param[out] pSize - Size of the Block
+ *  @return FW_SUCCESS if no error,
+ *          FW_ERROR - in case of block is not released or block size is wrong
+ *          FW_TIMEOUT - in case of timeout of waiting block
  */
 
 FW_RESULT BlockQueue_Dequeue(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
