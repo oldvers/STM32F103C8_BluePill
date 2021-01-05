@@ -305,6 +305,7 @@ BlockQueue_p BlockQueue_Init(U8 * pBuffer, U32 aBufferSize, U32 aBlockSize)
 /** @brief Resets the queue
  *  @param[in] pQueue - Pointer to the Block Queue
  *  @return None
+ *  @note Should be called carefully due to it isn't thread safe
  */
 
 void BlockQueue_Reset(BlockQueue_p pQueue)
