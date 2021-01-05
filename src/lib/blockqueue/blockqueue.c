@@ -71,18 +71,7 @@
 //{
 //  return (pFIFO->O - pFIFO->I - 1 + pFIFO->S) % pFIFO->S;
 //}
-//
-////-----------------------------------------------------------------------------
-///** @brief Returns size of the FIFO
-// *  @param pFIFO - Pointer to the FIFO context
-// *  @return Size of the FIFO
-// */
-//
-//U32 FIFO_Size(FIFO_p pFIFO)
-//{
-//  return (pFIFO->S - 1);
-//}
-//
+
 ////-----------------------------------------------------------------------------
 ///** @brief Returns count of Bytes in the FIFO
 // *  @param pFIFO - Pointer to the FIFO context
@@ -111,24 +100,6 @@
 //  for(U32 i = 0; i < aSize; i++) pFIFO->B[i] = 0;
 //}
 //
-////-----------------------------------------------------------------------------
-///** @brief Clear the FIFO
-// *  @param pFIFO - Pointer to the FIFO context
-// *  @return None
-// */
-//
-//void FIFO_Clear(FIFO_p pFIFO)
-//{
-////  IRQ_SAFE_AREA();
-//
-////  IRQ_DISABLE();
-//
-//  pFIFO->I = 0;
-//  pFIFO->O = 0;
-//  for(U32 i = 0; i < pFIFO->S; i++) pFIFO->B[i] = 0;
-//
-////  IRQ_RESTORE();
-//}
 
 //static QueueHandle_t xPolledQueue;
 //const unsigned portBASE_TYPE uxQueueSize = 10;
@@ -151,9 +122,11 @@ typedef struct BlockQueue_s
     U32           Capacity;          /* Max count of Items in the Queue */
     U32           BlockSize;         /* Size of the Item */
     U8 *          BlocksBuffer;      /* Pointer to the Queue Buffer */
-    U8 *          CurrentProducer;   /* Allocated Item */
-    U8 *          CurrentConsumer;   /* Item that should be released */
-    QueueHandle_t osQueue;
+    U8 *          Produced;          /* Allocated Item */
+    U8 *          Consumed;          /* Item that should be released */
+    /* OS specific fields */
+    QueueHandle_t osQueue;           /* OS Queue handle */
+    TickType_t    osTimeout;         /* OS queue receive timeout */
 } BlockQueue_t;
 
 //-----------------------------------------------------------------------------
@@ -165,11 +138,36 @@ typedef struct BlockQueue_s
 
 static QueueHandle_t osal_QueueCreate(U32 aCapacity, U32 aItemSize)
 {
+    UBaseType_t available = 0;
     QueueHandle_t result = NULL;
 
     result = xQueueCreate(aCapacity, (unsigned portBASE_TYPE)aItemSize);
 
+    available = uxQueueSpacesAvailable(result);
+    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+
     return result;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Wrapper for RTOS queue reset function
+ *  @param[in] pQueue - Pointer to the Block Queue
+ *  @return None
+ */
+
+static void osal_QueueReset(BlockQueue_p pQueue)
+{
+    UBaseType_t available = 0;
+
+    available = uxQueueSpacesAvailable(pQueue->osQueue);
+    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+
+    QUEUE_LOG("  OS Queue Reset\r\n");
+
+    xQueueReset(pQueue->osQueue);
+    available = uxQueueSpacesAvailable(pQueue->osQueue);
+
+    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
 }
 
 //-----------------------------------------------------------------------------
@@ -184,6 +182,11 @@ static FW_BOOLEAN osal_QueuePut(BlockQueue_p pQueue, U8* pBlock, U32 aBlockSize)
 {
     BaseType_t status = pdFAIL;
     BlockItem_t item = {0};
+    UBaseType_t available = 0;
+
+    available = uxQueueSpacesAvailable(pQueue->osQueue);
+
+    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
 
     /* Fill the item fields */
     item.Data = pBlock;
@@ -191,10 +194,57 @@ static FW_BOOLEAN osal_QueuePut(BlockQueue_p pQueue, U8* pBlock, U32 aBlockSize)
 
     /* Put the item to the queue */
     status = xQueueSendToBack(pQueue->osQueue, (void *)&item, (TickType_t)0);
+
+    available = uxQueueSpacesAvailable(pQueue->osQueue);
+
+    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+
     if (pdPASS != status)
     {
         return FW_FALSE;
     }
+
+    return FW_TRUE;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Wrapper for RTOS queue get function
+ *  @param[in] pQueue - Pointer to the Block Queue
+ *  @param[out] ppBlock - Pointer to the allocated block
+ *  @param[out] pSize - Size of the Block
+ *  @return FW_TRUE if no error, FW_FALSE - in case ot timeout or error
+ */
+
+static FW_BOOLEAN osal_QueueGet(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
+{
+    BaseType_t status = pdFAIL;
+    BlockItem_t item = {0};
+    UBaseType_t available = 0;
+
+    available = uxQueueSpacesAvailable(pQueue->osQueue);
+    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+
+    /* Get the item from the queue */
+    status = xQueueReceive
+             (
+                 pQueue->osQueue,
+                 (void *)&item,
+                 (TickType_t)pQueue->osTimeout
+             );
+
+    available = uxQueueSpacesAvailable(pQueue->osQueue);
+    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+
+    if (pdTRUE != status)
+    {
+        *ppBlock = NULL;
+        *pSize = 0;
+        return FW_FALSE;
+    }
+
+    /* Fill the item fields */
+    *ppBlock = item.Data;
+    *pSize = item.Size;
 
     return FW_TRUE;
 }
@@ -253,10 +303,13 @@ BlockQueue_p BlockQueue_Init(U8 * pBuffer, U32 aBufferSize, U32 aBlockSize)
     {
         return NULL;
     }
+    pQueue->osTimeout = portMAX_DELAY;
 
     QUEUE_LOG("  pQueue         = %08X\r\n", pQueue);
     QUEUE_LOG("  osQueue        = %08X\r\n", pQueue->osQueue);
     QUEUE_LOG("  Block Count    = %d\r\n", blockCount);
+    QUEUE_LOG("  Used Size      = %d\r\n",
+                   ((blockAddress - queueAddress) + blockCount * aBlockSize));
 
     /* Initialize the Block Queue */
     pQueue->I = 0;
@@ -264,8 +317,8 @@ BlockQueue_p BlockQueue_Init(U8 * pBuffer, U32 aBufferSize, U32 aBlockSize)
     pQueue->Capacity = blockCount;
     pQueue->BlocksBuffer = (U8 *)blockAddress;
     pQueue->BlockSize = aBlockSize;
-    pQueue->CurrentProducer = NULL;
-    pQueue->CurrentConsumer = NULL;
+    pQueue->Produced = NULL;
+    pQueue->Consumed = NULL;
 
     /* Clear the Block buffer */
     for(i = 0; i < blockCount * aBlockSize; i++)
@@ -277,26 +330,45 @@ BlockQueue_p BlockQueue_Init(U8 * pBuffer, U32 aBufferSize, U32 aBlockSize)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief
- *  @param
- *  @return
+/** @brief Resets the queue
+ *  @param[in] pQueue - Pointer to the Block Queue
+ *  @return None
  */
 
-void BlockQueue_Clear(BlockQueue_p pQueue)
+void BlockQueue_Reset(BlockQueue_p pQueue)
 {
-    //xQueueReset( xQueue )
-    //UBaseType_t uxQueueSpacesAvailable( const QueueHandle_t xQueue )
+    QUEUE_LOG("- BlockQueue_Reset -\r\n");
+    QUEUE_LOG("--- State\r\n");
+    QUEUE_LOG("  I Position     = %d\r\n", pQueue->I);
+    QUEUE_LOG("  O Position     = %d\r\n", pQueue->O);
+    QUEUE_LOG("  Produced       = %08X\r\n", pQueue->Produced);
+    QUEUE_LOG("  Consumed       = %08X\r\n", pQueue->Consumed);
+    QUEUE_LOG("--- Internals\r\n");
+
+    /* Reset the RTOS queue */
+    osal_QueueReset(pQueue);
+
+    /* Reset the Block Queue */
+    pQueue->I = 0;
+    pQueue->O = 0;
+    pQueue->Produced = NULL;
+    pQueue->Consumed = NULL;
+
+    QUEUE_LOG("  I Position     = %d\r\n", pQueue->I);
+    QUEUE_LOG("  O Position     = %d\r\n", pQueue->O);
+    QUEUE_LOG("  Produced       = %08X\r\n", pQueue->Produced);
+    QUEUE_LOG("  Consumed       = %08X\r\n", pQueue->Consumed);
 }
 
 //-----------------------------------------------------------------------------
-/** @brief
- *  @param
- *  @return
+/** @brief Returns the capacity of Block Queue
+ *  @param pQueue - Pointer to the Block Queue
+ *  @return Capacity of the queue
  */
 
 U32 BlockQueue_GetCapacity(BlockQueue_p pQueue)
 {
-    return 0;
+    return (pQueue->Capacity - 1);
 }
 
 //-----------------------------------------------------------------------------
@@ -324,32 +396,32 @@ U32 BlockQueue_GetCountOfFree(BlockQueue_p pQueue)
 //-----------------------------------------------------------------------------
 /** @brief Allocates the block from the Queue
  *  @param[in]  pQueue - Pointer to the used Queue
- *  @param[out] pBlock - Pointer to the allocated Block
+ *  @param[out] ppBlock - Pointer to the allocated Block
  *  @param[out] pSize - Size of the allocated block
  *  @return FW_SUCCESS - if no error happens
  *          FW_FULL - if no space available for allocation the new block
  *          FW_ERROR - if block is allocated but not enqueued yet
  */
 
-FW_RESULT BlockQueue_Allocate(BlockQueue_p pQueue, U8** pBlock, U32 * pSize)
+FW_RESULT BlockQueue_Allocate(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
 {
     U8 * block = NULL;
 
     QUEUE_LOG("- BlockQueue_Allocate -\r\n");
     QUEUE_LOG("--- State\r\n");
     QUEUE_LOG("  I Position     = %d\r\n", pQueue->I);
-    QUEUE_LOG("  Capacity       = %d\r\n", pQueue->Capacity);
-    QUEUE_LOG("  Producer       = %08X\r\n", pQueue->CurrentProducer);
+    QUEUE_LOG("  Capacity       = %d\r\n", BlockQueue_GetCapacity(pQueue));
+    QUEUE_LOG("  Produced       = %08X\r\n", pQueue->Produced);
     QUEUE_LOG("--- Internals\r\n");
 
     /* No space for allocation */
     if (pQueue->I == ((pQueue->O - 1 + pQueue->Capacity) % pQueue->Capacity))
     {
-        *pBlock = NULL;
+        *ppBlock = NULL;
         *pSize = 0;
 
         QUEUE_LOG("  No Space\r\n");
-        QUEUE_LOG("  Block          = %08X\r\n", *pBlock);
+        QUEUE_LOG("  Block          = %08X\r\n", *ppBlock);
         QUEUE_LOG("  Block Size     = %d\r\n", *pSize);
 
         return FW_FULL;
@@ -357,13 +429,13 @@ FW_RESULT BlockQueue_Allocate(BlockQueue_p pQueue, U8** pBlock, U32 * pSize)
 
     /* Previously allocated block should be enqueued
        before allocation the next block */
-    if (NULL != pQueue->CurrentProducer)
+    if (NULL != pQueue->Produced)
     {
-        *pBlock = pQueue->CurrentProducer;
+        *ppBlock = pQueue->Produced;
         *pSize = pQueue->BlockSize;
 
         QUEUE_LOG("  Not Enqueued\r\n");
-        QUEUE_LOG("  Block          = %08X\r\n", *pBlock);
+        QUEUE_LOG("  Block          = %08X\r\n", *ppBlock);
         QUEUE_LOG("  Block Size     = %d\r\n", *pSize);
 
         return FW_ERROR;
@@ -371,17 +443,17 @@ FW_RESULT BlockQueue_Allocate(BlockQueue_p pQueue, U8** pBlock, U32 * pSize)
 
     /* Allocate the block */
     block = pQueue->BlocksBuffer + pQueue->I * pQueue->BlockSize;
-    pQueue->CurrentProducer = block;
-    *pBlock = block;
+    pQueue->Produced = block;
+    *ppBlock = block;
     *pSize = pQueue->BlockSize;
 
     /* Move the input position to the next block */
     pQueue->I = (pQueue->I + 1) % pQueue->Capacity;
 
     QUEUE_LOG("  I Position     = %d\r\n", pQueue->I);
-    QUEUE_LOG("  Capacity       = %d\r\n", pQueue->Capacity);
-    QUEUE_LOG("  Producer       = %08X\r\n", pQueue->CurrentProducer);
-    QUEUE_LOG("  Block          = %08X\r\n", *pBlock);
+    QUEUE_LOG("  Capacity       = %d\r\n", BlockQueue_GetCapacity(pQueue));
+    QUEUE_LOG("  Produced       = %08X\r\n", pQueue->Produced);
+    QUEUE_LOG("  Block          = %08X\r\n", *ppBlock);
     QUEUE_LOG("  Block Size     = %d\r\n", *pSize);
 
     return FW_SUCCESS;
@@ -403,9 +475,10 @@ FW_RESULT BlockQueue_Enqueue(BlockQueue_p pQueue, U32 aSize)
     QUEUE_LOG("--- Input\r\n");
     QUEUE_LOG("  Size          = %d\r\n", aSize);
     QUEUE_LOG("--- Internals\r\n");
+    QUEUE_LOG("  Produced       = %08X\r\n", pQueue->Produced);
 
     /* The block should be previously allocated before it can be enqueued */
-    if (NULL == pQueue->CurrentProducer)
+    if (NULL == pQueue->Produced)
     {
         QUEUE_LOG("  Not Allocated\r\n");
         return FW_ERROR;
@@ -420,7 +493,7 @@ FW_RESULT BlockQueue_Enqueue(BlockQueue_p pQueue, U32 aSize)
     }
 
     /* Enqueue the block */
-    status = osal_QueuePut(pQueue, pQueue->CurrentProducer, aSize);
+    status = osal_QueuePut(pQueue, pQueue->Produced, aSize);
     if (FW_FALSE == status)
     {
         QUEUE_LOG("  RTOS Queue Put error!\r\n");
@@ -428,9 +501,9 @@ FW_RESULT BlockQueue_Enqueue(BlockQueue_p pQueue, U32 aSize)
     }
 
     /* Indicate that the next block can be allocated */
-    pQueue->CurrentProducer = NULL;
+    pQueue->Produced = NULL;
 
-    QUEUE_LOG("  Producer       = %08X\r\n", pQueue->CurrentProducer);
+    QUEUE_LOG("  Produced       = %08X\r\n", pQueue->Produced);
 
     return FW_SUCCESS;
 }
@@ -441,9 +514,47 @@ FW_RESULT BlockQueue_Enqueue(BlockQueue_p pQueue, U32 aSize)
  *  @return
  */
 
-FW_RESULT BlockQueue_Dequeue(BlockQueue_p pQueue, U8** pBlock, U32 * pSize)
+FW_RESULT BlockQueue_Dequeue(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
 {
-    return FW_ERROR;
+    FW_BOOLEAN status = FW_FALSE;
+
+    QUEUE_LOG("- BlockQueue_Dequeue -\r\n");
+    QUEUE_LOG("--- State\r\n");
+    QUEUE_LOG("  O Position     = %d\r\n", pQueue->O);
+    QUEUE_LOG("  Capacity       = %d\r\n", BlockQueue_GetCapacity(pQueue));
+    QUEUE_LOG("  Consumed       = %08X\r\n", pQueue->Consumed);
+    QUEUE_LOG("--- Internals\r\n");
+
+    /* The block should be previously released before it can be dequeued */
+    if (NULL != pQueue->Consumed)
+    {
+        QUEUE_LOG("  Not Released\r\n");
+        return FW_ERROR;
+    }
+
+    /* Dequeue the block */
+    status = osal_QueueGet(pQueue, ppBlock, pSize);
+    if (FW_FALSE == status)
+    {
+        QUEUE_LOG("  RTOS Queue Get timeout or error!\r\n");
+        return FW_TIMEOUT;
+    }
+
+    /* Sanity check */
+    if (*pSize > pQueue->BlockSize)
+    {
+        QUEUE_LOG("  Wrong Block Size!\r\n");
+        return FW_ERROR;
+    }
+
+    QUEUE_LOG("  Size          = %d\r\n", *pSize);
+
+    /* Indicate that the consumed block should be released */
+    pQueue->Consumed = *ppBlock;
+
+    QUEUE_LOG("  Consumed       = %08X\r\n", pQueue->Consumed);
+
+    return FW_SUCCESS;
 }
 
 //-----------------------------------------------------------------------------

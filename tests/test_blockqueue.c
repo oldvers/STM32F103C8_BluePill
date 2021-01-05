@@ -177,6 +177,75 @@ static FW_BOOLEAN Test_EnqueueError(void)
 
 //-----------------------------------------------------------------------------
 
+static FW_BOOLEAN Test_Reset(void)
+{
+    FW_BOOLEAN result = FW_TRUE;
+
+    LOG("Block Queue Reset Test\r\n");
+
+    BlockQueue_Reset(pQueue);
+
+    vUpdateTestResult(result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
+static FW_BOOLEAN Test_Full(void)
+{
+    FW_BOOLEAN result = FW_TRUE;
+    FW_RESULT status = FW_ERROR;
+    U8 * pBlock = NULL;
+    U32 size = 0, item = 0, count = 0;
+
+    LOG("Block Queue Full Test\r\n");
+
+    /* Reset the queue */
+    BlockQueue_Reset(pQueue);
+
+    count = BlockQueue_GetCapacity(pQueue) + 1;
+
+    for (item = 0; item < count; item++)
+    {
+        /* Allocate the block */
+        status = BlockQueue_Allocate(pQueue, &pBlock, &size);
+        if (item == (count - 1))
+        {
+            /* There should be no space in the buffer */
+            result &= (FW_BOOLEAN)(FW_FULL == status);
+            result &= (FW_BOOLEAN)(NULL == pBlock);
+            result &= (FW_BOOLEAN)(0 == size);
+        }
+        else
+        {
+            result &= (FW_BOOLEAN)(FW_SUCCESS == status);
+            result &= (FW_BOOLEAN)(NULL != pBlock);
+            result &= (FW_BOOLEAN)(0 != size);
+        }
+        if (FW_FALSE == result) break;
+
+        /* Enqueue the block */
+        status = BlockQueue_Enqueue(pQueue, sizeof(Block_t));
+        if (item == (count - 1))
+        {
+            /* There should be no allocated blocks */
+            result &= (FW_BOOLEAN)(FW_ERROR == status);
+        }
+        else
+        {
+            result &= (FW_BOOLEAN)(FW_SUCCESS == status);
+        }
+        if (FW_FALSE == result) break;
+    }
+
+    vUpdateTestResult(result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
 void vLEDTask(void * pvParameters)
 {
     //LOG("LED Task Started\r\n");
@@ -201,6 +270,8 @@ static const TestFunction_t gTests[] =
     Test_AllocateError,
     Test_EnqueueSuccess,
     Test_EnqueueError,
+    Test_Reset,
+    Test_Full,
 };
 
 void vTemplateTask(void * pvParameters)
