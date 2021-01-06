@@ -106,13 +106,6 @@ EAST_p EAST_Init(U8 * pContainer, U32 aSize, U8 * pBuffer, U32 aBufferSize)
 }
 
 //-----------------------------------------------------------------------------
-
-FW_BOOLEAN EAST_IsCompleted(EAST_p pEAST)
-{
-    return FW_FALSE;
-}
-
-//-----------------------------------------------------------------------------
 /** @brief Initializes the EAST component
  *  @param[in] pEAST - Pointer to the EAST
  *  @param[in] pBuffer - Pointer to the EAST data buffer
@@ -251,8 +244,8 @@ FW_RESULT EAST_PutByte(EAST_p pEAST, U8 aValue)
 
 //-----------------------------------------------------------------------------
 /** @brief Gets Byte from the EAST data packet
- *  @param pEAST - Pointer to the EAST
- *  @param pValue - Pointer to the Value that should be gotten from the packet
+ *  @param[in] pEAST - Pointer to the EAST
+ *  @param[out] pValue - Pointer to the placeholder for Value
  *  @return FW_INPROGRESS / FW_COMPLETE
  *  @note On the next call of this function after packet completion,
  *        producing of the new packet is started from the beginning. The
