@@ -14,12 +14,8 @@
 typedef FW_BOOLEAN (* TestFunction_t)(void);
 
 static EAST_p pEAST             = NULL;
-static U8     eastContainer[25] = {0};
+static U8     eastContainer[16] = {0};
 static U8     eastBuffer[100]   = {0};
-static U32    gPass             = 0;
-static U32    gFail             = 0;
-static U32    gTested           = 0;
-static U32    gTotal            = 0;
 
 //--- Mocks -------------------------------------------------------------------
 
@@ -46,46 +42,182 @@ void vTestHelpTaskFunction(void * pvParameters)
 
 //-----------------------------------------------------------------------------
 
-//static void vTest_Init(void)
-//{
-//    FW_BOOLEAN result = FW_FALSE;
-//    FW_RESULT status = FW_ERROR;
-//    U32 i = 0;
-//    U8 data = 0;
-//
-//    LOG("--- FIFO Test ---------------------------\r\n");
-//
-//    LOG("- FIFO Init\r\n");
-//    pFIFO = FIFO_Init(fifoBuffer, sizeof(fifoBuffer));
-//    result = (FW_BOOLEAN)(NULL != pFIFO);
-//    vLog_Result(result);
-//    LOG("FIFO Capacity = %d\r\n", FIFO_Size(pFIFO));
-//
-//
-//    result = FW_TRUE;
-//    for (i = 0; i < 8; i++)
-//    {
-//        data = 0x33;
-//        status = FIFO_Put(pFIFO, &data);
-//        result &= (FW_BOOLEAN)(FW_SUCCESS == status);
-//    }
-//    LOG("--- FIFO Put 8 ---\r\n");
-//    LOG("FIFO Count = %d\r\n", FIFO_Count(pFIFO));
-//    LOG("FIFO Free  = %d\r\n", FIFO_Free(pFIFO));
-//    LOG("FIFO Sum   = %d\r\n", FIFO_Free(pFIFO) + FIFO_Count(pFIFO));
-//    result &= (FW_BOOLEAN)(8 == FIFO_Count(pFIFO));
-//    result &= (FW_BOOLEAN)(0 == FIFO_Free(pFIFO));
-//    vLog_Result(result);
-//}
-
 static FW_BOOLEAN Test_InitSuccess(void)
 {
     FW_BOOLEAN result = FW_FALSE;
+    FW_RESULT status = FW_ERROR;
 
     LOG("*** EAST Success Initialization Test ***\r\n");
 
-    pEAST = EAST_Init(eastContainer, sizeof(eastContainer));
+    pEAST = EAST_Init(eastContainer, sizeof(eastContainer), NULL, 0);
     result = (FW_BOOLEAN)(NULL != pEAST);
+    if (FW_FALSE == result) return result;
+
+    status = EAST_SetBuffer(pEAST, eastBuffer, sizeof(eastBuffer));
+    result = (FW_BOOLEAN)(FW_SUCCESS == status);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
+static U8 gTestEastPacketSuccess[] =
+{
+    /* Start Token */
+    0x24,
+    /* Length */
+    0x05, 0x00,
+    /* Data */
+    0x01, 0x02, 0x03, 0x04, 0x05,
+    /* Stop Token */
+    0x42,
+    /* Control Sum */
+    0x01, 0x00
+};
+
+static FW_BOOLEAN Test_PutSuccess(void)
+{
+    FW_BOOLEAN result = FW_FALSE;
+    FW_RESULT status = FW_ERROR;
+    U32 byte = 0, test = 0, size = 0;
+    U8 * testPacket = NULL;
+
+    LOG("*** EAST Success Put Byte Test ***\r\n");
+
+    testPacket = gTestEastPacketSuccess;
+    size = sizeof(gTestEastPacketSuccess);
+
+    /* Init the EAST packet */
+    pEAST = EAST_Init(eastContainer, sizeof(eastContainer), NULL, 0);
+    result = (FW_BOOLEAN)(NULL != pEAST);
+    if (FW_FALSE == result) return result;
+
+    for (test = 0; test < 2; test++)
+    {
+        /* Setup/Reset the EAST packet */
+        status = EAST_SetBuffer(pEAST, eastBuffer, sizeof(eastBuffer));
+        result = (FW_BOOLEAN)(FW_SUCCESS == status);
+        if (FW_FALSE == result) break;
+
+        /* Fill the EAST packet */
+        for (byte = 0; byte < size; byte++)
+        {
+            status = EAST_PutByte(pEAST, testPacket[byte]);
+            if ( (size - 1) == byte )
+            {
+                result &= (FW_BOOLEAN)(FW_COMPLETE == status);
+            }
+            else
+            {
+                result &= (FW_BOOLEAN)(FW_INPROGRESS == status);
+            }
+            if (FW_FALSE == result) break;
+        }
+        if (FW_FALSE == result) break;
+
+        result &= (FW_BOOLEAN)(eastBuffer[0] == testPacket[3]);
+        result &= (FW_BOOLEAN)(eastBuffer[2] == testPacket[5]);
+        result &= (FW_BOOLEAN)(eastBuffer[4] == testPacket[7]);
+        if (FW_FALSE == result) break;
+    }
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
+static U8 gTestEastPacketWrongLength[] =
+{
+    /* Start Token */
+    0x24,
+    /* Length */
+    0x00, 0x05,
+    /* Data */
+    0x01, 0x02, 0x03, 0x04, 0x05,
+    /* Stop Token */
+    0x42,
+    /* Control Sum */
+    0x01, 0x00
+};
+
+static FW_BOOLEAN Test_PutWrongLength(void)
+{
+    FW_BOOLEAN result = FW_FALSE;
+    FW_RESULT status = FW_ERROR;
+    U32 byte = 0, size = 0;
+    U8 * testPacket = NULL;
+
+    LOG("*** EAST Wrong Length Put Byte Test ***\r\n");
+
+    testPacket = gTestEastPacketWrongLength;
+    size = sizeof(gTestEastPacketWrongLength);
+
+    /* Init the EAST packet */
+    pEAST = EAST_Init(eastContainer, sizeof(eastContainer), NULL, 0);
+    result = (FW_BOOLEAN)(NULL != pEAST);
+    if (FW_FALSE == result) return result;
+
+    /* Setup/Reset the EAST packet */
+    status = EAST_SetBuffer(pEAST, eastBuffer, sizeof(eastBuffer));
+    result = (FW_BOOLEAN)(FW_SUCCESS == status);
+    if (FW_FALSE == result) return result;
+
+    /* Fill the EAST packet */
+    for (byte = 0; byte < size; byte++)
+    {
+        status = EAST_PutByte(pEAST, testPacket[byte]);
+        result &= (FW_BOOLEAN)(FW_INPROGRESS == status);
+        if (FW_FALSE == result) break;
+    }
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
+static U8 gTestEastPacketWrongCS[] =
+{
+    /* Start Token */
+    0x24,
+    /* Length */
+    0x05, 0x00,
+    /* Data */
+    0x01, 0x02, 0x03, 0x04, 0x05,
+    /* Stop Token */
+    0x42,
+    /* Control Sum */
+    0x00, 0x01
+};
+
+static FW_BOOLEAN Test_PutWrongCS(void)
+{
+    FW_BOOLEAN result = FW_FALSE;
+    FW_RESULT status = FW_ERROR;
+    U32 byte = 0, size = 0;
+    U8 * testPacket = NULL;
+
+    LOG("*** EAST Wrong CS Put Byte Test ***\r\n");
+
+    testPacket = gTestEastPacketWrongCS;
+    size = sizeof(gTestEastPacketWrongCS);
+
+    /* Init the EAST packet */
+    pEAST = EAST_Init(eastContainer, sizeof(eastContainer), NULL, 0);
+    result = (FW_BOOLEAN)(NULL != pEAST);
+    if (FW_FALSE == result) return result;
+
+    /* Setup/Reset the EAST packet */
+    status = EAST_SetBuffer(pEAST, eastBuffer, sizeof(eastBuffer));
+    result = (FW_BOOLEAN)(FW_SUCCESS == status);
+    if (FW_FALSE == result) return result;
+
+    /* Fill the EAST packet */
+    for (byte = 0; byte < size; byte++)
+    {
+        status = EAST_PutByte(pEAST, testPacket[byte]);
+        result &= (FW_BOOLEAN)(FW_INPROGRESS == status);
+        if (FW_FALSE == result) break;
+    }
 
     return result;
 }
@@ -95,6 +227,9 @@ static FW_BOOLEAN Test_InitSuccess(void)
 const TestFunction_t gTests[] =
 {
     Test_InitSuccess,
+    Test_PutSuccess,
+    Test_PutWrongLength,
+    Test_PutWrongCS,
 };
 
 U32 TestsGetCount(void)
