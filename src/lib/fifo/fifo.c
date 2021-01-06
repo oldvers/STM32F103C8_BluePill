@@ -148,7 +148,7 @@ FIFO_p FIFO_Init(U8 * pBuffer, U32 aSize)
     U32 dataAddress = 0;
     U32 dataLength  = 0;
 
-    FIFO_LOG("- FIFO_Init() -\r\n");
+    FIFO_LOG("-*- FIFO_Init() -*-\r\n");
     FIFO_LOG("--- Inputs\r\n");
     FIFO_LOG("  Buffer Address = %08X\r\n", pBuffer);
     FIFO_LOG("  Buffer Size    = %d\r\n", aSize);
