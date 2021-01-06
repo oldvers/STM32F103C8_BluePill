@@ -153,7 +153,7 @@ FW_RESULT EAST_SetBuffer(EAST_p pEAST, U8 * pBuffer, U32 aSize)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Puts Byte into EAST data packet
+/** @brief Puts Byte into the EAST data packet
  *  @param[in] pEAST - Pointer to the EAST
  *  @param[in] aValue - Value that should be placed into the EAST data packet
  *  @return FW_INPROGRESS / FW_COMPLETE / FW_ERROR
@@ -240,7 +240,7 @@ FW_RESULT EAST_PutByte(EAST_p pEAST, U8 aValue)
     {
         /* Indicate packet completion */
         result = FW_COMPLETE;
-        /* Indicate Packet Completed */
+        /* Reset the packet position */
         pEAST->Index = 0;
 
         EAST_LOG("  Packet complete!\r\n");
@@ -250,76 +250,73 @@ FW_RESULT EAST_PutByte(EAST_p pEAST, U8 aValue)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Gets Byte from EAST packet
- *  @param pEAST - Pointer to EAST state structure
- *  @param pValue - Pointer to Value that should be gotten from packet
- *  @return TRUE - Value is available, FALSE - No Value available
- *  @note Should be called at least two times. The firts time - for getting
- *        values from packet. The last time - for calling OnComplete callback.
+/** @brief Gets Byte from the EAST data packet
+ *  @param pEAST - Pointer to the EAST
+ *  @param pValue - Pointer to the Value that should be gotten from the packet
+ *  @return FW_INPROGRESS / FW_COMPLETE
+ *  @note On the next call of this function after packet completion,
+ *        producing of the new packet is started from the beginning. The
+ *        previously produced packet is left as is.
  */
 
 FW_RESULT EAST_GetByte(EAST_p pEAST, U8 * pValue)
-//U32 EAST_GetByte(EAST_STATE * pEAST, U8 * pValue)
 {
-//  pEAST->OK = FW_TRUE;
-//
-//  /* Data Stage */
-//  if ((1 < pEAST->Index) && (pEAST->Index < (pEAST->ActSize + 2)))
-//  {
-//    *pValue = pEAST->Buffer[pEAST->Index - 2];
-//    pEAST->CS ^= *pValue;
-//  }
-//  /* Packet Start Byte Stage */
-//  else if (0 == pEAST->Index)
-//  {
-//    *pValue = 0x24;
-//    pEAST->ActSize = pEAST->MaxSize;
-//  }
-//  /* Packet Size Stage */
-//  else if (1 == pEAST->Index)
-//  {
-//    *pValue = (pEAST->ActSize & 0xFF);
-////  }
-////  else if (2 == pEAST->Index)
-////  {
-////    *pValue = (pEAST->ActSize >> 8);
-//    pEAST->CS = 0;
-//  }
-//  /* Packet Stop Byte Stage */
-//  else if (pEAST->Index == (pEAST->ActSize + 2))
-//  {
-//    *pValue = 0x42;
-//  }
-//  /* Packet Control Sum Stage */
-//  else if (pEAST->Index == (pEAST->ActSize + 3))
-//  {
-//    *pValue = pEAST->CS;
-//  }
-//  /* Packet Completed Stage */
-//  else if (pEAST->Index == (pEAST->ActSize + 4))
-//  {
-//    /* Increase Index to call OnComplete at next iteration */
-//    pEAST->Index++;
-//    pEAST->OK = FW_FALSE;
-//  }
-//  else if (pEAST->Index == (pEAST->ActSize + 5))
-//  {
-//    /* Call Back */
-//    //if (NULL != pEAST->OnComplete) pEAST->OnComplete();
-//    /* Increase Index to avoid multiple call of OnComplete */
-//    pEAST->Index++;
-//    pEAST->OK = FW_FALSE;
-//  }
-//  else
-//  {
-//    pEAST->OK = FW_FALSE;
-//  }
-//
-//  /* Packet Index Incrementing Stage */
-//  if (FW_TRUE == pEAST->OK)
-//  {
-//    pEAST->Index++;
-//  }
+    FW_RESULT result = FW_INPROGRESS;
+    pEAST->OK = FW_TRUE;
 
-  return (FW_RESULT)pEAST->OK;
+    /* Data Stage */
+    if EAST_PACKET_STAGE_DATA(pEAST->Index, pEAST->ActSize)
+    {
+        *pValue = EAST_PACKET_POSITION(pEAST->Buffer, pEAST->Index);
+        pEAST->RCS ^= *pValue;
+    }
+    /* Packet Start Token Stage */
+    else if EAST_PACKET_STAGE_START(pEAST->Index)
+    {
+        *pValue = EAST_PACKET_START_TOKEN;
+        pEAST->ActSize = pEAST->MaxSize;
+    }
+    /* Packet Size Stage */
+    else if EAST_PACKET_STAGE_LENGTHL(pEAST->Index)
+    {
+        *pValue = (pEAST->ActSize & 0xFF);
+    }
+    else if EAST_PACKET_STAGE_LENGTHH(pEAST->Index)
+    {
+        *pValue = (pEAST->ActSize >> 8) & 0xFF;
+        pEAST->RCS = 0;
+    }
+    /* Packet Stop Byte Stage */
+    else if EAST_PACKET_STAGE_STOP(pEAST->Index, pEAST->ActSize)
+    {
+        *pValue = EAST_PACKET_STOP_TOKEN;
+    }
+    /* Packet Control Sum Stage */
+    else if EAST_PACKET_STAGE_CSL(pEAST->Index, pEAST->ActSize)
+    {
+        *pValue = (pEAST->RCS & 0xFF);
+    }
+    else if EAST_PACKET_STAGE_CSH(pEAST->Index, pEAST->ActSize)
+    {
+        *pValue = (pEAST->RCS >> 8) & 0xFF;
+    }
+
+    /* Packet Index Incrementing Stage */
+    if (FW_TRUE == pEAST->OK)
+    {
+        pEAST->Index++;
+    }
+
+    /* Packet Completed Stage */
+    if EAST_PACKET_STAGE_COMPLETE(pEAST->Index, pEAST->ActSize)
+    {
+        /* Indicate packet completion */
+        result = FW_COMPLETE;
+        /* Reset the packet position */
+        pEAST->Index = 0;
+
+        EAST_LOG("  Packet complete!\r\n");
+    }
+
+    return result;
 }
