@@ -2233,6 +2233,9 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_blockqueue.c</name>
+            <excluded>
+                <configuration>Tests</configuration>
+            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_east.c</name>
@@ -2245,6 +2248,9 @@
             <excluded>
                 <configuration>Tests</configuration>
             </excluded>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\tests\test_fifo_queue_east.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\tests\test_icemkii_msg.c</name>

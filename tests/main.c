@@ -85,7 +85,7 @@ int main(void)
     (
         vTestMainTask,
         "TestMainTask",
-        configMINIMAL_STACK_SIZE,
+        configMINIMAL_STACK_SIZE * 2,
         NULL,
         tskIDLE_PRIORITY + 1,
         NULL
@@ -95,7 +95,7 @@ int main(void)
     (
         vTestHelpTaskFunction,
         "TestHelpTask",
-        configMINIMAL_STACK_SIZE,
+        configMINIMAL_STACK_SIZE * 2,
         NULL,
         tskIDLE_PRIORITY + 1,
         NULL

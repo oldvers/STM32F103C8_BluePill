@@ -191,7 +191,7 @@ FIFO_p FIFO_Init(U8 * pBuffer, U32 aSize)
     result->O = 0;
     result->S = dataLength;
     result->B = (U8 *)dataAddress;
-    for(U32 i = 0; i < aSize; i++) result->B[i] = 0;
+    for(U32 i = 0; i < dataLength; i++) result->B[i] = 0;
 
     return result;
 }
