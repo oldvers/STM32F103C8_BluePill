@@ -2,29 +2,29 @@
 <project>
     <fileVersion>3</fileVersion>
     <configuration>
-        <name>Release</name>
+        <name>Test</name>
         <toolchain>
             <name>ARM</name>
         </toolchain>
-        <debug>0</debug>
+        <debug>1</debug>
         <settings>
             <name>General</name>
             <archiveVersion>3</archiveVersion>
             <data>
                 <version>29</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>ExePath</name>
-                    <state>build\Release\exe</state>
+                    <state>build\test\exe</state>
                 </option>
                 <option>
                     <name>ObjPath</name>
-                    <state>build\Release\obj</state>
+                    <state>build\test\obj</state>
                 </option>
                 <option>
                     <name>ListPath</name>
-                    <state>build\Release\lst</state>
+                    <state>build\test\lst</state>
                 </option>
                 <option>
                     <name>GEndianMode</name>
@@ -208,7 +208,7 @@
             <data>
                 <version>34</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>CCOptimizationNoSizeConstraints</name>
                     <state>0</state>
@@ -471,7 +471,7 @@
             <data>
                 <version>10</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>AObjPrefix</name>
                     <state>1</state>
@@ -633,7 +633,7 @@
             <data>
                 <version>1</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>OOCOutputFormat</name>
                     <version>3</version>
@@ -685,7 +685,7 @@
             <data>
                 <version>20</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>IlinkOutputFile</name>
                     <state>$PROJ_FNAME$.out</state>
@@ -1003,7 +1003,7 @@
             <data>
                 <version>0</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>IarchiveInputs</name>
                     <state></state>
