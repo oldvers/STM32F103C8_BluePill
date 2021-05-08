@@ -1,7 +1,6 @@
-#ifndef __H_DUART_H__
-#define __H_DUART_H__
+#ifndef __H_DEBUG_H__
+#define __H_DEBUG_H__
 
-#include "types.h"
-#include "stm32f1xx.h"
+void DBG_Init(void);
 
-#endif //__H_DUART_H__
+#endif //__H_DEBUG_H__

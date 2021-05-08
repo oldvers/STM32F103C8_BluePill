@@ -5,6 +5,7 @@
 #include "gpio.h"
 #include "uniquedevid.h"
 #include "system.h"
+#include "debug.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -17,8 +18,10 @@ void vLEDTask(void * pvParameters)
   while(1)
   {
     GPIO_Lo(GPIOC, 13);
+    printf("LED OOONNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\r\n");
     vTaskDelay(500);
     GPIO_Hi(GPIOC, 13);
+    printf("LED OOOFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \r\n");
     vTaskDelay(500);
   }
   //vTaskDelete(NULL);
@@ -26,6 +29,8 @@ void vLEDTask(void * pvParameters)
 
 int main(void)
 {
+  DBG_Init();
+
   printf("STM32F103C8 Started!\r\n");
   printf("ID0         = 0x%04X\r\n", UDID_0);
   printf("ID1         = 0x%04X\r\n", UDID_1);
