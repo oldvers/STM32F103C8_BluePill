@@ -1,7 +1,5 @@
-//#include <string.h>
 #include <stdio.h>
 #include "types.h"
-//#include "debug.h"
 #include "stm32f1xx.h"
 #include "SEGGER_RTT.h"
 #include "gpio.h"
