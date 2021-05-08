@@ -133,6 +133,18 @@ __vector_table
         DCD     RTC_Alarm_IRQHandler       ; RTC Alarm through EXTI Line
         DCD     USBWakeUp_IRQHandler      ; USB Wakeup from suspend
 
+;  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;  ;;
+;  ;; Definitions for the interrupt handlers.
+;  ;;
+;
+;  #define FAULT_ID_NMI              (0)
+;  #define FAULT_ID_HARDFAULT        (1)
+;  #define FAULT_ID_MEMMANAGE        (2)
+;  #define FAULT_ID_BUSFAULT         (3)
+;  #define FAULT_ID_USAGEFAULT       (4)
+;  #define FAULT_ID_DEBUGMON         (5)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Default interrupt handlers.
@@ -148,11 +160,36 @@ Reset_Handler
 
         SECTION .text:CODE:REORDER:NOROOT(1)
 NMI_Handler
+;        MOV     R2, #FAULT_ID_NMI
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
 HardFault_Handler
+;        MOV     R2, #FAULT_ID_HARDFAULT
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
 MemManage_Handler
+;        MOV     R2, #FAULT_ID_MEMMANAGE
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
 BusFault_Handler
+;        MOV     R2, #FAULT_ID_BUSFAULT
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
 UsageFault_Handler
+;        MOV     R2, #FAULT_ID_USAGEFAULT
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
 DebugMon_Handler
+;        MOV     R2, #FAULT_ID_DEBUGMON
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
+Exception_Handler
         TST     LR, #4
         ITE     EQ
         MRSEQ   R0, MSP
