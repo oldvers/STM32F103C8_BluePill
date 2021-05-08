@@ -1,0 +1,69 @@
+/*__var _fileHandle;
+__var _interruptID;
+__var _breakID; */
+
+__var IRQ_ID_SysTick;
+
+execUserSetup()
+{
+  __message "execUserSetup() called.\n";
+  simulationSetup();
+}
+
+execUserReset()
+{
+  __message "execUserReset() called.\n";
+  /*if( _fileHandle )
+  {
+    __resetFile( _fileHandle );
+  }*/
+}
+
+execUserExit()
+{
+  __message "execUserExit() called.\n";
+  simulationShutdown();
+}
+
+simulationSetup()
+{
+//  /* Open the text file for ASCII reading. */
+//  _fileHandle = __openFile("$PROJ_DIR$\\InputData.txt", "r");
+//  if( !_fileHandle )
+//  {
+//    __message "Could not open file.\n" ;
+//  }
+
+  IRQ_ID_SysTick = __orderInterrupt("SysTick", 600000, 72000, 0, 0, 100, 100);
+  if( -1 == IRQ_ID_SysTick )
+  {
+    __message "Error: failed to order interrupt.\n";
+  }
+
+//  /* Set up the immediate breakpoint. */
+//  _breakID = __setSimBreak("USART1_DR", "R", "Access()"); 
+}
+
+//Access()
+//{
+//  __message "Access() called.\n";
+//  __var _fibValue;
+//
+//  if( 0 == __readFile( _fileHandle, &_fibValue ) )
+//  {
+//    USART1_DR = _fibValue;
+//  }
+//  else
+//  {
+//    __message "Error reading value from file.\n";
+//  }
+//
+//  __message "USART1_DR = 0x", _fibValue:%X,"\n";
+//}
+
+simulationShutdown()
+{
+  __cancelInterrupt( IRQ_ID_SysTick );
+//  __clearBreak( _breakID );
+//  __closeFile( _fileHandle );
+}
