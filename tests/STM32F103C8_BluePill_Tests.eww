@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<workspace>
+  <project>
+    <path>$WS_DIR$\real_hw_template\project\iar\STM32F103C8_BluePill_Test_RealHwTemplate.ewp</path>
+  </project>
+  <batchBuild/>
+</workspace>
+
+
