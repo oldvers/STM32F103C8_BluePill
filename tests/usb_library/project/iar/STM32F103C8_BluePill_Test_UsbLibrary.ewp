@@ -1155,4 +1155,34 @@
             <name>$PROJ_DIR$\..\..\..\..\src\lib\rtt\SEGGER_RTT_printf.c</name>
         </file>
     </group>
+    <group>
+        <name>USB</name>
+        <group>
+            <name>Core</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_core.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_core.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_defs.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_device.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_device.h</name>
+            </file>
+        </group>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_cfg.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_descr.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_descr.h</name>
+        </file>
+    </group>
 </project>
