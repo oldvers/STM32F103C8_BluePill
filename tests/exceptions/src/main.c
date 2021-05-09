@@ -122,9 +122,17 @@ int main(void)
         break;
 
       case HardFault_IRQn:
+        /* Route bus fault to hard fault */
+        SCB->SHCSR &= ~( SCB_SHCSR_BUSFAULTENA_Msk );
+
+        /* Generate the hard fault exception */
+        testValueA = 0x33;
+        *((U32 *)0x07F00000) = testValueA;
         break;
 
       case MemoryManagement_IRQn:
+        /* Generate the memory management exception */
+        SCB->SHCSR |= ( SCB_SHCSR_MEMFAULTPENDED_Msk );
         break;
 
       case BusFault_IRQn:
@@ -140,6 +148,10 @@ int main(void)
         break;
 
       case DebugMonitor_IRQn:
+        /* Generate the debug monitor exception */
+        CoreDebug->DEMCR |= ( CoreDebug_DEMCR_MON_REQ_Msk |
+                              CoreDebug_DEMCR_MON_EN_Msk );
+        CoreDebug->DEMCR |= ( CoreDebug_DEMCR_MON_PEND_Msk );
         break;
 
       default:
