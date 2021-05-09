@@ -58,16 +58,44 @@ void vTestMainTask(void * pvParameters)
 
   for (test = 0; test < gTotal; test++)
   {
+    DBG_SetTextColorYellow();
     DBG("-----------------------------------------------------------\r\n");
+    DBG_SetDefaultColors();
     result = gTests[test]();
     vLogTestResult(result);
     if (FW_FALSE == result) break;
   }
 
+  DBG_SetTextColorYellow();
   DBG("-----------------------------------------------------------\r\n");
+
+  DBG_SetDefaultColors();
   DBG(" - Total  = %d\r\n", gTotal);
-  DBG(" - Tested = %d  Pass = %d  Fail = %d\r\n", gTested, gPass, gFail);
+  DBG(" - Tested = %d  ", gTested);
+
+  if (0 < gPass)
+  {
+    DBG_SetTextColorGreen();
+  }
+  else
+  {
+    DBG_SetDefaultColors();
+  }
+  DBG("Pass = %d  ", gPass);
+
+  if (0 < gFail)
+  {
+    DBG_SetTextColorRed();
+  }
+  else
+  {
+    DBG_SetDefaultColors();
+  }
+  DBG("Fail = %d\r\n", gFail);
+
+  DBG_SetTextColorYellow();
   DBG("-----------------------------------------------------------\r\n");
+  DBG_SetDefaultColors();
 
   while (FW_TRUE)
   {
@@ -106,7 +134,7 @@ int main(void)
     "TestMainTask",
     configMINIMAL_STACK_SIZE * 2,
     NULL,
-    tskIDLE_PRIORITY + 1,
+    tskIDLE_PRIORITY + 2,
     NULL
   );
 
