@@ -95,7 +95,7 @@ int main(void)
     DBG_SetTextColorBlue();
     printf("*** All tests finished! *********************\r\n");
     gTestMark = TEST_MARK_FINISHED;
-    while(TRUE) {};
+    while (FW_TRUE) {};
   }
   else
   {
@@ -164,5 +164,5 @@ int main(void)
     NVIC_SystemReset();
   }
 
-  while(TRUE) {};
+  while (FW_TRUE) {};
 }

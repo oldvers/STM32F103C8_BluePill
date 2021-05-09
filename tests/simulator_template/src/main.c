@@ -41,10 +41,10 @@ int main(void)
 
   vTaskStartScheduler();
 
-  while (TRUE) {};
+  while (FW_TRUE) {};
 }
 
 void on_error(void)
 {
-  while (TRUE) {};
+  while (FW_TRUE) {};
 }
