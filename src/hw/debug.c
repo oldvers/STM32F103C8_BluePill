@@ -120,42 +120,54 @@ static void SWO_Init( void )
 
 void DBG_SetDefaultColors(void)
 {
+#if !defined(DBG_NONE)
   printf(RTT_CTRL_RESET);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
 
 void DBG_ClearScreen(void)
 {
+#if !defined(DBG_NONE)
   printf(RTT_CTRL_CLEAR"\r\n");
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
 
 void DBG_SetTextColorRed(void)
 {
+#if !defined(DBG_NONE)
   printf(RTT_CTRL_TEXT_RED);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
 
 void DBG_SetTextColorGreen(void)
 {
+#if !defined(DBG_NONE)
   printf(RTT_CTRL_TEXT_GREEN);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
 
 void DBG_SetTextColorYellow(void)
 {
+#if !defined(DBG_NONE)
   printf(RTT_CTRL_TEXT_YELLOW);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
 
 void DBG_SetTextColorBlue(void)
 {
+#if !defined(DBG_NONE)
   printf(RTT_CTRL_TEXT_BLUE);
+#endif
 }
 
 /*----------------------------------------------------------------------------*/
@@ -165,7 +177,8 @@ void DBG_Init(void)
 #if defined(DBG_SWO)
   SWO_Init();
 #elif defined(DBG_RTT)
-  SEGGER_RTT_Init();
+  /* SEGGER_RTT_Init() will be called at the first debug print internally */
+  printf("\r\n");
 
   if (0 == (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk))
   {
