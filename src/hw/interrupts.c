@@ -47,6 +47,7 @@
 #define IRQ_PRIORITY_GROUPS_CONFIG      (IRQ_PRIORITY_GROUP_16_SUB_01)
 
 /* The preemption priority */
+#define IRQ_PRIORITY_FAULT              ( 0)
 /*      IRQ_PRIORITY_MAX_SYSCALL        (11) */
 /*      IRQ_PRIORITY_SYSTICK            (15) */
 /*      IRQ_PRIORITY_PENDSV             (15) */
@@ -56,39 +57,102 @@
 
 /* --- Definitions ---------------------------------------------------------- */
 
+#define FAULT_ID_OFFSET                 (16)
+#define FAULT_ID_MASK                   (0xFF)
+
 typedef enum
 {
   R0, R1, R2, R3, R12, LR, PC, PSR
 } StackFrameOffsets_e;
+
+extern void on_error(S32 parameter);
 
 /* --- Functions ------------------------------------------------------------ */
 
 void IRQ_SetPriorityGrouping(void)
 {
   NVIC_SetPriorityGrouping(IRQ_PRIORITY_GROUPS_CONFIG);
+
+  U32 grouping = 0, priority = 0;
+
+  NVIC_SetPriorityGrouping(IRQ_PRIORITY_GROUPS_CONFIG);
+
+  /* Enable Usage-/Bus-/MPU faults */
+  SCB->SHCSR |= ( SCB_SHCSR_USGFAULTENA_Msk |
+                  SCB_SHCSR_BUSFAULTENA_Msk |
+                  SCB_SHCSR_MEMFAULTENA_Msk );
+
+  /* Enable divizion by zero and usage faults */
+  SCB->CCR |= ( SCB_CCR_DIV_0_TRP_Msk | SCB_CCR_UNALIGN_TRP_Msk );
+
+  /* Set the interrupt priorities */
+  grouping = NVIC_GetPriorityGrouping();
+  priority = NVIC_EncodePriority
+             (
+               grouping,
+               IRQ_PRIORITY_FAULT,
+               IRQ_SUB_PRIORITY
+             );
+
+  NVIC_SetPriority(MemoryManagement_IRQn, priority);
+  NVIC_SetPriority(BusFault_IRQn, priority);
+  NVIC_SetPriority(UsageFault_IRQn, priority);
 }
 
 /* -------------------------------------------------------------------------- */
 
 void IRQ_Exception_Handler(U32 pStackFrame[], U32 LRValue)
 {
-  IRQ_LOG("Hard Fault\r\n");
-  IRQ_LOG("  SHCSR    = 0x%08x\r\n", SCB->SHCSR);
-  IRQ_LOG("  CFSR     = 0x%08x\r\n", SCB->CFSR);
-  IRQ_LOG("  HFSR     = 0x%08x\r\n", SCB->HFSR);
-  IRQ_LOG("  MMFAR    = 0x%08x\r\n", SCB->MMFAR);
-  IRQ_LOG("  BFAR     = 0x%08x\r\n", SCB->BFAR);
+  S32 FaultID = ((SCB->ICSR & FAULT_ID_MASK) - FAULT_ID_OFFSET);
 
-  IRQ_LOG("  R0       = 0x%08x\r\n", pStackFrame[R0]);
-  IRQ_LOG("  R1       = 0x%08x\r\n", pStackFrame[R1]);
-  IRQ_LOG("  R2       = 0x%08x\r\n", pStackFrame[R2]);
-  IRQ_LOG("  R3       = 0x%08x\r\n", pStackFrame[R3]);
-  IRQ_LOG("  R12      = 0x%08x\r\n", pStackFrame[R12]);
-  IRQ_LOG("  LR [R14] = 0x%08x - Return address\r\n", pStackFrame[LR]);
-  IRQ_LOG("  PC [R15] = 0x%08x - Program counter\r\n", pStackFrame[PC]);
-  IRQ_LOG("  PSR      = 0x%08x\r\n", pStackFrame[PSR]);
+  IRQ_LOG("- Fault ID = ");
+  switch (FaultID)
+  {
+    case NonMaskableInt_IRQn:
+      IRQ_LOG("NMI\r\n");
+      break;
 
-  while(TRUE) {};
+    case HardFault_IRQn:
+      IRQ_LOG("Hard\r\n");
+      break;
+
+    case MemoryManagement_IRQn:
+      IRQ_LOG("Memory Management\r\n");
+      break;
+
+    case BusFault_IRQn:
+      IRQ_LOG("Bus\r\n");
+      break;
+
+    case UsageFault_IRQn:
+      IRQ_LOG("Usage\r\n");
+      break;
+
+    case DebugMonitor_IRQn:
+      IRQ_LOG("Debug Monitor\r\n");
+      break;
+
+    default:
+      IRQ_LOG("Unknown!\r\n");
+      break;
+  }
+  IRQ_LOG("  LR       = 0x%08X\r\n", LRValue);
+  IRQ_LOG("  SHCSR    = 0x%08X\r\n", SCB->SHCSR);
+  IRQ_LOG("  CFSR     = 0x%08X\r\n", SCB->CFSR);
+  IRQ_LOG("  HFSR     = 0x%08X\r\n", SCB->HFSR);
+  IRQ_LOG("  MMFAR    = 0x%08X\r\n", SCB->MMFAR);
+  IRQ_LOG("  BFAR     = 0x%08X\r\n", SCB->BFAR);
+  IRQ_LOG("- Stack Frame\r\n");
+  IRQ_LOG("  R0       = 0x%08X\r\n", pStackFrame[R0]);
+  IRQ_LOG("  R1       = 0x%08X\r\n", pStackFrame[R1]);
+  IRQ_LOG("  R2       = 0x%08X\r\n", pStackFrame[R2]);
+  IRQ_LOG("  R3       = 0x%08X\r\n", pStackFrame[R3]);
+  IRQ_LOG("  R12      = 0x%08X\r\n", pStackFrame[R12]);
+  IRQ_LOG("  LR [R14] = 0x%08X - Return address\r\n", pStackFrame[LR]);
+  IRQ_LOG("  PC [R15] = 0x%08X - Program counter\r\n", pStackFrame[PC]);
+  IRQ_LOG("  PSR      = 0x%08X\r\n", pStackFrame[PSR]);
+
+  on_error(FaultID);
 }
 
 /* -------------------------------------------------------------------------- */

@@ -18,10 +18,12 @@ void vLEDTask(void * pvParameters)
   while(1)
   {
     GPIO_Lo(GPIOC, 13);
-    printf("LED OOONNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN\r\n");
+    DBG_SetTextColorGreen();
+    printf("LED ON\r\n");
     vTaskDelay(500);
     GPIO_Hi(GPIOC, 13);
-    printf("LED OOOFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \r\n");
+    DBG_SetTextColorRed();
+    printf("LED OFF\r\n");
     vTaskDelay(500);
   }
   //vTaskDelete(NULL);
@@ -30,6 +32,7 @@ void vLEDTask(void * pvParameters)
 int main(void)
 {
   DBG_Init();
+  DBG_ClearScreen();
 
   printf("STM32F103C8 Started!\r\n");
   printf("ID0         = 0x%04X\r\n", UDID_0);
@@ -46,5 +49,10 @@ int main(void)
 
   vTaskStartScheduler();
 
-  while(TRUE) {};
+  while (TRUE) {};
+}
+
+void on_error(void)
+{
+  while (TRUE) {};
 }

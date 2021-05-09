@@ -7,15 +7,13 @@
 
 /* --- Selection of the debug logging output method ------------------------- */
 
-#define RTT
-
-#if !defined(NONE) && !defined(RTT) && !defined(SWO)
-#  error "Select the debug logging output method!"
+#if !defined(DBG_NONE) && !defined(DBG_RTT) && !defined(DBG_SWO)
+#  error "Define the debug logging output method in the project settings!"
 #endif
 
 /* --- SWO Init ------------------------------------------------------------- */
 
-#ifdef SWO
+#ifdef DBG_SWO
 
 /* ITM Stimulus Ports */
 #define CPU_ITM_O_STIMPORT_00               (0x00000000)
@@ -116,15 +114,57 @@ static void SWO_Init( void )
   TPI->FFCR = TPI_FFCR_TrigIn_Msk;
 }
 
-#endif /* SWO */
+#endif /* DBG_SWO */
+
+/*----------------------------------------------------------------------------*/
+
+void DBG_SetDefaultColors(void)
+{
+  printf(RTT_CTRL_RESET);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void DBG_ClearScreen(void)
+{
+  printf(RTT_CTRL_CLEAR"\r\n");
+}
+
+/*----------------------------------------------------------------------------*/
+
+void DBG_SetTextColorRed(void)
+{
+  printf(RTT_CTRL_TEXT_RED);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void DBG_SetTextColorGreen(void)
+{
+  printf(RTT_CTRL_TEXT_GREEN);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void DBG_SetTextColorYellow(void)
+{
+  printf(RTT_CTRL_TEXT_YELLOW);
+}
+
+/*----------------------------------------------------------------------------*/
+
+void DBG_SetTextColorBlue(void)
+{
+  printf(RTT_CTRL_TEXT_BLUE);
+}
 
 /*----------------------------------------------------------------------------*/
 
 void DBG_Init(void)
 {
-#if defined(SWO)
+#if defined(DBG_SWO)
   SWO_Init();
-#elif defined(RTT)
+#elif defined(DBG_RTT)
   SEGGER_RTT_Init();
 
   if (0 == (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk))
@@ -136,6 +176,8 @@ void DBG_Init(void)
   {
     /* Action to take when debug connection active */
     SEGGER_RTT_SetFlagsUpBuffer(0, SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL);
+    DBG_SetTextColorYellow();
+    printf("Debug output inited, debugger is connected!\r\n");
   }
 #endif
 }
@@ -152,7 +194,7 @@ FILE __stdin;
 int fputc(int c, FILE *f)
 {
   /* PB3 (JTDO/TRACESWO) is used for debug output */
-#ifdef SWO
+#ifdef DBG_SWO
   ITM_SendChar(c);
 #endif
   return 0;
@@ -161,15 +203,15 @@ int fputc(int c, FILE *f)
 
 /* -------------------------------------------------------------------------- */
 
-#if defined(__ICCARM__) && !defined(SIMULATOR)
+#if defined(__ICCARM__) && !defined(DBG_NONE)
 size_t __write(int handle, const unsigned char * buffer, size_t size)
 {
   (void) handle;  /* Not used, avoid warning */
 
-#if defined(SWO)
+#if defined(DBG_SWO)
   /* PB3 (JTDO/TRACESWO) is used for debug output */
   for (U32 i = 0; i < size; i++) ITM_SendChar(*buffer++);
-#elif defined(RTT)
+#elif defined(DBG_RTT)
   SEGGER_RTT_Write(0, (const char*)buffer, size);
 #endif
 

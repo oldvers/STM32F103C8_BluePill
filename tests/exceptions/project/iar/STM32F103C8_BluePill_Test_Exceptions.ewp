@@ -82,7 +82,7 @@
                 </option>
                 <option>
                     <name>GenLowLevelInterface</name>
-                    <state>1</state>
+                    <state>0</state>
                 </option>
                 <option>
                     <name>GEndianModeBE</name>
@@ -217,6 +217,7 @@
                     <name>CCDefines</name>
                     <state>STM32F103xB</state>
                     <state>STM32F10X_MD</state>
+                    <state>DBG_RTT</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -1068,9 +1069,6 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\..\..\src\hw\interrupts.c</name>
-            <excluded>
-                <configuration>Test</configuration>
-            </excluded>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\..\..\src\hw\interrupts.h</name>

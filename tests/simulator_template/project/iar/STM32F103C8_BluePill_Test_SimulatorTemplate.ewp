@@ -217,7 +217,7 @@
                     <name>CCDefines</name>
                     <state>STM32F103xB</state>
                     <state>STM32F10X_MD</state>
-                    <state>SIMULATOR</state>
+                    <state>DBG_NONE</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
