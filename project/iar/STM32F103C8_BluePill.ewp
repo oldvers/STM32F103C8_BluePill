@@ -1084,6 +1084,12 @@
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\uniquedevid.h</name>
         </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\usb.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\usb.h</name>
+        </file>
     </group>
     <group>
         <name>Main</name>
