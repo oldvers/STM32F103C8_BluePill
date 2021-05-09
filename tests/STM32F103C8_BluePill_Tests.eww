@@ -9,6 +9,9 @@
     <project>
         <path>$WS_DIR$\simulator_template\project\iar\STM32F103C8_BluePill_Test_SimulatorTemplate.ewp</path>
     </project>
+    <project>
+        <path>$WS_DIR$\usb_library\project\iar\STM32F103C8_BluePill_Test_UsbLibrary.ewp</path>
+    </project>
     <batchBuild>
         <batchDefinition>
             <name>All_Projects</name>

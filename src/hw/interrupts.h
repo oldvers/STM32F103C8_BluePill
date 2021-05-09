@@ -15,5 +15,7 @@
 /* --- Public Functions ----------------------------------------------------- */
 
 void IRQ_SetPriorityGrouping(void);
+void IRQ_USB_Enable(void);
+void IRQ_USB_Disable(void);
 
 #endif /* __INTERRUPTS_H__ */

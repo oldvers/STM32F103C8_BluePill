@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "types.h"
 #include "interrupts.h"
+#include "usb.h"
 
 /* --- Logging -------------------------------------------------------------- */
 
@@ -49,6 +50,7 @@
 /* The preemption priority */
 #define IRQ_PRIORITY_FAULT              ( 0)
 /*      IRQ_PRIORITY_MAX_SYSCALL        (11) */
+#define IRQ_PRIORITY_USB                (15)
 /*      IRQ_PRIORITY_SYSTICK            (15) */
 /*      IRQ_PRIORITY_PENDSV             (15) */
 
@@ -155,4 +157,35 @@ void IRQ_Exception_Handler(U32 pStackFrame[], U32 LRValue)
   on_error(FaultID);
 }
 
+/* --- USB ------------------------------------------------------------------ */
+
+void IRQ_USB_Enable(void)
+{
+  U32 priority = NVIC_EncodePriority
+                 (
+                   IRQ_PRIORITY_GROUPS_CONFIG,
+                   IRQ_PRIORITY_USB,
+                   IRQ_SUB_PRIORITY
+                 );
+  IRQ_LOG("IRQ: USB Priority = 0x%02X\r\n", priority);
+
+  NVIC_ClearPendingIRQ(USB_LP_CAN1_RX0_IRQn);
+  NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, priority);
+  NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+}
+
 /* -------------------------------------------------------------------------- */
+
+void IRQ_USB_Disable(void)
+{
+  NVIC_DisableIRQ(USB_LP_CAN1_RX0_IRQn);
+  NVIC_ClearPendingIRQ(USB_LP_CAN1_RX0_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USB_LP_CAN1_RX0_IRQHandler(void)
+{
+  USB_IRQHandler();
+}
+
