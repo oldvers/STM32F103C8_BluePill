@@ -40,6 +40,7 @@ static void vLogTestResult(FW_BOOLEAN result)
     DBG(" ----> FAIL\r\n");
     gFail++;
   }
+  DBG_SetDefaultColors();
   gTested++;
 }
 
