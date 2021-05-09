@@ -27,6 +27,10 @@
                 <project>STM32F103C8_BluePill_Test_SimulatorTemplate</project>
                 <configuration>Test</configuration>
             </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_UsbLibrary</project>
+                <configuration>Test</configuration>
+            </member>
         </batchDefinition>
     </batchBuild>
 </workspace>

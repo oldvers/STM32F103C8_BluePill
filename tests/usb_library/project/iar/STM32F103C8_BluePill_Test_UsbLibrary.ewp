@@ -1095,10 +1095,13 @@
     <group>
         <name>Main</name>
         <file>
-            <name>$PROJ_DIR$\..\..\src\main.c</name>
+            <name>$PROJ_DIR$\..\..\..\main.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\mocks.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\test.c</name>
         </file>
     </group>
     <group>
