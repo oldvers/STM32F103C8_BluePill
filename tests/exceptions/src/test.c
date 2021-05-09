@@ -139,6 +139,7 @@ void vTestPrepareFunction (void)
 {
   if (MAX_TEST_NUMBER <= gTestNumber)
   {
+    DBG_SetTextColorYellow();
     DBG("-----------------------------------------------------------\r\n");
 
     DBG_SetTextColorBlue();
@@ -168,8 +169,9 @@ void vTestPrepareFunction (void)
     }
     DBG("Fail = %d\r\n", gFail);
 
-    DBG_SetDefaultColors();
+    DBG_SetTextColorYellow();
     DBG("-----------------------------------------------------------\r\n");
+    DBG_SetDefaultColors();
 
     gTestMark = TEST_MARK_FINISHED;
 
