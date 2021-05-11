@@ -352,6 +352,8 @@
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\rtt</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\rtt\config</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\usb</state>
+                    <state>$PROJ_DIR$\..\..\src\usb</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1163,13 +1165,13 @@
         <group>
             <name>Core</name>
             <file>
-                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_core.c</name>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_control.c</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_core.h</name>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_control.h</name>
             </file>
             <file>
-                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_defs.h</name>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_definitions.h</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_device.c</name>
@@ -1179,13 +1181,13 @@
             </file>
         </group>
         <file>
-            <name>$PROJ_DIR$\..\..\src\usb\usb_cfg.h</name>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_config.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\usb\usb_descr.c</name>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_descriptor.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\usb\usb_descr.h</name>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_descriptor.h</name>
         </file>
     </group>
 </project>
