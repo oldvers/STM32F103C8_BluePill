@@ -150,6 +150,8 @@ typedef __packed struct _USB_DEVICE_DESCRIPTOR
   U8   bNumConfigurations;
 } USB_DEVICE_DESCRIPTOR;
 
+#define USB_DEVICE_DESCRIPTOR_SIZE (sizeof(USB_DEVICE_DESCRIPTOR))
+
 /* USB 2.0 Device Qualifier Descriptor */
 typedef __packed struct _USB_DEVICE_QUALIFIER_DESCRIPTOR
 {
@@ -177,6 +179,8 @@ typedef __packed struct _USB_CONFIGURATION_DESCRIPTOR
   U8   bMaxPower;
 } USB_CONFIGURATION_DESCRIPTOR;
 
+#define USB_CONFIGURATION_DESCRIPTOR_SIZE (sizeof(USB_CONFIGURATION_DESCRIPTOR))
+
 /* USB Standard Interface Descriptor */
 typedef __packed struct _USB_INTERFACE_DESCRIPTOR
 {
@@ -191,6 +195,8 @@ typedef __packed struct _USB_INTERFACE_DESCRIPTOR
   U8   iInterface;
 } USB_INTERFACE_DESCRIPTOR;
 
+#define USB_INTERFACE_DESCRIPTOR_SIZE (sizeof(USB_INTERFACE_DESCRIPTOR))
+
 /* USB Standard Endpoint Descriptor */
 typedef __packed struct _USB_ENDPOINT_DESCRIPTOR
 {
@@ -201,6 +207,8 @@ typedef __packed struct _USB_ENDPOINT_DESCRIPTOR
   U16  wMaxPacketSize;
   U8   bInterval;
 } USB_ENDPOINT_DESCRIPTOR;
+
+#define USB_ENDPOINT_DESCRIPTOR_SIZE (sizeof(USB_ENDPOINT_DESCRIPTOR))
 
 /* USB String Descriptor */
 typedef __packed struct _USB_STRING_DESCRIPTOR

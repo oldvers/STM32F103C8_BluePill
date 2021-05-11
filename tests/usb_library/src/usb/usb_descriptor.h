@@ -1,22 +1,45 @@
 #ifndef __USB_DESCRIPTOR_H__
 #define __USB_DESCRIPTOR_H__
 
-#define WBVAL(x) (x & 0xFF),((x >> 8) & 0xFF)
+#include "usb_control.h"
 
-#define USB_DEVICE_DESC_SIZE        (sizeof(USB_DEVICE_DESCRIPTOR))
-#define USB_CONFIGUARTION_DESC_SIZE (sizeof(USB_CONFIGURATION_DESCRIPTOR))
-#define USB_INTERFACE_DESC_SIZE     (sizeof(USB_INTERFACE_DESCRIPTOR))
-#define USB_ENDPOINT_DESC_SIZE      (sizeof(USB_ENDPOINT_DESCRIPTOR))
+typedef void (*USBD_CbGeneric)(void);
+typedef void (*USBD_CbEndPoint)(U32 aEvent);
+typedef USB_CTRL_STAGE (*USBD_CbControl)
+(
+  USB_SETUP_PACKET *pSetup,
+  U8 **pData,
+  U16 *pSize
+);
 
-U8         *USB_GetDeviceDescriptor(void);
-U8         *USB_GetConfigDescriptor(void);
-U8         *USB_GetStringDescriptor(U8 aIndex);
-FW_BOOLEAN  USB_GetItrfaceDescriptor
+typedef struct
+{
+  USBD_CbGeneric  CbInit;
+  USBD_CbControl  CbCtrlSetup;
+  USBD_CbControl  CbCtrlOut;
+  USBD_CbGeneric  CbSOF;
+  USBD_CbEndPoint CbEndPointI;
+  USBD_CbEndPoint CbEndPointO;
+  U8              EndPointI;
+  U8              EndPointO;
+} USB_INTERFACE_CALLBACKS_DESCRIPTOR;
+
+extern const USB_INTERFACE_CALLBACKS_DESCRIPTOR USB_IfCbDescriptor[];
+
+/* --- Common Mandatory Function Prototypes --------------------------------- */
+
+U8         *USBD_GetDeviceDescriptor(void);
+U8         *USBD_GetConfigDescriptor(void);
+U8         *USBD_GetStringDescriptor(U8 aIndex);
+FW_BOOLEAN  USBD_GetItrfaceDescriptor
             (
                 USB_SETUP_PACKET * pSetup,
                 U8 **pData,
                 U16 *pSize
             );
+U8          USBD_GetItrfacesCount(void);
+
+/* --- Class Specific Optional Function Prototypes -------------------------- */
 
 U8 USBD_HID_InEndPointWr(U8 *pData, U8 aSize);
 

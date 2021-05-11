@@ -248,12 +248,12 @@ FW_BOOLEAN usbc_CtrlSetupReqStdGetDescriptor(void)
       switch (gCSetupPkt.wValue.WB.H)
       {
         case USB_DEVICE_DESCRIPTOR_TYPE:
-          gCData.pData = USB_GetDeviceDescriptor();
-          len = USB_DEVICE_DESC_SIZE;
+          gCData.pData = USBD_GetDeviceDescriptor();
+          len = USB_DEVICE_DESCRIPTOR_SIZE;
           result = FW_TRUE;
           break;
         case USB_CONFIGURATION_DESCRIPTOR_TYPE:
-          pD = USB_GetConfigDescriptor();
+          pD = USBD_GetConfigDescriptor();
           for (n = 0; n != gCSetupPkt.wValue.WB.L; n++)
           {
             if (((USB_CONFIGURATION_DESCRIPTOR *)pD)->bLength != 0)
@@ -269,7 +269,7 @@ FW_BOOLEAN usbc_CtrlSetupReqStdGetDescriptor(void)
           }
           break;
         case USB_STRING_DESCRIPTOR_TYPE:
-          gCData.pData = USB_GetStringDescriptor(gCSetupPkt.wValue.WB.L);
+          gCData.pData = USBD_GetStringDescriptor(gCSetupPkt.wValue.WB.L);
           len = ((USB_STRING_DESCRIPTOR *)gCData.pData)->bLength;
           result = FW_TRUE;
           break;
@@ -278,8 +278,12 @@ FW_BOOLEAN usbc_CtrlSetupReqStdGetDescriptor(void)
       }
       break;
     case REQUEST_TO_INTERFACE:
-      result = USB_GetItrfaceDescriptor(&gCSetupPkt,
-                   &gCData.pData, (U16 *)&len);
+      result = USBD_GetItrfaceDescriptor
+               (
+                 &gCSetupPkt,
+                 &gCData.pData,
+                 (U16 *)&len
+               );
     default:
       break;
   }
@@ -339,7 +343,7 @@ FW_BOOLEAN usbc_CtrlSetupReqStdSetConfiguration(void)
   {
     if (gCSetupPkt.wValue.WB.L)
     {
-      pD = (USB_COMMON_DESCRIPTOR *)USB_GetConfigDescriptor();
+      pD = (USB_COMMON_DESCRIPTOR *)USBD_GetConfigDescriptor();
       USB_PreapareReConfig();
       while (pD->bLength)
       {
@@ -352,7 +356,7 @@ FW_BOOLEAN usbc_CtrlSetupReqStdSetConfiguration(void)
               gConfiguration = gCSetupPkt.wValue.WB.L;
               gNumInterfaces =
                 ((USB_CONFIGURATION_DESCRIPTOR *)pD)->bNumInterfaces;
-              for (n = 0; n < USB_INTERFACE_MAX_CNT; n++)
+              for (n = 0; n < USBD_GetItrfacesCount(); n++)
               {
                 gAltSetting[n] = 0;
               }
@@ -457,7 +461,7 @@ FW_BOOLEAN usbc_CtrlSetupReqStdSetInterface(void)
 
   if (REQUEST_TO_INTERFACE == gCSetupPkt.bmRequestType.BM.Recipient)
   {
-    pD  = (USB_COMMON_DESCRIPTOR *)USB_GetConfigDescriptor();
+    pD  = (USB_COMMON_DESCRIPTOR *)USBD_GetConfigDescriptor();
     USB_PreapareReConfig();
     while (pD->bLength)
     {
