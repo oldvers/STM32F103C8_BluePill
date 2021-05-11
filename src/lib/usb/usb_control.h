@@ -1,5 +1,5 @@
-#ifndef __USB_CORE_H__
-#define __USB_CORE_H__
+#ifndef __USB_CONTROL_H__
+#define __USB_CONTROL_H__
 
 /* Control Endpoint Processing Stage */
 typedef enum _USB_CTRL_STAGE
@@ -33,4 +33,4 @@ void USBC_Init(const USB_CORE_EVENTS *pEvents);
 void USBC_Reset(void);
 void USBC_ControlInOut(U32 aEvent);
 
-#endif  /* __USB_CORE_H__ */
+#endif  /* __USB_CONTROL_H__ */

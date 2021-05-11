@@ -354,6 +354,7 @@
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\rtt\config</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\usb</state>
                     <state>$PROJ_DIR$\..\..\src\usb</state>
+                    <state>$PROJ_DIR$\..\..\src\usb\hid</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1178,6 +1179,18 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_device.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_hid_definitions.h</name>
+            </file>
+        </group>
+        <group>
+            <name>HID</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\hid\hid.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\hid\hid.h</name>
             </file>
         </group>
         <file>

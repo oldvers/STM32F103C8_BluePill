@@ -1,5 +1,5 @@
-#ifndef __USB_DEFS_H__
-#define __USB_DEFS_H__
+#ifndef __USB_DEFINITIONS_H__
+#define __USB_DEFINITIONS_H__
 
 typedef __packed union
 {
@@ -230,4 +230,4 @@ typedef __packed struct _USB_COMMON_DESCRIPTOR
   U8   bDescriptorType;
 } USB_COMMON_DESCRIPTOR;
 
-#endif /* __USB_DEFS_H__ */
+#endif /* __USB_DEFINITIONS_H__ */

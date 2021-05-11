@@ -20,7 +20,7 @@ static U8                     gConfiguration;
 static U32                    gEndPointMask;
 static U32                    gEndPointHalt;
 static U8                     gNumInterfaces;
-static U8                     gAltSetting[USB_IF_CNT];
+static U8                     gAltSetting[USB_INTERFACE_MAX_CNT];
 static U8                     gCBuffer[USB_CTRL_PACKET_SIZE];
 static USB_CTRL_DATA          gCData;
 static USB_SETUP_PACKET       gCSetupPkt;
@@ -352,7 +352,7 @@ FW_BOOLEAN usbc_CtrlSetupReqStdSetConfiguration(void)
               gConfiguration = gCSetupPkt.wValue.WB.L;
               gNumInterfaces =
                 ((USB_CONFIGURATION_DESCRIPTOR *)pD)->bNumInterfaces;
-              for (n = 0; n < USB_IF_CNT; n++)
+              for (n = 0; n < USB_INTERFACE_MAX_CNT; n++)
               {
                 gAltSetting[n] = 0;
               }

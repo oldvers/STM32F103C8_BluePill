@@ -1,5 +1,5 @@
-#ifndef __USB_DESCR_H__
-#define __USB_DESCR_H__
+#ifndef __USB_DESCRIPTOR_H__
+#define __USB_DESCRIPTOR_H__
 
 #define WBVAL(x) (x & 0xFF),((x >> 8) & 0xFF)
 
@@ -18,4 +18,6 @@ FW_BOOLEAN  USB_GetItrfaceDescriptor
                 U16 *pSize
             );
 
-#endif  /* __USB_DESCR_H__ */
+U8 USBD_HID_InEndPointWr(U8 *pData, U8 aSize);
+
+#endif  /* __USB_DESCRIPTOR_H__ */
