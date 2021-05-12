@@ -1168,6 +1168,9 @@
                 <name>$PROJ_DIR$\..\..\src\lib\usb\usb_definitions.h</name>
             </file>
             <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_descriptor_definitions.h</name>
+            </file>
+            <file>
                 <name>$PROJ_DIR$\..\..\src\lib\usb\usb_device.c</name>
             </file>
             <file>

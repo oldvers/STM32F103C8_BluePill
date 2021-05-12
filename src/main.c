@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "board.h"
 #include "stm32f1xx.h"
 #include "types.h"
 #include "gpio.h"
@@ -16,15 +17,27 @@
 
 void vLEDTask(void * pvParameters)
 {
-  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ, 0);
+  /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
+  GPIO_Init(USB_PUP_PORT, USB_PUP_PIN, GPIO_TYPE_OUT_OD_2MHZ, 1);
+
+  /* Delay */
+  vTaskDelay(200);
+
+  /* Init USB. Switch-on 1k5 PullUp to USB D+ - connect USB device */
+  USBD_Init();
+  GPIO_Lo(USB_PUP_PORT, USB_PUP_PIN);
+
+  vTaskDelay(5000);
+
+  GPIO_Init(LED_PORT, LED_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
 
   while(1)
   {
-    GPIO_Lo(GPIOC, 13);
+    GPIO_Lo(LED_PORT, LED_PIN);
     DBG_SetTextColorGreen();
     printf("LED On\r\n");
     vTaskDelay(500);
-    GPIO_Hi(GPIOC, 13);
+    GPIO_Hi(LED_PORT, LED_PIN);
     DBG_SetTextColorRed();
     printf("LED Off\r\n");
     vTaskDelay(500);
@@ -49,14 +62,22 @@ int main(void)
   printf("APB1 clock  = %d Hz\r\n", APB1Clock);
   printf("APB2 clock  = %d Hz\r\n", APB2Clock);
 
-  USBD_Init();
-  
+//  USBD_Init();
+
 //  GPIO_Init(GPIOB, 6, GPIO_TYPE_OUT_PP_2MHZ);
 //  GPIO_Lo(GPIOB, 6);
 //  GPIO_Init(GPIOB, 8, GPIO_TYPE_OUT_PP_2MHZ);
 //  GPIO_Hi(GPIOB, 8);
-  
-  xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+
+  xTaskCreate
+  (
+    vLEDTask,
+    "LEDTask",
+    configMINIMAL_STACK_SIZE,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  );
 
   vTaskStartScheduler();
 

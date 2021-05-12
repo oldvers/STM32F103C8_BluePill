@@ -34,11 +34,6 @@ typedef enum
   USB_ENDPOINT_IDX_CNT
 } USB_ENDPOINT_IDX;
 
-/* --- Class Specific Definitions ------------------------------------------- */
-
-/* MSC Endpoint Max Packet Size */
-#define USB_MSC_PACKET_SIZE              (64)
-
 /* -------------------------------------------------------------------------- */
 
 U8 USBD_MSC_IEndPointWr(U8 *pData, U8 aSize)
@@ -51,6 +46,20 @@ U8 USBD_MSC_IEndPointWr(U8 *pData, U8 aSize)
 U8 USBD_MSC_OEndPointRd(U8 *pData, U8 aSize)
 {
   return USBD_EndPointRd(USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC), pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USBD_MSC_OEndPointSetStall(void)
+{
+  USBD_EndPointSetStall(USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC));
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USBD_MSC_IEndPointSetStall(void)
+{
+  USBD_EndPointSetStall(USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -85,7 +94,7 @@ static const U8 USB_ConfigDescriptor[] =
   WBVAL((                                /* wTotalLength */
    USB_CONFIGURATION_DESCRIPTOR_SIZE * (1)                               +
    USB_INTERFACE_DESCRIPTOR_SIZE     * (USB_INTERFACE_IDX_CNT)           +
-   USB_ENDPOINT_DESCRIPTOR_SIZE      * (USB_ENDPOINT_IDX_CNT - 1)
+   USB_ENDPOINT_DESCRIPTOR_SIZE      * (2)
   )),
   USB_INTERFACE_IDX_CNT,                 /* bNumInterfaces */
   0x01,                                  /* bConfigurationValue */
