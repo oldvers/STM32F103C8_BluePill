@@ -1186,6 +1186,9 @@
             <file>
                 <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_hid_definitions.h</name>
             </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_msc_definitions.h</name>
+            </file>
         </group>
         <group>
             <name>HID</name>
