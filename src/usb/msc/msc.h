@@ -2,9 +2,9 @@
 #define __MSC_H__
 
 #include "types.h"
-#include "usb_cfg.h"
-#include "usb_defs.h"
-#include "usb_core.h"
+//#include "usb_cfg.h"
+#include "usb_definitions.h"
+#include "usb_control.h"
 
 void MSC_Init(void);
 USB_CTRL_STAGE MSC_CtrlSetupReq

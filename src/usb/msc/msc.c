@@ -1,8 +1,7 @@
 #include "types.h"
 
-#include "usb.h"
-#include "usb_cfg.h"
-#include "msc_defs.h"
+#include "usb_config.h"
+#include "usb_msc_definitions.h"
 #include "msc.h"
 
 /* MSC Disk Image Definitions */
@@ -216,7 +215,7 @@ USB_CTRL_STAGE MSC_CtrlSetupReq
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
-  
+
   switch (pSetup->bmRequestType.BM.Recipient)
   {
     case REQUEST_TO_INTERFACE:
@@ -241,11 +240,11 @@ USB_CTRL_STAGE MSC_CtrlSetupReq
         }
       }
       break;
-    
+
     case REQUEST_TO_ENDPOINT:
       break;
   }
-  
+
   return result;
 }
 
