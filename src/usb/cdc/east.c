@@ -16,7 +16,7 @@
  */
 void EAST_PutByte(EAST_STATE * pState, U8 aValue)
 {
-  pState->OK = TRUE;
+  pState->OK = FW_TRUE;
 
   /* Data Stage */
   if ((2 < pState->Index) && (pState->Index < (pState->ActSize + 3)))
@@ -27,7 +27,7 @@ void EAST_PutByte(EAST_STATE * pState, U8 aValue)
   /* Packet Start Byte Stage */
   else if (0 == pState->Index)
   {
-    pState->OK = (aValue == EAST_START_MARKER);
+    pState->OK = (FW_BOOLEAN)(aValue == EAST_START_MARKER);
   }
   /* Packet Size Stage */
   else if (1 == pState->Index)
@@ -37,27 +37,27 @@ void EAST_PutByte(EAST_STATE * pState, U8 aValue)
   else if (2 == pState->Index)
   {
     pState->ActSize = (pState->ActSize + (aValue << 8));
-    pState->OK = ((0 < pState->ActSize) || 
+    pState->OK = (FW_BOOLEAN)((0 < pState->ActSize) ||
                   (pState->MaxSize >= pState->ActSize));
     pState->CS = 0;
   }
   /* Packet Stop Byte Stage */
   else if (pState->Index == (pState->ActSize + 3))
   {
-    pState->OK = (aValue == EAST_STOP_MARKER);
+    pState->OK = (FW_BOOLEAN)(aValue == EAST_STOP_MARKER);
   }
   /* Packet Control Sum Stage */
   else if (pState->Index == (pState->ActSize + 4))
   {
-    pState->OK = (aValue == (pState->CS & 0xFF));
+    pState->OK = (FW_BOOLEAN)(aValue == (pState->CS & 0xFF));
   }
   else if (pState->Index == (pState->ActSize + 5))
   {
-    pState->OK = (aValue == (pState->CS >> 8));
+    pState->OK = (FW_BOOLEAN)(aValue == (pState->CS >> 8));
   }
 
   /* Packet Index Incrementing Stage */
-  if (TRUE == pState->OK)
+  if (FW_TRUE == pState->OK)
   {
     pState->Index++;
   }
@@ -66,7 +66,7 @@ void EAST_PutByte(EAST_STATE * pState, U8 aValue)
     pState->Index = 0;
     pState->ActSize = 0;
   }
-  
+
   /* Packet Completed Stage */
   if ((4 < pState->Index) && (pState->Index == (pState->ActSize + 6)))
   {
@@ -87,7 +87,7 @@ void EAST_PutByte(EAST_STATE * pState, U8 aValue)
  */
 U32 EAST_GetByte(EAST_STATE * pState, U8 * pValue)
 {
-  pState->OK = TRUE;
+  pState->OK = FW_TRUE;
 
   /* Data Stage */
   if ((2 < pState->Index) && (pState->Index < (pState->ActSize + 3)))
@@ -130,7 +130,7 @@ U32 EAST_GetByte(EAST_STATE * pState, U8 * pValue)
   {
     /* Increase Index to call OnComplete at next iteration */
     pState->Index++;
-    pState->OK = FALSE;
+    pState->OK = FW_FALSE;
   }
   else if (pState->Index == (pState->ActSize + 7))
   {
@@ -138,15 +138,15 @@ U32 EAST_GetByte(EAST_STATE * pState, U8 * pValue)
     if (NULL != pState->OnComplete) pState->OnComplete();
     /* Increase Index to avoid multiple call of OnComplete */
     pState->Index++;
-    pState->OK = FALSE;
+    pState->OK = FW_FALSE;
   }
   else
   {
-    pState->OK = FALSE;
+    pState->OK = FW_FALSE;
   }
 
   /* Packet Index Incrementing Stage */
-  if (TRUE == pState->OK)
+  if (FW_TRUE == pState->OK)
   {
     pState->Index++;
   }

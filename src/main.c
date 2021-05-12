@@ -26,8 +26,8 @@ void vMainTask(void * pvParameters)
   U8 Addr[5] = { 'n', 'R', 'F', '2', '4' }, Payload[32];
   U8 PayloadLen = sizeof(SENS_DATA);
 
-  GPIO_Init(LEDG_PORT, LEDG_PIN, GPIO_TYPE_OUT_OD_2MHZ);
-  GPIO_Hi(LEDG_PORT, LEDG_PIN);
+  GPIO_Init(LED_PORT, LED_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
+  GPIO_Hi(LED_PORT, LED_PIN);
 
   nRF24_Init();
 
@@ -77,7 +77,7 @@ void vMainTask(void * pvParameters)
   nRF24_RxOn();
 #endif
 
-  while(TRUE)
+  while (FW_TRUE)
   {
 #ifdef NRF_RX
     PayloadLen = nRF24_Receive(Payload, &Pipe, MsToTicks(5000));
@@ -90,15 +90,15 @@ void vMainTask(void * pvParameters)
       GPIO_Hi(LEDG_PORT, LEDG_PIN);
     }
 #else
-    GPIO_Lo(LEDG_PORT, LEDG_PIN);
+    GPIO_Lo(LED_PORT, LED_PIN);
     Sensors_Measure((SENS_DATA *)Payload);
     if (0 != nRF24_Transmit(Payload, PayloadLen, MsToTicks(10)))
     {
       //LOG("Transmittion complete\r\n");
       //vTaskDelay(MsToTicks(100));
-      GPIO_Lo(LEDG_PORT, LEDG_PIN);
+      GPIO_Lo(LED_PORT, LED_PIN);
     }
-    GPIO_Hi(LEDG_PORT, LEDG_PIN);
+    GPIO_Hi(LED_PORT, LED_PIN);
     vTaskDelay(MsToTicks(10));
 #endif
   }
@@ -115,25 +115,25 @@ void vVCPTask(void * pvParameters)
   printf("APB1 clock  = %d Hz\r\n", APB1Clock);
   printf("APB2 clock  = %d Hz\r\n", APB2Clock);
 
-  if (TRUE == VCP_Open())
+  if (FW_TRUE == VCP_Open())
   {
-    while(TRUE)
+    while (FW_TRUE)
     {
       RxLen = VCP_Read(Rx, sizeof(Rx), 5000);
       if (0 < RxLen)
       {
-        LOG("VCP Rx: len = %d\r\n", RxLen);
-        LOG("VCP Rx: ");
-        for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
-        LOG("\r\n");
+        DBG("VCP Rx: len = %d\r\n", RxLen);
+        DBG("VCP Rx: ");
+        for (U8 i = 0; i < RxLen; i++) DBG("%02X ", Rx[i]);
+        DBG("\r\n");
 
         time = xTaskGetTickCount();
         VCP_Write(Rx, RxLen, 5000);
-        LOG("VCP Tx: time = %d\r\n", xTaskGetTickCount() - time);
+        DBG("VCP Tx: time = %d\r\n", xTaskGetTickCount() - time);
       }
       else
       {
-        LOG("VCP Rx: Timout\r\n");
+        DBG("VCP Rx: Timout\r\n");
       }
     }
   }
@@ -178,13 +178,13 @@ void vVCPTask(void * pvParameters)
 
 int main(void)
 {
-  LOG("STM32F103C8 Started!\r\n");
-  LOG("ID0 = 0x%04X\r\n", UDID_0);
-  LOG("ID1 = 0x%04X\r\n", UDID_1);
-  LOG("ID2 = 0x%08X\r\n", UDID_2);
-  LOG("ID2 = 0x%08X\r\n", UDID_3);
-  LOG("Memory Size = %d kB\r\n", FLASH_SIZE);
-  LOG("SysClock = %d Hz\r\n", SystemCoreClock);
+  DBG("STM32F103C8 Started!\r\n");
+  DBG("ID0 = 0x%04X\r\n", UDID_0);
+  DBG("ID1 = 0x%04X\r\n", UDID_1);
+  DBG("ID2 = 0x%08X\r\n", UDID_2);
+  DBG("ID2 = 0x%08X\r\n", UDID_3);
+  DBG("Memory Size = %d kB\r\n", FLASH_SIZE);
+  DBG("SysClock = %d Hz\r\n", SystemCoreClock);
 
 #ifdef NRF_RX
   USBD_Init();
@@ -220,5 +220,10 @@ int main(void)
 
   vTaskStartScheduler();
 
-  while(TRUE) {};
+  while (FW_TRUE) {};
+}
+
+void on_error(void)
+{
+  while (FW_TRUE) {};
 }

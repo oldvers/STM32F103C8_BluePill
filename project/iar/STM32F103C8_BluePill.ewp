@@ -351,6 +351,13 @@
                     <state>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3</state>
                     <state>$PROJ_DIR$\..\..\src\lib\rtt</state>
                     <state>$PROJ_DIR$\..\..\src\lib\rtt\config</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\usb</state>
+                    <state>$PROJ_DIR$\..\..\src\usb</state>
+                    <state>$PROJ_DIR$\..\..\src\usb\msc</state>
+                    <state>$PROJ_DIR$\..\..\src\usb\hid</state>
+                    <state>$PROJ_DIR$\..\..\src\usb\cdc</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\nrf</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\sensors</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1067,10 +1074,22 @@
             <name>$PROJ_DIR$\..\..\src\hw\gpio.h</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\src\hw\i2c.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\i2c.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\hw\interrupts.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\interrupts.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\nrf24l01p.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\nrf24l01p.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\system.c</name>
@@ -1095,6 +1114,15 @@
         <name>Main</name>
         <file>
             <name>$PROJ_DIR$\..\..\src\main.c</name>
+        </file>
+    </group>
+    <group>
+        <name>NRF</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\nrf\nrf24.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\nrf\nrf24.h</name>
         </file>
     </group>
     <group>
@@ -1149,6 +1177,93 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT_printf.c</name>
+        </file>
+    </group>
+    <group>
+        <name>Sensors</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\sensors\sensors.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\sensors\sensors.h</name>
+        </file>
+    </group>
+    <group>
+        <name>USB</name>
+        <group>
+            <name>CDC</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\cdc.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\cdc.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\east.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\east.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\vcp.h</name>
+            </file>
+        </group>
+        <group>
+            <name>Core</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_cdc_definitions.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_control.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_control.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_definitions.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_descriptor_definitions.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_device.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_device.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_hid_definitions.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_msc_definitions.h</name>
+            </file>
+        </group>
+        <group>
+            <name>HID</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\hid\hid.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\hid\hid.h</name>
+            </file>
+        </group>
+        <group>
+            <name>MSC</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\msc\msc.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\msc\msc.h</name>
+            </file>
+        </group>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_config.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_descriptor.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_descriptor.h</name>
         </file>
     </group>
 </project>

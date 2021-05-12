@@ -17,5 +17,8 @@
 void IRQ_SetPriorityGrouping(void);
 void IRQ_USB_Enable(void);
 void IRQ_USB_Disable(void);
+void IRQ_NRF_Enable(void);
+void IRQ_I2C1_Enable(void);
+void IRQ_I2C2_Enable(void);
 
 #endif /* __INTERRUPTS_H__ */

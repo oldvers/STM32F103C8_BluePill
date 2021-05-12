@@ -1,5 +1,6 @@
 #include "i2c.h"
 #include "gpio.h"
+#include "interrupts.h"
 
 typedef struct sI2CTransAction
 {
@@ -120,15 +121,11 @@ U32 I2C_MasterWrite(I2C_TypeDef * pI2C, U8 aAddress, U8 * pBuffer, U32 aSize)
   * @param I2C error interrupt priority
   * @return None
   */
-void I2C_Init(I2C_TypeDef * pI2C, U32 evtIrqPrio, U32 errIrqPrio)
+void I2C_Init(I2C_TypeDef * pI2C)
 {
   if (pI2C == I2C1)
   {
-    NVIC_SetPriority(I2C1_EV_IRQn, evtIrqPrio); 
-    NVIC_EnableIRQ(I2C1_EV_IRQn);
-
-    NVIC_SetPriority(I2C1_ER_IRQn, errIrqPrio); 
-    NVIC_EnableIRQ(I2C1_ER_IRQn);
+    IRQ_I2C1_Enable();
 
     /* Enable stopping of I2C while dubug */
     DBGMCU->CR |= DBGMCU_CR_DBG_I2C1_SMBUS_TIMEOUT;
@@ -142,11 +139,7 @@ void I2C_Init(I2C_TypeDef * pI2C, U32 evtIrqPrio, U32 errIrqPrio)
   }
   else /* pI2C == I2C2 */
   {
-    NVIC_SetPriority(I2C2_EV_IRQn, evtIrqPrio); 
-    NVIC_EnableIRQ(I2C2_EV_IRQn);
-
-    NVIC_SetPriority(I2C2_ER_IRQn, errIrqPrio); 
-    NVIC_EnableIRQ(I2C2_ER_IRQn);
+    IRQ_I2C2_Enable();
 
     /* Enable stopping of I2C while dubug */
     DBGMCU->CR |= DBGMCU_CR_DBG_I2C1_SMBUS_TIMEOUT;
@@ -196,7 +189,7 @@ void I2C_EV_IRQHandler(I2C_TypeDef * pI2C)
   volatile unsigned short SR1   = 0;
   volatile unsigned short SR2   = 0;
   volatile unsigned long  Event = 0;
-  
+
   if (pI2C == I2C1)
   {
     pI2CTA = &I2C1TA;
@@ -221,7 +214,7 @@ void I2C_EV_IRQHandler(I2C_TypeDef * pI2C)
     SR2 = 0;
   }
 
-  /* Master mode (MSL == 1) */  
+  /* Master mode (MSL == 1) */
   if ((SR2 & I2C_SR2_MSL) == I2C_SR2_MSL)
   {
     /* EV6 = I2C slave address acknowlaged (ADDR = 1) */
@@ -235,7 +228,7 @@ void I2C_EV_IRQHandler(I2C_TypeDef * pI2C)
         pI2CTA->Index = 0;
         /* Write the first data in the data register */
         pI2CTA->I2C->DR = pI2CTA->Buffer[pI2CTA->Index++];
-        
+
         /* EV8 = I2C Shift register NOT EMPTY, Data Register
          *  EMPTY (TXE == 1). Decrement the number of bytes to be written */
         pI2CTA->Size--;

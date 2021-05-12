@@ -2,7 +2,7 @@
 #define __NRF24L01P__
 
 #include "types.h"
-#include "hardware.h"
+#include "board.h"
 #include "gpio.h"
 
 /* Callback Function Declarations */

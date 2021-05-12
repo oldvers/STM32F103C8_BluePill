@@ -1,12 +1,11 @@
 #include "types.h"
-
-#include "usb.h"
-#include "usb_cfg.h"
-#include "usb_defs.h"
-#include "usb_core.h"
-#include "hid_defs.h"
+#include "usb_definitions.h"
+#include "usb_descriptor.h"
+#include "usb_hid_definitions.h"
 #include "hid.h"
 #include "debug.h"
+#include "board.h"
+#include "gpio.h"
 
 static U8 gProtocol;
 static U8 gIdleTime[HID_REPORT_NUM];
@@ -35,44 +34,54 @@ USB_CTRL_STAGE HID_CtrlSetupReq
   switch (pSetup->bRequest)
   {
     case HID_REQUEST_GET_REPORT:
+      DBG("HID GetReport = ");
       /* ReportID = SetupPacket.wValue.WB.L */
       switch (pSetup->wValue.WB.H)
       {
         case HID_REPORT_INPUT:
+          DBG("Input -> 0x%02X", gIReport);
           *pData[0] = gIReport;
           result = USB_CTRL_STAGE_DATA;
           break;
         case HID_REPORT_OUTPUT:
+          DBG("Output -> 0x%02X", gOReport);
           /* Not Supported */
           break;
         case HID_REPORT_FEATURE:
+          DBG("Feature");
           /* *pData[] = ...; */
           /* Not Supported */
           break;
       }
+      DBG("\r\n");
       break;
-      
+
     case HID_REQUEST_SET_REPORT:
       result = USB_CTRL_STAGE_WAIT;
+      DBG("HID SetReport: Result = 0x%02X\r\n", result);
       break;
-      
+
     case HID_REQUEST_GET_IDLE:
       *pData[0] = gIdleTime[pSetup->wValue.WB.L];
+      DBG("HID GetIdle -> 0x%02X\r\n", pData[0]);
       result = USB_CTRL_STAGE_DATA;
       break;
 
     case HID_REQUEST_SET_IDLE:
       gIdleTime[pSetup->wValue.WB.L] = pSetup->wValue.WB.H;
+      DBG("HID SetIdle -> 0x%02X\r\n", gIdleTime[pSetup->wValue.WB.L]);
       result = USB_CTRL_STAGE_STATUS;
       break;
 
     case HID_REQUEST_GET_PROTOCOL:
       *pData[0] = gProtocol;
+      DBG("HID GetProtocol -> 0x%02X\r\n", gProtocol);
       result = USB_CTRL_STAGE_DATA;
       break;
 
     case HID_REQUEST_SET_PROTOCOL:
       gProtocol = pSetup->wValue.WB.L;
+      DBG("HID SetProtocol -> 0x%02X\r\n", gProtocol);
       result = USB_CTRL_STAGE_STATUS;
       break;
   }
@@ -104,23 +113,33 @@ USB_CTRL_STAGE HID_CtrlOutReq
       switch (pSetup->wValue.WB.H)
       {
         case HID_REPORT_INPUT:
+          DBG("HID ReportInput\r\n");
           /* Not Supported */
           break;
         case HID_REPORT_OUTPUT:
           gOReport = *pData[0];
-          LOG("HID OReport = %02X\r\n", gOReport);
+          DBG("HID ReportOutput = %02X\r\n", gOReport);
+          if (0 != (gOReport & 1))
+          {
+            GPIO_Lo(LED_PORT, LED_PIN);
+          }
+          else
+          {
+            GPIO_Hi(LED_PORT, LED_PIN);
+          }
           gIReport = gOReport;
-          LOG("HID IReport = %02X\r\n", gIReport);
-          USB_EpWrite(USB_HID_EP_IRQ_IN, &gIReport, sizeof(gIReport));
+          DBG("HID ReportInput = %02X\r\n", gIReport);
+          USBD_HID_InEndPointWr(&gIReport, sizeof(gIReport));
           result = USB_CTRL_STAGE_STATUS;
           break;
         case HID_REPORT_FEATURE:
+          DBG("HID ReportFeature\r\n");
           /* Not Supported */
           break;
       }
       break;
   }
-  
+
   return result;
 }
 
@@ -129,10 +148,9 @@ USB_CTRL_STAGE HID_CtrlOutReq
  *  @param aEvent - Event
  *  @return None
  */
-void hid_InterruptIn(U32 aEvent)
+void HID_IrqInReq(U32 aEvent)
 {
-  //USB_EpWrite(USB_HID_EP_IRQ_IN, &gIReport, sizeof(gIReport));
-  LOG("HID IRQ IN\r\n");
+  DBG("HID IRQ IN\r\n");
 }
 
 //-----------------------------------------------------------------------------
@@ -142,6 +160,5 @@ void hid_InterruptIn(U32 aEvent)
  */
 void HID_Init(void)
 {
-  /* Register appropriate EP callbacks */
-  USB_SetCb_Ep(USB_HID_EP_IRQ_IN, hid_InterruptIn);
+  GPIO_Init(LED_PORT, LED_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
 }

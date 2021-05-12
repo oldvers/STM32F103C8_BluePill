@@ -1,5 +1,6 @@
 #include "nrf24l01p.h"
 #include "debug.h"
+#include "interrupts.h"
 
 static nRF24L01P_CbIrq pCbIrqPin;
 
@@ -10,19 +11,19 @@ void nRF24L01P_Init(nRF24L01P_CbIrq pCbIrq)
   pCbIrqPin = pCbIrq;
 
   /* CE -> GPO, Push-Pull */
-  GPIO_Init(NRF24_CE_PORT, NRF24_CE_PIN, GPIO_TYPE_OUT_PP_2MHZ);
+  GPIO_Init(NRF24_CE_PORT, NRF24_CE_PIN, GPIO_TYPE_OUT_PP_2MHZ, 0);
 
   /* CSN -> GPO, Push-Pull */
-  GPIO_Init(NRF24_CSN_PORT, NRF24_CSN_PIN, GPIO_TYPE_OUT_PP_2MHZ);
+  GPIO_Init(NRF24_CSN_PORT, NRF24_CSN_PIN, GPIO_TYPE_OUT_PP_2MHZ, 1);
 
   /* IRQ -> GPI, Floating */
-  GPIO_Init(NRF24_IRQ_PORT, NRF24_IRQ_PIN, GPIO_TYPE_IN_FLOATING);
+  GPIO_Init(NRF24_IRQ_PORT, NRF24_IRQ_PIN, GPIO_TYPE_IN_FLOATING, 0);
   GPIO_IrqEnable(NRF24_IRQ_PORT, NRF24_IRQ_PIN, GPIO_IRQ_EDGE_FALLING);
 
   /* SCK, MOSI, MISO -> AFO, Push-Pull */
-  GPIO_Init(NRF24_SCK_PORT,  NRF24_SCK_PIN,  GPIO_TYPE_ALT_PP_50MHZ);
-  GPIO_Init(NRF24_MOSI_PORT, NRF24_MOSI_PIN, GPIO_TYPE_ALT_PP_50MHZ);
-  GPIO_Init(NRF24_MISO_PORT, NRF24_MISO_PIN, GPIO_TYPE_ALT_PP_50MHZ);
+  GPIO_Init(NRF24_SCK_PORT,  NRF24_SCK_PIN,  GPIO_TYPE_ALT_PP_50MHZ, 0);
+  GPIO_Init(NRF24_MOSI_PORT, NRF24_MOSI_PIN, GPIO_TYPE_ALT_PP_50MHZ, 0);
+  GPIO_Init(NRF24_MISO_PORT, NRF24_MISO_PIN, GPIO_TYPE_ALT_PP_50MHZ, 0);
 
   /* SPI -> 6 MHz; DMA */
   RCC->NRF24_SPI_CLK_R |= NRF24_SPI_CLK_E;
@@ -30,7 +31,7 @@ void nRF24L01P_Init(nRF24L01P_CbIrq pCbIrq)
   if(NRF24_SPI_CLK_E == RCC_APB2ENR_SPI1EN)
   {
     // 72 MHz / 16 = 4.5 MHz
-    NRF24_SPI->CR1 |= 
+    NRF24_SPI->CR1 |=
   //  SPI_CR1_BIDIMODE |   //Bidirectional Mode
   //  SPI_CR1_BIDIOE |     //Bidirectional Mode Output Enable
   //  SPI_CR1_CRCEN |      //CRC
@@ -38,7 +39,7 @@ void nRF24L01P_Init(nRF24L01P_CbIrq pCbIrq)
   //  SPI_CR1_DFF |        //Data Frame Format
   //  SPI_CR1_RXONLY |     //Rx Only Mode
       SPI_CR1_SSM  |       //Software Slave control
-      SPI_CR1_SSI  |       //Internal Slave select 
+      SPI_CR1_SSI  |       //Internal Slave select
   //  SPI_CR1_LSBFIRST |   //LSB First
       SPI_CR1_BR_0 |       //Prescaller
       SPI_CR1_BR_1 |
@@ -53,7 +54,7 @@ void nRF24L01P_Init(nRF24L01P_CbIrq pCbIrq)
   {
     RCC->NRF24_SPI_CLK_R |= NRF24_SPI_CLK_E;
     // 36 MHz / 8 = 4.5 MHz
-    NRF24_SPI->CR1 |= 
+    NRF24_SPI->CR1 |=
   //  SPI_CR1_BIDIMODE |   //Bidirectional Mode
   //  SPI_CR1_BIDIOE |     //Bidirectional Mode Output Enable
   //  SPI_CR1_CRCEN |      //CRC
@@ -61,7 +62,7 @@ void nRF24L01P_Init(nRF24L01P_CbIrq pCbIrq)
   //  SPI_CR1_DFF |        //Data Frame Format
   //  SPI_CR1_RXONLY |     //Rx Only Mode
       SPI_CR1_SSM  |       //Software Slave control
-      SPI_CR1_SSI  |       //Internal Slave select 
+      SPI_CR1_SSI  |       //Internal Slave select
   //  SPI_CR1_LSBFIRST |   //LSB First
   //  SPI_CR1_BR_0 |       //Prescaller
       SPI_CR1_BR_1 |
@@ -73,7 +74,7 @@ void nRF24L01P_Init(nRF24L01P_CbIrq pCbIrq)
       0;
   }
 
-  NRF24_SPI->CR2 |= 
+  NRF24_SPI->CR2 |=
   //  SPI_CR2_TXEIE |      //Tx Empty Interrupt Enable
   //  SPI_CR2_RXNEIE |     //Rx Not Empty Interrupt Enable
   //  SPI_CR2_ERRIE |      //Error Interrupt Enable
@@ -94,7 +95,7 @@ void nRF24L01P_Init(nRF24L01P_CbIrq pCbIrq)
   NRF24_SPI_DMA_TX_CHANNEL->CMAR  = (U32)0;
   NRF24_SPI_DMA_TX_CHANNEL->CNDTR = 0;
   NRF24_SPI_DMA_TX_CHANNEL->CCR   = DMA_CCR_MINC | DMA_CCR_DIR;
-  
+
   NRF24_SPI_DMA_RX_CHANNEL->CPAR  = (U32)&NRF24_SPI->DR;
   NRF24_SPI_DMA_RX_CHANNEL->CMAR  = (U32)0;
   NRF24_SPI_DMA_RX_CHANNEL->CNDTR = 0;
@@ -104,7 +105,7 @@ void nRF24L01P_Init(nRF24L01P_CbIrq pCbIrq)
   //HY1P8TFT_SPI_DMA_RX_CHANNEL->CCR  |= HY1P8TFT_SPI_DMA_RX_EN;
 
 //  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
-//  
+//
 //  //Enable SPI DMA IRQn Interrupt
 //  NVICI.NVIC_IRQChannel = HY1P8TFT_SPI_DMA_RX_IRQN;
 //  NVICI.NVIC_IRQChannelPreemptionPriority = 0;
@@ -116,8 +117,7 @@ void nRF24L01P_Init(nRF24L01P_CbIrq pCbIrq)
   nRF24L01P_CSN_Hi();
 
   /* Enable nRF24 Interrupts */
-  NVIC_SetPriority(IRQ_NUMBER_NRF24, IRQ_PRIORITY_NRF24);
-  NVIC_EnableIRQ(IRQ_NUMBER_NRF24);
+  IRQ_NRF_Enable();
 }
 
 //-----------------------------------------------------------------------------
@@ -135,7 +135,7 @@ void nRF24L01P_Exchange(U8 * txData, U8 * rxData, U32 aSize)
   //Disable DMA Channels
   NRF24_SPI_DMA_TX_CHANNEL->CCR &= ~DMA_CCR_EN;
   NRF24_SPI_DMA_RX_CHANNEL->CCR &= ~DMA_CCR_EN;
-  
+
   if ( NULL == txData )
   {
     NRF24_SPI_DMA_TX_CHANNEL->CCR  &= ~DMA_CCR_MINC;
@@ -162,7 +162,7 @@ void nRF24L01P_Exchange(U8 * txData, U8 * rxData, U32 aSize)
   //NRF24_SPI_DMA_TX_CHANNEL->CCR |= (DMA_CCR_MSIZE08 | DMA_CCR_PSIZE08);
 
   //Clear DMA Flags
-  NRF24_SPI_DMA->IFCR |= 
+  NRF24_SPI_DMA->IFCR |=
     (NRF24_SPI_DMA_TX_FGL | NRF24_SPI_DMA_TX_FTC | NRF24_SPI_DMA_TX_FHT | NRF24_SPI_DMA_TX_FTC |
      NRF24_SPI_DMA_RX_FGL | NRF24_SPI_DMA_RX_FTC | NRF24_SPI_DMA_RX_FHT | NRF24_SPI_DMA_RX_FTC);
 

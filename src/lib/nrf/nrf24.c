@@ -150,14 +150,14 @@ static void nRF24_CbIrqPin(void)
  *  @return TRUE - init succsess, FALSE - in other cases
  *  @note RX/TX pipe addresses remains untouched
  */
-U8 nRF24_Init(void)
+FW_BOOLEAN nRF24_Init(void)
 {
   /* Create Semaphores/Mutex for VCP */
   gNrfSemIrq = xSemaphoreCreateBinary();
-  
+
   nRF24L01P_Init(nRF24_CbIrqPin);
-  
-  if ( 0 == nRF24_Check() ) return FALSE;
+
+  if ( 0 == nRF24_Check() ) return FW_FALSE;
 
   /* Write to registers their initial values */
   nRF24_WrRegister(nRF24_REG_CONFIG, 0x08);
@@ -187,7 +187,7 @@ U8 nRF24_Init(void)
   /* Deassert CSN pin (chip release) */
   nRF24L01P_CSN_Hi();
 
-  return TRUE;
+  return FW_TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -268,7 +268,7 @@ void nRF24_SetRfChannel(U8 aChannel)
 void nRF24_SetAutoRetr(U8 aARD, U8 aARC)
 {
   /* Sets auto retransmit settings (SETUP_RETR register) */
-  nRF24_WrRegister(nRF24_REG_SETUP_RETR, 
+  nRF24_WrRegister(nRF24_REG_SETUP_RETR,
     (U8)((aARD << 4) | (aARC & nRF24_MASK_RETR_ARC)));
 }
 
@@ -500,7 +500,7 @@ U8 nRF24_GetRxSource(void)
  *  @param None
  *  @return Value of OBSERVE_TX register which contains two counters
  *          encoded in nibbles:
- *          high - lost packets count (max value 15, can be reseted by 
+ *          high - lost packets count (max value 15, can be reseted by
  *                 write to RF_CH register)
  *          low  - retransmitted packets count (max value 15, reseted
  *                 when new transmission starts)
@@ -595,7 +595,7 @@ void nRF24_DumpConfig(void)
   // Dump nRF24L01+ configuration
   // CONFIG
   i = nRF24_RdRegister(nRF24_REG_CONFIG);
-  LOG
+  DBG
   (
   "[0x%02X] <0x%02X> - CONFIG - MASK:%1X CRC:%s CRCSZ:%u PWR:%s MODE:P%s\r\n",
     nRF24_REG_CONFIG,
@@ -609,10 +609,10 @@ void nRF24_DumpConfig(void)
 
   // EN_AA
   i = nRF24_RdRegister(nRF24_REG_EN_AA);
-  LOG("[0x%02X] <0x%02X> - EN_AA - ENAA: ", nRF24_REG_EN_AA, i);
+  DBG("[0x%02X] <0x%02X> - EN_AA - ENAA: ", nRF24_REG_EN_AA, i);
   for (j = 0; j < 6; j++)
   {
-    LOG
+    DBG
     (
       "[P%1u%s]%s",
       (j),
@@ -623,10 +623,10 @@ void nRF24_DumpConfig(void)
 
   // EN_RXADDR
   i = nRF24_RdRegister(nRF24_REG_EN_RXADDR);
-  LOG("[0x%02X] <0x%02X> - EN_RXADDR: ", nRF24_REG_EN_RXADDR, i);
+  DBG("[0x%02X] <0x%02X> - EN_RXADDR: ", nRF24_REG_EN_RXADDR, i);
   for (j = 0; j < 6; j++)
   {
-    LOG
+    DBG
     (
       "[P%1u%s]%s",
       (j),
@@ -638,7 +638,7 @@ void nRF24_DumpConfig(void)
   // SETUP_AW
   i = nRF24_RdRegister(nRF24_REG_SETUP_AW);
   aw = (i & 0x03) + 2;
-  LOG
+  DBG
   (
     "[0x%02X] <0x%02X> - SETUP_AW - Addr Width=%u\r\n",
     nRF24_REG_SETUP_AW,
@@ -648,7 +648,7 @@ void nRF24_DumpConfig(void)
 
   // SETUP_RETR
   i = nRF24_RdRegister(nRF24_REG_SETUP_RETR);
-  LOG
+  DBG
   (
     "[0x%02X] <0x%02X> - SETUP_RETR - ARD=%1X ARC=%1X (RetrDelay=%u us, Count=%u)\r\n",
     nRF24_REG_SETUP_RETR,
@@ -661,11 +661,11 @@ void nRF24_DumpConfig(void)
 
   // RF_CH
   i = nRF24_RdRegister(nRF24_REG_RF_CH);
-  LOG("[0x%02X] <0x%02X> - RF_CH - (%.3u GHz)\r\n", nRF24_REG_RF_CH, i, 2400 + i);
+  DBG("[0x%02X] <0x%02X> - RF_CH - (%.3u GHz)\r\n", nRF24_REG_RF_CH, i, 2400 + i);
 
   // RF_SETUP
   i = nRF24_RdRegister(nRF24_REG_RF_SETUP);
-  LOG
+  DBG
   (
     "[0x%02X] <0x%02X> - RF_SETUP - CONT_WAVE:%s PLL_LOCK:%s DataRate=",
     nRF24_REG_RF_SETUP,
@@ -676,42 +676,42 @@ void nRF24_DumpConfig(void)
   switch ((i & 0x28) >> 3)
   {
     case 0x00:
-      LOG("1M");
+      DBG("1M");
       break;
     case 0x01:
-      LOG("2M");
+      DBG("2M");
       break;
     case 0x04:
-      LOG("250k");
+      DBG("250k");
       break;
     default:
-      LOG("???");
+      DBG("???");
       break;
   }
-  LOG("pbs RF_PWR=");
+  DBG("pbs RF_PWR=");
   switch ((i & 0x06) >> 1)
   {
     case 0x00:
-      LOG("-18");
+      DBG("-18");
       break;
     case 0x01:
-      LOG("-12");
+      DBG("-12");
       break;
     case 0x02:
-      LOG("-6");
+      DBG("-6");
       break;
     case 0x03:
-      LOG("0");
+      DBG("0");
       break;
     default:
-      LOG("???");
+      DBG("???");
       break;
   }
-  LOG("dBm\r\n");
+  DBG("dBm\r\n");
 
   // STATUS
   i = nRF24_RdRegister(nRF24_REG_STATUS);
-  LOG
+  DBG
   (
     "[0x%02X] <0x%02X> - STATUS - IRQ:%1X RX_PIPE:%u TX_FULL:%s\r\n",
     nRF24_REG_STATUS,
@@ -723,7 +723,7 @@ void nRF24_DumpConfig(void)
 
   // OBSERVE_TX
   i = nRF24_RdRegister(nRF24_REG_OBSERVE_TX);
-  LOG
+  DBG
   (
     "[0x%02X] <0x%02X> - OBSERVE_TX - PLOS_CNT=%u ARC_CNT=%u\r\n",
     nRF24_REG_OBSERVE_TX,
@@ -734,7 +734,7 @@ void nRF24_DumpConfig(void)
 
   // RPD
   i = nRF24_RdRegister(nRF24_REG_RPD);
-  LOG
+  DBG
   (
     "[0x%02X] <0x%02X> - RPD=%s\r\n",
     nRF24_REG_RPD,
@@ -744,81 +744,81 @@ void nRF24_DumpConfig(void)
 
   // RX_ADDR_P0
   nRF24_RdMultiRegister(nRF24_REG_RX_ADDR_P0, buf, aw);
-  LOG("[0x%02X] - RX_ADDR_P0 \"", nRF24_REG_RX_ADDR_P0);
-  for (i = 0; i < aw; i++) LOG("%02X", buf[i]);
-  LOG("\"\r\n");
+  DBG("[0x%02X] - RX_ADDR_P0 \"", nRF24_REG_RX_ADDR_P0);
+  for (i = 0; i < aw; i++) DBG("%02X", buf[i]);
+  DBG("\"\r\n");
 
   // RX_ADDR_P1
   nRF24_RdMultiRegister(nRF24_REG_RX_ADDR_P1, buf, aw);
-  LOG("[0x%02X] - RX_ADDR_P1 \"", nRF24_REG_RX_ADDR_P1);
-  for (i = 0; i < aw; i++) LOG("%02X", buf[i]);
-  LOG("\"\r\n");
+  DBG("[0x%02X] - RX_ADDR_P1 \"", nRF24_REG_RX_ADDR_P1);
+  for (i = 0; i < aw; i++) DBG("%02X", buf[i]);
+  DBG("\"\r\n");
 
   // RX_ADDR_P2
-  LOG("[0x%02X] - RX_ADDR_P2 \"", nRF24_REG_RX_ADDR_P2);
-  for (i = 0; i < aw - 1; i++) LOG("%02X", buf[i]);
+  DBG("[0x%02X] - RX_ADDR_P2 \"", nRF24_REG_RX_ADDR_P2);
+  for (i = 0; i < aw - 1; i++) DBG("%02X", buf[i]);
   i = nRF24_RdRegister(nRF24_REG_RX_ADDR_P2);
-  LOG("%02X\"\r\n", i);
+  DBG("%02X\"\r\n", i);
 
   // RX_ADDR_P3
-  LOG("[0x%02X] - RX_ADDR_P3 \"", nRF24_REG_RX_ADDR_P3);
-  for (i = 0; i < aw - 1; i++) LOG("%02X", buf[i]);
+  DBG("[0x%02X] - RX_ADDR_P3 \"", nRF24_REG_RX_ADDR_P3);
+  for (i = 0; i < aw - 1; i++) DBG("%02X", buf[i]);
   i = nRF24_RdRegister(nRF24_REG_RX_ADDR_P3);
-  LOG("%02X\"\r\n", i);
+  DBG("%02X\"\r\n", i);
 
   // RX_ADDR_P4
-  LOG("[0x%02X] - RX_ADDR_P4 \"", nRF24_REG_RX_ADDR_P4);
-  for (i = 0; i < aw - 1; i++) LOG("%02X", buf[i]);
+  DBG("[0x%02X] - RX_ADDR_P4 \"", nRF24_REG_RX_ADDR_P4);
+  for (i = 0; i < aw - 1; i++) DBG("%02X", buf[i]);
   i = nRF24_RdRegister(nRF24_REG_RX_ADDR_P4);
-  LOG("%02X\"\r\n", i);
+  DBG("%02X\"\r\n", i);
 
   // RX_ADDR_P5
-  LOG("[0x%02X] - RX_ADDR_P5 \"", nRF24_REG_RX_ADDR_P5);
-  for (i = 0; i < aw - 1; i++) LOG("%02X", buf[i]);
+  DBG("[0x%02X] - RX_ADDR_P5 \"", nRF24_REG_RX_ADDR_P5);
+  for (i = 0; i < aw - 1; i++) DBG("%02X", buf[i]);
   i = nRF24_RdRegister(nRF24_REG_RX_ADDR_P5);
-  LOG("%02X\"\r\n", i);
+  DBG("%02X\"\r\n", i);
 
   // TX_ADDR
   nRF24_RdMultiRegister(nRF24_REG_TX_ADDR, buf, aw);
-  LOG("[0x%02X] - TX_ADDR \"", nRF24_REG_TX_ADDR);
-  for (i = 0; i < aw; i++) LOG("%02X", buf[i]);
-  LOG("\"\r\n");
+  DBG("[0x%02X] - TX_ADDR \"", nRF24_REG_TX_ADDR);
+  for (i = 0; i < aw; i++) DBG("%02X", buf[i]);
+  DBG("\"\r\n");
 
   // RX_PW_P0
   i = nRF24_RdRegister(nRF24_REG_RX_PW_P0);
-  LOG("[0x%02X] - RX_PW_P0=%u\r\n", nRF24_REG_RX_PW_P0, i);
+  DBG("[0x%02X] - RX_PW_P0=%u\r\n", nRF24_REG_RX_PW_P0, i);
 
   // RX_PW_P1
   i = nRF24_RdRegister(nRF24_REG_RX_PW_P1);
-  LOG("[0x%02X] - RX_PW_P1=%u\r\n", nRF24_REG_RX_PW_P1, i);
+  DBG("[0x%02X] - RX_PW_P1=%u\r\n", nRF24_REG_RX_PW_P1, i);
 
   // RX_PW_P2
   i = nRF24_RdRegister(nRF24_REG_RX_PW_P2);
-  LOG("[0x%02X] - RX_PW_P2=%u\r\n", nRF24_REG_RX_PW_P2, i);
+  DBG("[0x%02X] - RX_PW_P2=%u\r\n", nRF24_REG_RX_PW_P2, i);
 
   // RX_PW_P3
   i = nRF24_RdRegister(nRF24_REG_RX_PW_P3);
-  LOG("[0x%02X] - RX_PW_P3=%u\r\n", nRF24_REG_RX_PW_P3, i);
+  DBG("[0x%02X] - RX_PW_P3=%u\r\n", nRF24_REG_RX_PW_P3, i);
 
   // RX_PW_P4
   i = nRF24_RdRegister(nRF24_REG_RX_PW_P4);
-  LOG("[0x%02X] - RX_PW_P4=%u\r\n", nRF24_REG_RX_PW_P4, i);
+  DBG("[0x%02X] - RX_PW_P4=%u\r\n", nRF24_REG_RX_PW_P4, i);
 
   // RX_PW_P5
   i = nRF24_RdRegister(nRF24_REG_RX_PW_P5);
-  LOG("[0x%02X] - RX_PW_P5=%u\r\n", nRF24_REG_RX_PW_P5, i);
+  DBG("[0x%02X] - RX_PW_P5=%u\r\n", nRF24_REG_RX_PW_P5, i);
 
   // FIFO_STATUS
   i = nRF24_RdRegister(nRF24_REG_FIFO_STATUS);
-  LOG("[0x%02X] <0x%02X> - FIFO_STATUS\r\n", nRF24_REG_FIFO_STATUS, i);
-  
+  DBG("[0x%02X] <0x%02X> - FIFO_STATUS\r\n", nRF24_REG_FIFO_STATUS, i);
+
   // DYNPD
   i = nRF24_RdRegister(nRF24_REG_DYNPD);
-  LOG("[0x%02X] <0x%02X> - DYNPD\r\n", nRF24_REG_DYNPD, i);
+  DBG("[0x%02X] <0x%02X> - DYNPD\r\n", nRF24_REG_DYNPD, i);
 
   // FEATURE
   i = nRF24_RdRegister(nRF24_REG_FEATURE);
-  LOG("[0x%02X] <0x%02X> - FEATURE\r\n", nRF24_REG_FEATURE, i);
+  DBG("[0x%02X] <0x%02X> - FEATURE\r\n", nRF24_REG_FEATURE, i);
 }
 
 //-----------------------------------------------------------------------------
@@ -876,7 +876,7 @@ U8 nRF24_Transmit(U8 * pBuffer, U8 aSize, U32 aTimeout)
   if (pdTRUE == xSemaphoreTake(gNrfSemIrq, aTimeout))
   {
     /* Clear any pending IRQ flags */
-    status = nRF24_ClearIrqFlags(); 
+    status = nRF24_ClearIrqFlags();
 
     if (0 != (status & nRF24_FLAG_TX_DS))
     {

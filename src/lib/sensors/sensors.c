@@ -1,5 +1,5 @@
 #include "system.h"
-#include "hardware.h"
+#include "board.h"
 #include "gpio.h"
 #include "i2c.h"
 #include "sensors.h"
@@ -56,10 +56,10 @@ void Sensors_Init(void)
 {
   U8 buffer[2];
 
-  GPIO_Init(SENS_I2C_SCL_PORT, SENS_I2C_SCL_PIN, GPIO_TYPE_ALT_OD_10MHZ);
-  GPIO_Init(SENS_I2C_SDA_PORT, SENS_I2C_SDA_PIN, GPIO_TYPE_ALT_OD_10MHZ );
+  GPIO_Init(SENS_I2C_SCL_PORT, SENS_I2C_SCL_PIN, GPIO_TYPE_ALT_OD_10MHZ, 1);
+  GPIO_Init(SENS_I2C_SDA_PORT, SENS_I2C_SDA_PIN, GPIO_TYPE_ALT_OD_10MHZ, 1);
 
-  I2C_Init(SENS_I2C, IRQ_PRIORITY_SENS_I2C, IRQ_PRIORITY_SENS_I2C_ERROR);
+  I2C_Init(SENS_I2C);
 
   do
   {
@@ -72,7 +72,7 @@ void Sensors_Init(void)
 
     /* Check if Device ID is correct */
     if (ADXL345_DEVID != buffer[0]) break;
-    LOG("I2C: ADXL Dev ID = 0x%02X\r\n", buffer[0]);
+    DBG("I2C: ADXL Dev ID = 0x%02X\r\n", buffer[0]);
 
     /* Setup Bandwidth and Data Rate */
     buffer[0] = ADXL345_R_BW_RATE;
@@ -89,7 +89,7 @@ void Sensors_Init(void)
     buffer[1] = ADXL345_POWER_CTL_MEASURE;
     if (2 != I2C_MasterWrite(SENS_I2C, ADXL345, buffer, 2)) break;
   }
-  while (FALSE);
+  while (FW_FALSE);
 }
 
 /** @brief Gets measurements from the sensors
@@ -109,14 +109,14 @@ void Sensors_Measure(SENS_DATA * pData)
     /* Read measurements */
     if (6 != I2C_MasterRead(SENS_I2C, ADXL345, buffer, 6)) break;
 
-    LOG("*****\r\n");
-    LOG("I2C: ADXL X = 0x%04X\r\n", ((ADXL345_DATA *)buffer)->X);
-    LOG("I2C: ADXL Y = 0x%04X\r\n", ((ADXL345_DATA *)buffer)->Y);
-    LOG("I2C: ADXL Z = 0x%04X\r\n", ((ADXL345_DATA *)buffer)->Z);
+    DBG("*****\r\n");
+    DBG("I2C: ADXL X = 0x%04X\r\n", ((ADXL345_DATA *)buffer)->X);
+    DBG("I2C: ADXL Y = 0x%04X\r\n", ((ADXL345_DATA *)buffer)->Y);
+    DBG("I2C: ADXL Z = 0x%04X\r\n", ((ADXL345_DATA *)buffer)->Z);
 
     pData->AX = ((ADXL345_DATA *)buffer)->X;
     pData->AY = ((ADXL345_DATA *)buffer)->Y;
     pData->AZ = ((ADXL345_DATA *)buffer)->Z;
   }
-  while (FALSE);
+  while (FW_FALSE);
 }

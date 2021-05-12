@@ -2,11 +2,9 @@
 #include "system.h"
 #include "interrupts.h"
 
-#define NVIC_PRIORITYGROUP_P0S4         (0x00000007U)
-#define NVIC_PRIORITYGROUP_P1S3         (0x00000006U)
-#define NVIC_PRIORITYGROUP_P2S2         (0x00000005U)
-#define NVIC_PRIORITYGROUP_P3S1         (0x00000004U)
-#define NVIC_PRIORITYGROUP_P4S0         (0x00000003U)
+#define SYSTEM_STARTUP_TIMEOUT     (20000U)
+#define RCC_CFGR_PLLSRC_HSI        (0U << RCC_CFGR_PLLSRC_Pos)
+#define RCC_CFGR_PLLSRC_HSE        (1U << RCC_CFGR_PLLSRC_Pos)
 
 static void SYS_ClockConfig( void );
 

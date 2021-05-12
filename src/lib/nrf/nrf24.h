@@ -221,7 +221,7 @@ static const U8 nRF24_ADDR_REGS[7] =
 };
 
 /* Function prototypes */
-U8   nRF24_Init(void);
+FW_BOOLEAN nRF24_Init(void);
 void nRF24_SetPowerMode         (U8 aMode);
 void nRF24_SetOperationalMode   (U8 aMode);
 void nRF24_SetRfChannel         (U8 aChannel);
