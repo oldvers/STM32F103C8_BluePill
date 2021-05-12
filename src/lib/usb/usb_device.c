@@ -348,3 +348,19 @@ U8 USBD_EndPointWrWsCb(U8 aNumber, USBD_CbByte pGetByteCb, U8 aSize)
 {
   return (U8)USB_EpWriteWsCb(aNumber, pGetByteCb, aSize);
 }
+
+/* -------------------------------------------------------------------------- */
+
+void USBD_EndPointSetStall(U8 aNumber)
+{
+  USB_EpSetStall(aNumber);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USBD_EndPointClrStall(U8 aNumber)
+{
+  USB_EpSetStall(aNumber);
+}
+
+/* -------------------------------------------------------------------------- */
