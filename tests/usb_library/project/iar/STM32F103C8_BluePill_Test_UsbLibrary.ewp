@@ -1166,6 +1166,9 @@
         <group>
             <name>Core</name>
             <file>
+                <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_cdc_definitions.h</name>
+            </file>
+            <file>
                 <name>$PROJ_DIR$\..\..\..\..\src\lib\usb\usb_control.c</name>
             </file>
             <file>

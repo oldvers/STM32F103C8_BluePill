@@ -80,7 +80,7 @@ typedef __packed struct _USB_SETUP_PACKET
 #define USB_DEVICE_QUALIFIER_DESCRIPTOR_TYPE   0x06
 #define USB_OTHER_SPEED_CONFIG_DESCRIPTOR_TYPE 0x07
 #define USB_INTERFACE_POWER_DESCRIPTOR_TYPE    0x08
-#define USB_IF_ASSOC_DESCRIPTOR_TYPE           0x0B
+#define USB_IF_ASSOCIATION_DESCRIPTOR_TYPE     0x0B
 
 /* USB Device Classes */
 #define USB_DEVICE_CLASS_RESERVED              0x00
@@ -229,7 +229,10 @@ typedef __packed struct _USB_INTERFACE_ASSOCIATION_DESCRIPTOR
   U8 bFunctionSubClass;
   U8 bFunctionProtocol;
   U8 iFunction;
-} USB_IF_ASSOC_DESCRIPTOR;
+} USB_INTERFACE_ASSOCIATION_DESCRIPTOR;
+
+#define USB_IF_ASSOCIATION_DESCRIPTOR_SIZE \
+                                 (sizeof(USB_INTERFACE_ASSOCIATION_DESCRIPTOR))
 
 /* USB Common Descriptor */
 typedef __packed struct _USB_COMMON_DESCRIPTOR
