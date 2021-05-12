@@ -79,4 +79,6 @@ typedef struct
 #define GPIO_In(port,pin) \
   ((port->IDR >> pin) & 1)
 
+void GPIO_Init(GPIO_TypeDef * pPort, U8 aPin, U8 aMode, U8 aValue);
+
 #endif /* __GPIO_H__ */

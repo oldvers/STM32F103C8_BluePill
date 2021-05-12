@@ -5,6 +5,8 @@
 #include "gpio.h"
 #include "debug.h"
 #include "uniquedevid.h"
+#include "system.h"
+#include "debug.h"
 
 #include "nrf24.h"
 
@@ -108,7 +110,11 @@ void vVCPTask(void * pvParameters)
   U8  Rx[130];
   U16 RxLen = 0;
   U32 time;
-  
+  printf("CPU clock   = %d Hz\r\n", CPUClock);
+  printf("AHB clock   = %d Hz\r\n", AHBClock);
+  printf("APB1 clock  = %d Hz\r\n", APB1Clock);
+  printf("APB2 clock  = %d Hz\r\n", APB2Clock);
+
   if (TRUE == VCP_Open())
   {
     while(TRUE)
