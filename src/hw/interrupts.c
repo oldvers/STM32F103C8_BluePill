@@ -82,8 +82,14 @@ void IRQ_SetPriorityGrouping(void)
                   SCB_SHCSR_BUSFAULTENA_Msk |
                   SCB_SHCSR_MEMFAULTENA_Msk );
 
-  /* Enable divizion by zero and usage faults */
-  SCB->CCR |= ( SCB_CCR_DIV_0_TRP_Msk | SCB_CCR_UNALIGN_TRP_Msk );
+  /* Enable usage faults: */
+  SCB->CCR |=
+  (
+    /* On divizion by zero */
+    SCB_CCR_DIV_0_TRP_Msk |
+    /* On unaligned memory access */
+    0 //SCB_CCR_UNALIGN_TRP_Msk
+  );
 
   /* Set the interrupt priorities */
   grouping = NVIC_GetPriorityGrouping();
