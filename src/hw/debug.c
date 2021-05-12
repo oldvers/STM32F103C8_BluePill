@@ -124,6 +124,46 @@ static void SWO_Init( void )
 
 /*----------------------------------------------------------------------------*/
 
+#ifdef DBG_RTT
+
+static void SEGGER_RTT_SaveDebuggerConnectionState(void)
+{
+  /* Save the debugger connection state */
+  gDebuggerConnected = (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk);
+}
+
+static FW_BOOLEAN SEGGER_RTT_IsDebuggerConnectionChanged(void)
+{
+  /* Check if the debugger connection state changed */
+  if (gDebuggerConnected != (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk))
+  {
+    return FW_TRUE;
+  }
+  else
+  {
+    return FW_FALSE;
+  }
+}
+
+static void SEGGER_RTT_UpdateFifoMode(void)
+{
+  /* Modify the RTT FIFO option according to debugger connection */
+  if (0 == gDebuggerConnected)
+  {
+    /* Action to take when debug connection inactive */
+    SEGGER_RTT_SetFlagsUpBuffer(0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+  }
+  else
+  {
+    /* Action to take when debug connection active */
+    SEGGER_RTT_SetFlagsUpBuffer(0, SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL);
+  }
+}
+
+#endif /* DBG_RTT */
+
+/*----------------------------------------------------------------------------*/
+
 void DBG_SetDefaultColors(void)
 {
 #if !defined(DBG_NONE)
@@ -181,13 +221,19 @@ void DBG_SetTextColorBlue(void)
 void DBG_Init(void)
 {
 #if defined(DBG_SWO)
-  SWO_Init();
-#elif defined(DBG_RTT)
-  /* Save the debugger connection state */
-  gDebuggerConnected = (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk);
 
+  /* Initialize the SWO output */
+  SWO_Init();
+
+#elif defined(DBG_RTT)
+
+  /* Save the debugger connection state */
+  SEGGER_RTT_SaveDebuggerConnectionState();
+  /* Update the RTT FIFO mode */
+  SEGGER_RTT_UpdateFifoMode();
   /* SEGGER_RTT_Init() will be called at the first debug print internally */
   printf("\r\n");
+
 #endif
 }
 
@@ -202,8 +248,8 @@ FILE __stdin;
 
 int fputc(int c, FILE *f)
 {
-  /* PB3 (JTDO/TRACESWO) is used for debug output */
 #ifdef DBG_SWO
+  /* PB3 (JTDO/TRACESWO) is used for debug output */
   ITM_SendChar(c);
 #endif
   return 0;
@@ -224,23 +270,10 @@ size_t __write(int handle, const unsigned char * buffer, size_t size)
 
 #elif defined(DBG_RTT)
 
-  /* Check if the debugger connection changed */
-  if (gDebuggerConnected != (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk))
+  if (FW_TRUE == SEGGER_RTT_IsDebuggerConnectionChanged())
   {
-    /* Debugger connection changed - save the change */
-    gDebuggerConnected = (CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk);
-
-    /* Modify the RTT FIFO option */
-    if (0 == gDebuggerConnected)
-    {
-      /* Action to take when debug connection inactive */
-      SEGGER_RTT_SetFlagsUpBuffer(0, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
-    }
-    else
-    {
-      /* Action to take when debug connection active */
-      SEGGER_RTT_SetFlagsUpBuffer(0, SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL);
-    }
+    SEGGER_RTT_SaveDebuggerConnectionState();
+    SEGGER_RTT_UpdateFifoMode();
   }
 
   /* Write the debug output */
