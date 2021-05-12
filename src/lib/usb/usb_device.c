@@ -6,8 +6,6 @@
 #include "usb_descriptor.h"
 #include "usb_device.h"
 
-#include "debug.h"
-
 /* -------------------------------------------------------------------------- */
 /** @brief USB Device Reset Event Callback
  *  @param None
@@ -76,7 +74,6 @@ static void usbd_CbSOF(void)
   {
     if (NULL != USBD_IfCbDescriptor[i].CbSOF)
     {
-      DBG("SOF %d\r\n", i);
       USBD_IfCbDescriptor[i].CbSOF();
     }
   }
@@ -169,7 +166,6 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
     if ( (i < USBD_GetItrfacesCount()) &&
          (NULL != USBD_IfCbDescriptor[i].CbCtrlSetup) )
     {
-      DBG("Class Setup %d\r\n", i);
       result = USBD_IfCbDescriptor[i].CbCtrlSetup(pSetup, pData, pSize);
     }
   }
@@ -199,14 +195,12 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
   U8             i      = 0;
 
-  DBG("Class Out\r\n");
   if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
   {
     i = pSetup->wIndex.WB.L;
     if ( (i < USBD_GetItrfacesCount()) &&
          (NULL != USBD_IfCbDescriptor[i].CbCtrlOut) )
     {
-      DBG("Class Out %d\r\n", i);
       result = USBD_IfCbDescriptor[i].CbCtrlOut(pSetup, pData, pSize);
     }
   }

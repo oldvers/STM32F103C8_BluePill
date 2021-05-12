@@ -1,13 +1,11 @@
 #include "types.h"
-
-#include "usb.h"
-#include "usb_config.h"
 #include "usb_definitions.h"
-#include "usb_control.h"
 #include "usb_descriptor.h"
 #include "usb_hid_definitions.h"
 #include "hid.h"
 #include "debug.h"
+#include "board.h"
+#include "gpio.h"
 
 static U8 gProtocol;
 static U8 gIdleTime[HID_REPORT_NUM];
@@ -121,6 +119,14 @@ USB_CTRL_STAGE HID_CtrlOutReq
         case HID_REPORT_OUTPUT:
           gOReport = *pData[0];
           DBG("HID ReportOutput = %02X\r\n", gOReport);
+          if (0 != (gOReport & 1))
+          {
+            GPIO_Lo(LED_PORT, LED_PIN);
+          }
+          else
+          {
+            GPIO_Hi(LED_PORT, LED_PIN);
+          }
           gIReport = gOReport;
           DBG("HID ReportInput = %02X\r\n", gIReport);
           //USB_EpWrite(USB_HID_EP_IRQ_IN, &gIReport, sizeof(gIReport));
@@ -156,6 +162,5 @@ void HID_IrqInReq(U32 aEvent)
  */
 void HID_Init(void)
 {
-  /* Register appropriate EP callbacks */
-  //USB_SetCb_Ep(USB_HID_EP_IRQ_IN, hid_InterruptIn);
+  GPIO_Init(LED_PORT, LED_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
 }
