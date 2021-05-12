@@ -2,6 +2,9 @@
 
 #include "types.h"
 #include "debug.h"
+#include "board.h"
+#include "gpio.h"
+#include "usb_device.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -40,6 +43,19 @@ void vTestPrepareFunction (void)
 void vTestHelpTaskFunction(void * pvParameters)
 {
   //DBG("LED Task Started\r\n");
+
+  /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
+  GPIO_Init(USB_PUP_PORT, USB_PUP_PIN, GPIO_TYPE_OUT_OD_2MHZ, 1);
+
+  /* Delay */
+  vTaskDelay(200);
+
+  /* Init USB. Switch-on 1k5 PullUp to USB D+ - connect USB device */
+  USBD_Init();
+  GPIO_Lo(USB_PUP_PORT, USB_PUP_PIN);
+
+  vTaskDelay(5000);
+
 
   while (FW_TRUE)
   {

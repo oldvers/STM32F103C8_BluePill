@@ -87,7 +87,7 @@ static const U8 USB_DeviceDescriptor[] =
   0x00,                                  /* bDeviceProtocol */
   USB_CTRL_PACKET_SIZE,                  /* bMaxPacketSize0 */
   WBVAL(0xC251),                         /* idVendor */
-  WBVAL(0x1C03),                         /* idProduct */
+  WBVAL(0xA000),                         /* idProduct */
   WBVAL(0x0100), /* 1.00 */              /* bcdDevice */
   STR_DESCRIPTOR_IDX_MANUFACTURER,       /* iManufacturer */
   STR_DESCRIPTOR_IDX_PRODUCT,            /* iProduct */
@@ -240,28 +240,35 @@ static const U8 * usbd_StrDescriptor[STR_DESCRIPTOR_IDX_CNT] =
 
 /* -------------------------------------------------------------------------- */
 
-U8 *USB_GetDeviceDescriptor(void)
+U8 *USBD_GetDeviceDescriptor(void)
 {
   return (U8 *)USB_DeviceDescriptor;
 };
 
 /* -------------------------------------------------------------------------- */
 
-U8 *USB_GetConfigDescriptor(void)
+U8 *USBD_GetConfigDescriptor(void)
 {
   return (U8 *)USB_ConfigDescriptor;
 };
 
 /* -------------------------------------------------------------------------- */
 
-U8 *USB_GetStringDescriptor(U8 aIndex)
+U8 *USBD_GetStringDescriptor(U8 aIndex)
 {
-  return (U8 *)usbd_StrDescriptor[aIndex];
+  if (STR_DESCRIPTOR_IDX_CNT > aIndex)
+  {
+    return (U8 *)usbd_StrDescriptor[aIndex];
+  }
+  else
+  {
+    return NULL;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
 
-FW_BOOLEAN USB_GetItrfaceDescriptor
+FW_BOOLEAN USBD_GetItrfaceDescriptor
 (
   USB_SETUP_PACKET * pSetup,
   U8 **pData,
@@ -315,8 +322,8 @@ U8 USBD_GetItrfacesCount(void)
 
 /* --- Interfaces Callbacks Descriptor -------------------------------------- */
 
-const USB_INTERFACE_CALLBACKS_DESCRIPTOR
-      USB_IfCbDescriptor[USB_INTERFACE_IDX_CNT] =
+const USBD_INTERFACE_CALLBACKS_DESCRIPTOR
+      USBD_IfCbDescriptor[USB_INTERFACE_IDX_CNT] =
 {
   [USB_INTERFACE_IDX_HID] =
   {

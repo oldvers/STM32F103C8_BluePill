@@ -3,10 +3,10 @@
 #include "usb.h"
 #include "usb_config.h"
 #include "usb_definitions.h"
-#include "usb_control.h"
-//#include "msc.h"
-//#include "hid.h"
-//#include "cdc.h"
+#include "usb_descriptor.h"
+#include "usb_device.h"
+
+#include "debug.h"
 
 /* -------------------------------------------------------------------------- */
 /** @brief USB Device Reset Event Callback
@@ -70,7 +70,16 @@ static void usbd_CbWakeUp(void)
 #if USB_SOF_EVENT
 static void usbd_CbSOF(void)
 {
-  CDC_SOF();
+  U8 i = 0;
+
+  for (i = 0; i < USBD_GetItrfacesCount(); i++)
+  {
+    if (NULL != USBD_IfCbDescriptor[i].CbSOF)
+    {
+      DBG("SOF %d\r\n", i);
+      USBD_IfCbDescriptor[i].CbSOF();
+    }
+  }
 }
 #endif
 
@@ -152,8 +161,22 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
+  U8             i      = 0;
 
-  result = CDC_CtrlSetupReq(pSetup, pData, pSize);
+  if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
+  {
+    i = pSetup->wIndex.WB.L;
+    if ( (i < USBD_GetItrfacesCount()) &&
+         (NULL != USBD_IfCbDescriptor[i].CbCtrlSetup) )
+    {
+      DBG("Class Setup %d\r\n", i);
+      result = USBD_IfCbDescriptor[i].CbCtrlSetup(pSetup, pData, pSize);
+    }
+  }
+  else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
+  {
+    //
+  }
 
   return result;
 }
@@ -174,8 +197,23 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
+  U8             i      = 0;
 
-  result = CDC_CtrlOutReq(pSetup, pData, pSize);
+  DBG("Class Out\r\n");
+  if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
+  {
+    i = pSetup->wIndex.WB.L;
+    if ( (i < USBD_GetItrfacesCount()) &&
+         (NULL != USBD_IfCbDescriptor[i].CbCtrlOut) )
+    {
+      DBG("Class Out %d\r\n", i);
+      result = USBD_IfCbDescriptor[i].CbCtrlOut(pSetup, pData, pSize);
+    }
+  }
+  else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
+  {
+    //
+  }
 
   return result;
 }
@@ -203,6 +241,8 @@ const USB_CORE_EVENTS USBC_Events =
  */
 void USBD_Init(void)
 {
+  U8 i = 0;
+
 #if USB_RESET_EVENT
   USB_SetCb_Reset(usbd_CbReset);
 #endif
@@ -221,14 +261,38 @@ void USBD_Init(void)
 
   /* Init Hardware */
   USB_Init(USB_CTRL_PACKET_SIZE);
+
   /* Register Callback for Control Endpoint */
   USB_SetCb_Ep(EP0_O, USBC_ControlInOut);
   USB_SetCb_Ep(EP0_I, USBC_ControlInOut);
 
-#if (0 < (USB_CDC + USB_CDD))
-  /* Init Communication Device Class */
-  CDC_Init();
-#endif
+  /* Class Specific Init */
+  for (i = 0; i < USBD_GetItrfacesCount(); i++)
+  {
+    /* Register Callback for Endpoints */
+    if (NULL != USBD_IfCbDescriptor[i].CbEndPointI)
+    {
+      USB_SetCb_Ep
+      (
+        USBD_IfCbDescriptor[i].EndPointI,
+        USBD_IfCbDescriptor[i].CbEndPointI
+      );
+    }
+    if (NULL != USBD_IfCbDescriptor[i].CbEndPointO)
+    {
+      USB_SetCb_Ep
+      (
+        USBD_IfCbDescriptor[i].EndPointO,
+        USBD_IfCbDescriptor[i].CbEndPointO
+      );
+    }
+
+    /* Call Specific Initialization */
+    if (NULL != USBD_IfCbDescriptor[i].CbInit)
+    {
+      USBD_IfCbDescriptor[i].CbInit();
+    }
+  }
 
   /* Init Core */
   USBC_Init(&USBC_Events);
@@ -261,4 +325,32 @@ void USBD_DeInit(void)
 #if USB_ERROR_EVENT
   USB_SetCb_Error(NULL);
 #endif
+}
+
+/* --- Wrappers for the low level layer to avoid cross-layer includes ------- */
+
+U8 USBD_EndPointRd(U8 aNumber, U8 *pData, U8 aSize)
+{
+  return (U8)USB_EpRead(aNumber, pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_EndPointWr(U8 aNumber, U8 *pData, U8 aSize)
+{
+  return (U8)USB_EpWrite(aNumber, pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_EndPointRdWsCb(U8 aNumber, USBD_CbByte pPutByteCb, U8 aSize)
+{
+  return (U8)USB_EpReadWsCb(aNumber, pPutByteCb, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_EndPointWrWsCb(U8 aNumber, USBD_CbByte pGetByteCb, U8 aSize)
+{
+  return (U8)USB_EpWriteWsCb(aNumber, pGetByteCb, aSize);
 }

@@ -22,9 +22,9 @@ typedef struct
   USBD_CbEndPoint CbEndPointO;
   U8              EndPointI;
   U8              EndPointO;
-} USB_INTERFACE_CALLBACKS_DESCRIPTOR;
+} USBD_INTERFACE_CALLBACKS_DESCRIPTOR;
 
-extern const USB_INTERFACE_CALLBACKS_DESCRIPTOR USB_IfCbDescriptor[];
+extern const USBD_INTERFACE_CALLBACKS_DESCRIPTOR USBD_IfCbDescriptor[];
 
 /* --- Common Mandatory Function Prototypes --------------------------------- */
 

@@ -239,7 +239,7 @@ FW_BOOLEAN usbc_CtrlSetupReqStdSetClrFeature(U32 aSetClear)
 FW_BOOLEAN usbc_CtrlSetupReqStdGetDescriptor(void)
 {
   U8 *pD;
-  U32 len, n;
+  U32 len = 0, n;
   FW_BOOLEAN result = FW_FALSE;
 
   switch (gCSetupPkt.bmRequestType.BM.Recipient)
@@ -270,8 +270,11 @@ FW_BOOLEAN usbc_CtrlSetupReqStdGetDescriptor(void)
           break;
         case USB_STRING_DESCRIPTOR_TYPE:
           gCData.pData = USBD_GetStringDescriptor(gCSetupPkt.wValue.WB.L);
-          len = ((USB_STRING_DESCRIPTOR *)gCData.pData)->bLength;
-          result = FW_TRUE;
+          if (NULL != gCData.pData)
+          {
+            len = ((USB_STRING_DESCRIPTOR *)gCData.pData)->bLength;
+            result = FW_TRUE;
+          }
           break;
         default:
           break;
