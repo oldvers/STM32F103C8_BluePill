@@ -1,8 +1,8 @@
 #include "types.h"
 
-#include "usb.h"
-#include "usb_cfg.h"
-#include "msc_defs.h"
+#include "usb_definitions.h"
+#include "usb_msc_definitions.h"
+#include "usb_descriptor.h"
 #include "msc.h"
 
 /* MSC Disk Image Definitions */
@@ -180,23 +180,23 @@ const U8 FlashDiskImage[MSC_ImageSize] =
 
 /* Global Variables */
 /* MSC RAM */
-static U8      gMemory[MSC_MemorySize];
+static U8         gMemory[MSC_MemorySize];
 /* gMemory OK */
-static U32     gMemOK;
+static FW_BOOLEAN gMemOK;
 /* R/W gRwOffset */
-static U32     gRwOffset;
+static U32        gRwOffset;
 /* R/W gRwLength */
-static U32     gRwLength;
+static U32        gRwLength;
 /* Bulk Stage */
-static U8      gBulkStage;
+static U8         gBulkStage;
 /* Bulk In/Out Buffer */
-static U8      gBulkBuf[USB_MSC_PACKET_SIZE];
+static U8         gBulkBuf[USB_MSC_PACKET_SIZE];
 /* Bulk In/Out gRwLength */
-static U8      gBulkRwLength;
+static U8         gBulkRwLength;
 /* Command Block Wrapper */
-static MSC_CBW gCBW;
+static MSC_CBW    gCBW;
 /* Command Status Wrapper */
-static MSC_CSW gCSW;
+static MSC_CSW    gCSW;
 
 //-----------------------------------------------------------------------------
 /** @brief MSC Control Setup USB Request
@@ -216,7 +216,7 @@ USB_CTRL_STAGE MSC_CtrlSetupReq
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
-  
+
   switch (pSetup->bRequest)
   {
     case MSC_REQUEST_RESET:
@@ -234,7 +234,6 @@ USB_CTRL_STAGE MSC_CtrlSetupReq
       result = USB_CTRL_STAGE_DATA;
       break;
   }
-  
   return result;
 }
 
@@ -262,7 +261,7 @@ void MSC_MemoryRead(void)
     gBulkStage = MSC_BS_DATA_IN_LAST_STALL;
   }
 
-  USB_EpWrite(USB_MSC_EP_BULK_IN, &gMemory[gRwOffset], n);
+  USBD_MSC_IEndPointWr(&gMemory[gRwOffset], n);
   gRwOffset += n;
   gRwLength -= n;
 
@@ -289,7 +288,7 @@ void MSC_MemoryRead(void)
 void MSC_SetCSW(void)
 {
   gCSW.dSignature = MSC_CSW_Signature;
-  USB_EpWrite(USB_MSC_EP_BULK_IN, (U8 *)&gCSW, sizeof(gCSW));
+  USBD_MSC_IEndPointWr((U8 *)&gCSW, sizeof(gCSW));
   gBulkStage = MSC_BS_CSW;
 }
 
@@ -306,7 +305,7 @@ void MSC_MemoryWrite(void)
   {
     gBulkRwLength = MSC_MemorySize - gRwOffset;
     gBulkStage = MSC_BS_CSW;
-    USB_EpSetStall(USB_MSC_EP_BULK_OUT);
+    USBD_MSC_OEndPointSetStall();
   }
 
   for (n = 0; n < gBulkRwLength; n++)
@@ -341,14 +340,14 @@ void MSC_MemoryVerify(void)
   {
     gBulkRwLength = MSC_MemorySize - gRwOffset;
     gBulkStage = MSC_BS_CSW;
-    USB_EpSetStall(USB_MSC_EP_BULK_OUT);
+    USBD_MSC_OEndPointSetStall();
   }
 
   for (n = 0; n < gBulkRwLength; n++)
   {
     if (gMemory[gRwOffset + n] != gBulkBuf[n])
     {
-      gMemOK = FALSE;
+      gMemOK = FW_FALSE;
       break;
     }
   }
@@ -370,7 +369,7 @@ void MSC_MemoryVerify(void)
  *  @param None (global variables)
  *  @return TRUE - Success, FALSE - Error
  */
-U32 MSC_RWSetup(void)
+FW_BOOLEAN MSC_RWSetup(void)
 {
   U32 n;
 
@@ -390,14 +389,14 @@ U32 MSC_RWSetup(void)
 
   if (gCBW.dDataLength != gRwLength)
   {
-    USB_EpSetStall(USB_MSC_EP_BULK_IN);
-    USB_EpSetStall(USB_MSC_EP_BULK_OUT);
+    USBD_MSC_IEndPointSetStall();
+    USBD_MSC_OEndPointSetStall();
     gCSW.bStatus = CSW_PHASE_ERROR;
     MSC_SetCSW();
-    return (FALSE);
+    return (FW_FALSE);
   }
 
-  return (TRUE);
+  return (FW_TRUE);
 }
 
 //-----------------------------------------------------------------------------
@@ -411,16 +410,16 @@ U32 DataInFormat(void)
   {
     gCSW.bStatus = CSW_PHASE_ERROR;
     MSC_SetCSW();
-    return (FALSE);
+    return (FW_FALSE);
   }
   if ((gCBW.bmFlags & 0x80) == 0)
   {
-    USB_EpSetStall(USB_MSC_EP_BULK_OUT);
+    USBD_MSC_OEndPointSetStall();
     gCSW.bStatus = CSW_PHASE_ERROR;
     MSC_SetCSW();
-    return (FALSE);
+    return (FW_FALSE);
   }
-  return (TRUE);
+  return (FW_TRUE);
 }
 
 //-----------------------------------------------------------------------------
@@ -435,7 +434,7 @@ void DataInTransfer(void)
     gBulkRwLength = gCBW.dDataLength;
   }
 
-  USB_EpWrite(USB_MSC_EP_BULK_IN, gBulkBuf, gBulkRwLength);
+  USBD_MSC_IEndPointWr(gBulkBuf, gBulkRwLength);
   gBulkStage = MSC_BS_DATA_IN_LAST;
 
   gCSW.dDataResidue -= gBulkRwLength;
@@ -453,11 +452,11 @@ void MSC_TestUnitReady(void)
   {
     if ((gCBW.bmFlags & 0x80) != 0)
     {
-      USB_EpSetStall(USB_MSC_EP_BULK_IN);
+      USBD_MSC_IEndPointSetStall();
     }
     else
     {
-      USB_EpSetStall(USB_MSC_EP_BULK_OUT);
+      USBD_MSC_OEndPointSetStall();
     }
   }
 
@@ -706,7 +705,7 @@ void MSC_GetCBW(void)
             }
             else
             {
-              USB_EpSetStall(USB_MSC_EP_BULK_OUT);
+              USBD_MSC_OEndPointSetStall();
               gCSW.bStatus = CSW_PHASE_ERROR;
               MSC_SetCSW();
             }
@@ -723,7 +722,7 @@ void MSC_GetCBW(void)
             }
             else
             {
-              USB_EpSetStall(USB_MSC_EP_BULK_IN);
+              USBD_MSC_IEndPointSetStall();
               gCSW.bStatus = CSW_PHASE_ERROR;
               MSC_SetCSW();
             }
@@ -735,11 +734,11 @@ void MSC_GetCBW(void)
             if ((gCBW.bmFlags & 0x80) == 0)
             {
               gBulkStage = MSC_BS_DATA_OUT;
-              gMemOK = TRUE;
+              gMemOK = FW_TRUE;
             }
             else
             {
-              USB_EpSetStall(USB_MSC_EP_BULK_IN);
+              USBD_MSC_IEndPointSetStall();
               gCSW.bStatus = CSW_PHASE_ERROR;
               MSC_SetCSW();
             }
@@ -760,18 +759,18 @@ void MSC_GetCBW(void)
   else
   {
     /* Invalid CBW */
-    USB_EpSetStall(USB_MSC_EP_BULK_IN);
-    USB_EpSetStall(USB_MSC_EP_BULK_OUT);
+    USBD_MSC_IEndPointSetStall();
+    USBD_MSC_OEndPointSetStall();
     gBulkStage = MSC_BS_ERROR;
   }
 }
 
 //-----------------------------------------------------------------------------
 /** @brief MSC Bulk In Callback
- *  @param None (global variables)
+ *  @param aEvent - Event (global variables)
  *  @return None
  */
-void msc_BulkIn(U32 aEvent)
+void MSC_BulkIn(U32 aEvent)
 {
   switch (gBulkStage)
   {
@@ -787,7 +786,7 @@ void msc_BulkIn(U32 aEvent)
       MSC_SetCSW();
       break;
     case MSC_BS_DATA_IN_LAST_STALL:
-      USB_EpSetStall(USB_MSC_EP_BULK_IN);
+      USBD_MSC_IEndPointSetStall();
       MSC_SetCSW();
       break;
     case MSC_BS_CSW:
@@ -801,9 +800,9 @@ void msc_BulkIn(U32 aEvent)
  *  @param aEvent - Event (global variables)
  *  @return None
  */
-void msc_BulkOut(U32 aEvent)
+void MSC_BulkOut(U32 aEvent)
 {
-  gBulkRwLength = USB_EpRead(USB_MSC_EP_BULK_OUT, gBulkBuf);
+  gBulkRwLength = USBD_MSC_OEndPointRd(gBulkBuf, USB_MSC_PACKET_SIZE);
   switch (gBulkStage)
   {
     case MSC_BS_CBW:
@@ -821,7 +820,7 @@ void msc_BulkOut(U32 aEvent)
       }
       break;
     default:
-      USB_EpSetStall(USB_MSC_EP_BULK_OUT);
+      USBD_MSC_OEndPointSetStall();
       gCSW.bStatus = CSW_PHASE_ERROR;
       MSC_SetCSW();
       break;
@@ -830,7 +829,7 @@ void msc_BulkOut(U32 aEvent)
 
 //-----------------------------------------------------------------------------
 /** @brief Initializes MSC Memory Image
- *  @param aEvent - Event (global variables)
+ *  @param None (global variables)
  *  @return None
  */
 void MSC_Init(void)
@@ -841,7 +840,4 @@ void MSC_Init(void)
   {
     gMemory[n] = FlashDiskImage[n];
   }
-  
-  USB_SetCb_Ep(USB_MSC_EP_BULK_IN,  msc_BulkIn);
-  USB_SetCb_Ep(USB_MSC_EP_BULK_OUT, msc_BulkOut);
 }

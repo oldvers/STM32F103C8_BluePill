@@ -1,10 +1,10 @@
 #include "types.h"
 
 #include "usb.h"
-#include "usb_cfg.h"
-#include "usb_defs.h"
-#include "usb_core.h"
-#include "cdc_defs.h"
+//#include "usb_config.h"
+#include "usb_definitions.h"
+#include "usb_control.h"
+#include "usb_cdc_definitions.h"
 #include "cdc.h"
 
 #include "FreeRTOS.h"
@@ -129,7 +129,7 @@ void cdc_NotifyState(U16 aState)
   gNotification.Data.Raw = aState;
   gIrqBuff = (U8 *)&gNotification;
   gIrqBuffLen = sizeof(gNotification);
-  
+
   cdc_IrqInStage();
 }
 
@@ -151,7 +151,7 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
-  
+
   switch (pSetup->bRequest)
   {
     case CDC_REQ_SET_LINE_CODING:
@@ -169,7 +169,7 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
       result = USB_CTRL_STAGE_STATUS;
       break;
   }
-  
+
   return result;
 }
 
@@ -189,7 +189,7 @@ USB_CTRL_STAGE CDC_CtrlOutReq
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
-  
+
   switch (pSetup->bRequest)
   {
     case CDC_REQ_SET_LINE_CODING:
@@ -197,7 +197,7 @@ USB_CTRL_STAGE CDC_CtrlOutReq
       result = USB_CTRL_STAGE_STATUS;
       break;
   }
-  
+
   return result;
 }
 
@@ -242,7 +242,7 @@ void CDC_Init(void)
   USB_SetCb_Ep(USB_CDC_EP_BULK_OUT, cdc_BulkOut);
   USB_SetCb_Ep(USB_CDC_EP_BULK_IN,  cdc_BulkIn);
   USB_SetCb_Ep(USB_CDC_EP_IRQ_IN,   cdc_InterruptIn);
-  
+
   /* Create Semaphores/Mutex for VCP */
   gVcpSemRx = xSemaphoreCreateBinary();
   gVcpMutRx = xSemaphoreCreateMutex();
@@ -266,7 +266,7 @@ U32 VCP_Open(void)
 
   /* Indicate that there is no reading in progress */
   gVcpReading = FALSE;
-  
+
   return TRUE;
 }
 

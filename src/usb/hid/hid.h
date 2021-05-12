@@ -2,8 +2,8 @@
 #define __HID_H__
 
 #include "types.h"
-#include "usb_cfg.h"
-#include "usb_core.h"
+#include "usb_config.h"
+#include "usb_control.h"
 
 /* HID Number of Reports */
 #define HID_REPORT_NUM      1
@@ -21,5 +21,6 @@ USB_CTRL_STAGE HID_CtrlOutReq
   U8 **pData,
   U16 *pSize
 );
+void HID_IrqInReq(U32 aEvent);
 
 #endif  /* __HID_H__ */
