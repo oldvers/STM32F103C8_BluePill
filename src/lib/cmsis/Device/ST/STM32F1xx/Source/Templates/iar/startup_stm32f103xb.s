@@ -3,20 +3,20 @@
 ;* Author             : MCD Application Team
 ;* Version            : V4.2.0
 ;* Date               : 31-March-2017
-;* Description        : STM32F103xB Performance Line Devices vector table for 
+;* Description        : STM32F103xB Performance Line Devices vector table for
 ;*                      EWARM toolchain.
 ;*                      This module performs:
 ;*                      - Set the initial SP
 ;*                      - Configure the clock system
 ;*                      - Set the initial PC == __iar_program_start,
-;*                      - Set the vector table entries with the exceptions ISR 
+;*                      - Set the vector table entries with the exceptions ISR
 ;*                        address.
 ;*                      After Reset the Cortex-M3 processor is in Thread mode,
 ;*                      priority is Privileged, and the Stack is set to Main.
 ;********************************************************************************
-;* 
+;*
 ;* <h2><center>&copy; COPYRIGHT(c) 2017 STMicroelectronics</center></h2>
-;* 
+;*
 ;* Redistribution and use in source and binary forms, with or without modification,
 ;* are permitted provided that the following conditions are met:
 ;*   1. Redistributions of source code must retain the above copyright notice,
@@ -27,7 +27,7 @@
 ;*   3. Neither the name of STMicroelectronics nor the names of its contributors
 ;*      may be used to endorse or promote products derived from this software
 ;*      without specific prior written permission.
-;* 
+;*
 ;* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 ;* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 ;* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -38,7 +38,7 @@
 ;* CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 ;* OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 ;* OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-;* 
+;*
 ;*******************************************************************************
 ;
 ;
@@ -65,7 +65,8 @@
         SECTION .intvec:CODE:NOROOT(2)
 
         EXTERN  __iar_program_start
-        EXTERN  ApplicationInit        
+        EXTERN  SYS_ApplicationInit
+        EXTERN  IRQ_Exception_Handler
         PUBLIC  __vector_table
 
         DATA
@@ -132,54 +133,74 @@ __vector_table
         DCD     RTC_Alarm_IRQHandler       ; RTC Alarm through EXTI Line
         DCD     USBWakeUp_IRQHandler      ; USB Wakeup from suspend
 
+;  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;  ;;
+;  ;; Definitions for the interrupt handlers.
+;  ;;
+;
+;  #define FAULT_ID_NMI              (0)
+;  #define FAULT_ID_HARDFAULT        (1)
+;  #define FAULT_ID_MEMMANAGE        (2)
+;  #define FAULT_ID_BUSFAULT         (3)
+;  #define FAULT_ID_USAGEFAULT       (4)
+;  #define FAULT_ID_DEBUGMON         (5)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Default interrupt handlers.
 ;;
         THUMB
 
-        PUBWEAK Reset_Handler
         SECTION .text:CODE:REORDER:NOROOT(2)
 Reset_Handler
-        LDR     R0, =ApplicationInit
+        LDR     R0, =SYS_ApplicationInit
         BLX     R0
         LDR     R0, =__iar_program_start
         BX      R0
-        
-        PUBWEAK NMI_Handler
+
         SECTION .text:CODE:REORDER:NOROOT(1)
 NMI_Handler
-        B NMI_Handler
-
-        PUBWEAK HardFault_Handler
-        SECTION .text:CODE:REORDER:NOROOT(1)
+;        MOV     R2, #FAULT_ID_NMI
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
 HardFault_Handler
-        B HardFault_Handler
-
-        PUBWEAK MemManage_Handler
-        SECTION .text:CODE:REORDER:NOROOT(1)
+;        MOV     R2, #FAULT_ID_HARDFAULT
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
 MemManage_Handler
-        B MemManage_Handler
-
-        PUBWEAK BusFault_Handler
-        SECTION .text:CODE:REORDER:NOROOT(1)
+;        MOV     R2, #FAULT_ID_MEMMANAGE
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
 BusFault_Handler
-        B BusFault_Handler
-
-        PUBWEAK UsageFault_Handler
-        SECTION .text:CODE:REORDER:NOROOT(1)
+;        MOV     R2, #FAULT_ID_BUSFAULT
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
 UsageFault_Handler
-        B UsageFault_Handler
+;        MOV     R2, #FAULT_ID_USAGEFAULT
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
+DebugMon_Handler
+;        MOV     R2, #FAULT_ID_DEBUGMON
+;        B       Exception_Handler
+;
+;        SECTION .text:CODE:REORDER:NOROOT(1)
+Exception_Handler
+        TST     LR, #4
+        ITE     EQ
+        MRSEQ   R0, MSP
+        MRSNE   R0, PSP
+        MOV     R1, LR
+        B       IRQ_Exception_Handler
 
         PUBWEAK SVC_Handler
         SECTION .text:CODE:REORDER:NOROOT(1)
 SVC_Handler
         B SVC_Handler
-
-        PUBWEAK DebugMon_Handler
-        SECTION .text:CODE:REORDER:NOROOT(1)
-DebugMon_Handler
-        B DebugMon_Handler
 
         PUBWEAK PendSV_Handler
         SECTION .text:CODE:REORDER:NOROOT(1)

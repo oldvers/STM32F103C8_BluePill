@@ -1,8 +1,9 @@
 #include "stm32f1xx.h"
+#include "board.h"
 #include "types.h"
 #include "interrupts.h"
 #include "usb.h"
-#include "debug.h"
+#include "gpio.h"
 
 /* Address Mask */
 #define USB_EP_ADDR_MASK    (0xFFFE)
@@ -12,7 +13,7 @@
 #define EPREG(num)          (*((volatile U32 *)(USB_BASE + 4 * (num))))
 
 /* Endpoint Buffer Descriptor */
-typedef struct EpBuffDescription_s
+typedef __packed struct EpBuffDescription_s
 {
   U32 ADDR_TX;
   U32 COUNT_TX;
@@ -20,35 +21,44 @@ typedef struct EpBuffDescription_s
   U32 COUNT_RX;
 } EpBuffDescription_t, * EpBuffDescription_p;
 
+/* Endpoint Configuration */
+typedef __packed struct EpConfiguration_s
+{
+  U16      IMaxSize; /* In Enpoint max transfer size  */
+  U16      IRsvd;
+  USB_CbEp ICb;      /* In Enpoint Callback function  */
+  U16      OMaxSize; /* Out Enpoint max transfer size */
+  U16      ORsvd;
+  USB_CbEp OCb;      /* Out Enpoint Callback function */
+} EpConfiguration_t, * EpConfiguration_p;
+
 /* Pointer to Endpoint Buffer Descriptors */
 static EpBuffDescription_p pEpBuffDscr = (EpBuffDescription_p)USB_PMAADDR;
 /* Endpoint Free Buffer Address */
-static U16 gEpFreeBuffAddr = 0;
-/* Endpoint Count */
-static U8 gMaxEpCount = 1;
+static U16 gEpFreeBuffAddr                           = 0;
 /* Control Endpoint max packet size */
-static U8 gCtrlEpMaxPacketSize = 8;
+static U8  gCtrlEpMaxPacketSize                      = 8;
 /* Callback Functions */
-static USB_CbGeneric pUSB_CbReset   = NULL;
-static USB_CbGeneric pUSB_CbSuspend = NULL;
-static USB_CbGeneric pUSB_CbWakeUp  = NULL;
-static USB_CbGeneric pUSB_CbSOF     = NULL;
-static USB_CbError   pUSB_CbError   = NULL;
-static USB_CbEp      pUSB_CbEp[16]  = {0};
+static USB_CbGeneric     pUSB_CbReset                = NULL;
+static USB_CbGeneric     pUSB_CbSuspend              = NULL;
+static USB_CbGeneric     pUSB_CbWakeUp               = NULL;
+static USB_CbGeneric     pUSB_CbSOF                  = NULL;
+static USB_CbError       pUSB_CbError                = NULL;
+static EpConfiguration_t USB_EpCfg[USB_EP_QUANTITY]  = {0};
 
 //-----------------------------------------------------------------------------
 /** @brief Resets endpoint
  *  @param aNumber - Endpoint Number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 static void usb_EpReset(U32 aNumber)
 {
   U32 num, val;
 
-  num = aNumber & 0x0F;
+  num = aNumber & USB_EP_NUM_MASK;
   val = EPREG(num);
-  if (aNumber & 0x80)
+  if (aNumber & USB_EP_DIR_MASK)
   {
     /* IN Endpoint */
     EPREG(num) = val & (USB_EPREG_MASK | USB_EP_DTOG_TX);
@@ -65,15 +75,15 @@ static void usb_EpReset(U32 aNumber)
  *  @param aNumber - endpoint number
  *  @param aStatus - new status
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 static void usb_EpSetStatus(U32 aNumber, U32 aStatus)
 {
   U32 num, val;
 
-  num = aNumber & 0x0F;
+  num = aNumber & USB_EP_NUM_MASK;
   val = EPREG(num);
-  if (aNumber & 0x80)
+  if (aNumber & USB_EP_DIR_MASK)
   {
     /* IN Endpoint */
     EPREG(num) =
@@ -92,7 +102,7 @@ static void usb_EpSetStatus(U32 aNumber, U32 aStatus)
  *  @param aNumber - endpoint number
  *  @param aStatus - new status
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_SetCb_Reset(USB_CbGeneric pCbReset)
 {
@@ -144,11 +154,22 @@ void USB_SetCb_Error(USB_CbError pCbError)
  *  @param aNumber - Number of endpoint
  *  @param pCbEp - Pointer to function
  *  @return None
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_SetCb_Ep(U32 aNumber, USB_CbEp pCbEp)
 {
-  aNumber &= 0x0000000F;
-  pUSB_CbEp[aNumber] = pCbEp;
+  U32 num = (aNumber & USB_EP_NUM_MASK);
+
+  if (0 != (aNumber & USB_EP_DIR_MASK))
+  {
+    /* IN */
+    USB_EpCfg[num].ICb = pCbEp;
+  }
+  else
+  {
+    /* OUT */
+    USB_EpCfg[num].OCb = pCbEp;
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -158,13 +179,22 @@ void USB_SetCb_Ep(U32 aNumber, USB_CbEp pCbEp)
  *  @return None
  *  @note Called by the User to initialize USB
  */
-void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
+void USB_Init(U32 aCtrlEpMaxPacketSize)
 {
-  for (U32 i = 0; i < 16; i++) pUSB_CbEp[i] = NULL;
+  for (U32 num = 0; num < USB_EP_QUANTITY; num++)
+  {
+    USB_EpCfg[num].ICb = NULL;
+    USB_EpCfg[num].OCb = NULL;
+    USB_EpCfg[num].IMaxSize = 0;
+    USB_EpCfg[num].OMaxSize = 0;
+  }
 
-  gMaxEpCount = aMaxEpCount;
   gCtrlEpMaxPacketSize = aCtrlEpMaxPacketSize;
-  gEpFreeBuffAddr = gMaxEpCount * sizeof(EpBuffDescription_t);
+  gEpFreeBuffAddr = USB_EP_QUANTITY * sizeof(EpBuffDescription_t);
+
+  /* Setup GPIOs */
+  GPIO_Init(USB_DM_PORT, USB_DM_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
+  GPIO_Init(USB_DP_PORT, USB_DP_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
 
   /* Setup USB clock prescaler */
   if (72000000 > SystemCoreClock)
@@ -175,9 +205,27 @@ void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
   /* Enable USB peripheral clock */
   RCC->APB1ENR |= RCC_APB1ENR_USBEN;
 
+  /* Reset USB peripheral */
+  RCC->APB1RSTR |= RCC_APB1RSTR_USBRST;
+  RCC->APB1RSTR &= (~RCC_APB1RSTR_USBRST);
+
   /* Enable USB Interrupts */
-  NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, IRQ_PRIORITY_USB);
-  NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+  IRQ_USB_Enable();
+}
+
+//-----------------------------------------------------------------------------
+/** @brief De-Initializes USB peripheral
+ *  @param None
+ *  @return None
+ *  @note Called by the User to de-initialize USB
+ */
+void USB_DeInit(void)
+{
+  /* Disable USB Interrupts */
+  IRQ_USB_Disable();
+
+  /* Disable USB peripheral clock */
+  RCC->APB1ENR &= (~RCC_APB1ENR_USBEN);
 }
 
 //-----------------------------------------------------------------------------
@@ -186,7 +234,7 @@ void USB_Init(U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize)
  *  @return None
  *  @note Called by the User to Connect/Disconnect USB
  */
-void USB_Connect(U32 aConnect)
+void USB_Connect(FW_BOOLEAN aConnect)
 {
   /* Force USB Reset */
   USB->CNTR = USB_CNTR_FRES;
@@ -225,28 +273,45 @@ void USB_Reset(void)
   if (NULL != pUSB_CbSOF) CNTR |= USB_CNTR_SOFM | USB_CNTR_ESOFM;
   USB->CNTR = CNTR;
 
-  gEpFreeBuffAddr = gMaxEpCount * sizeof(EpBuffDescription_t);
+  gEpFreeBuffAddr = USB_EP_QUANTITY * sizeof(EpBuffDescription_t);
 
   /* Set BTABLE Address */
   USB->BTABLE = 0;
 
   /* Setup Control Endpoint 0 */
-  pEpBuffDscr->ADDR_TX = gEpFreeBuffAddr;
+  pEpBuffDscr[0].ADDR_TX = gEpFreeBuffAddr;
   gEpFreeBuffAddr += gCtrlEpMaxPacketSize;
-  pEpBuffDscr->ADDR_RX = gEpFreeBuffAddr;
+  pEpBuffDscr[0].ADDR_RX = gEpFreeBuffAddr;
   gEpFreeBuffAddr += gCtrlEpMaxPacketSize;
+
+  USB_EpCfg[0].IMaxSize = gCtrlEpMaxPacketSize;
+  USB_EpCfg[0].OMaxSize = gCtrlEpMaxPacketSize;
+
   if (gCtrlEpMaxPacketSize > 62)
   {
-    pEpBuffDscr->COUNT_RX = ((gCtrlEpMaxPacketSize << 5) - 1) | 0x8000;
+    pEpBuffDscr[0].COUNT_RX = ((gCtrlEpMaxPacketSize << 5) - 1) | 0x8000;
   }
   else
   {
-    pEpBuffDscr->COUNT_RX =   gCtrlEpMaxPacketSize << 9;
+    pEpBuffDscr[0].COUNT_RX =   gCtrlEpMaxPacketSize << 9;
   }
   EPREG(0) = USB_EP_CONTROL | USB_EP_RX_VALID;
 
   /* Enable USB Default Address */
   USB->DADDR = USB_DADDR_EF | 0;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Prepares internal variables for EP reconfiguration
+ *  @param None
+ *  @return None
+ *  @note Should be called when EP0 IN/OUT has been already initialized
+ */
+void USB_PreapareReConfig(void)
+{
+  /* Recalculate Free EP Buffer pointer */
+  gEpFreeBuffAddr = USB_EP_QUANTITY * sizeof(EpBuffDescription_t);
+  gEpFreeBuffAddr += (gCtrlEpMaxPacketSize << 1);
 }
 
 //-----------------------------------------------------------------------------
@@ -328,29 +393,31 @@ void USB_EpConfigure(U8 aAddress, U16 aMaxPacketSize, USB_EP_TYPE aType)
   /* Double Buffering is not yet supported */
   U32 num, val;
 
-  num = aAddress & 0x0F;
+  num = aAddress & USB_EP_NUM_MASK;
 
   val = aMaxPacketSize;
   /* Check endpoint direction (IN - 0x80 Mask) */
-  if (aAddress & USB_EP_ADDR_DIR_MASK)
+  if (aAddress & USB_EP_DIR_MASK)
   {
     /* IN */
-    (pEpBuffDscr + num)->ADDR_TX = gEpFreeBuffAddr;
+    USB_EpCfg[num].IMaxSize = aMaxPacketSize;
+    pEpBuffDscr[num].ADDR_TX = gEpFreeBuffAddr;
     val = (val + 1) & ~1;
   }
   else
   {
     /* OUT */
-    (pEpBuffDscr + num)->ADDR_RX = gEpFreeBuffAddr;
+    USB_EpCfg[num].OMaxSize = aMaxPacketSize;
+    pEpBuffDscr[num].ADDR_RX = gEpFreeBuffAddr;
     if (val > 62)
     {
       val = (val + 31) & ~31;
-      (pEpBuffDscr + num)->COUNT_RX = ((val << 5) - 1) | 0x8000;
+      pEpBuffDscr[num].COUNT_RX = ((val << 5) - 1) | 0x8000;
     }
     else
     {
       val = (val + 1)  & ~1;
-      (pEpBuffDscr + num)->COUNT_RX =   val << 9;
+      pEpBuffDscr[num].COUNT_RX =   val << 9;
     }
   }
   gEpFreeBuffAddr += val;
@@ -374,18 +441,18 @@ void USB_EpDirCtrl(U32 aDirection)
 /** @brief Enables USB Endpoint
  *  @param aNumber - Endpoint number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_EpEnable(U32 aNumber)
 {
-  usb_EpSetStatus(aNumber, USB_EP_TX_VALID | USB_EP_RX_VALID);
+  usb_EpSetStatus(aNumber, USB_EP_TX_NAK | USB_EP_RX_VALID);
 }
 
 //-----------------------------------------------------------------------------
 /** @brief Disables USB Endpoint
  *  @param aNumber - Endpoint Number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_EpDisable(U32 aNumber)
 {
@@ -396,7 +463,7 @@ void USB_EpDisable(U32 aNumber)
 /** @brief Resets USB Endpoint
  *  @param aNumber - Endpoint Number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_EpReset(U32 aNumber)
 {
@@ -407,7 +474,7 @@ void USB_EpReset(U32 aNumber)
 /** @brief Sets Stall for USB Endpoint
  *  @param aNumber - Endpoint Number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_EpSetStall(U32 aNumber)
 {
@@ -418,7 +485,7 @@ void USB_EpSetStall(U32 aNumber)
 /** @brief Clear Stall for USB Endpoint
  *  @param aNumber - Endpoint Number
  *  @return None
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 void USB_EpClrStall(U32 aNumber)
 {
@@ -426,25 +493,99 @@ void USB_EpClrStall(U32 aNumber)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Checks if USB Endpoint Rx buffer is empty
+ *  @param aNumber - Endpoint Number
+ *  @return FW_TRUE - if no data received, FW_FALSE - otherwise
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
+ */
+FW_BOOLEAN USB_EpIsRxEmpty(U32 aNumber)
+{
+  U32 num, cnt = 0, val;
+  FW_BOOLEAN result = FW_TRUE;
+
+  /* Nothing is available for IN Endpoints */
+  if (0 != (aNumber & USB_EP_DIR_MASK)) return (result);
+
+  num = aNumber & USB_EP_NUM_MASK;
+  val = (EPREG(num) & USB_EPRX_STAT);
+
+  if (USB_EP_RX_VALID != val)
+  {
+    cnt = pEpBuffDscr[num].COUNT_RX & USB_EP_COUNT_MASK;
+  }
+
+  if (0 != cnt)
+  {
+    result = FW_FALSE;
+  }
+
+  return (result);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Checks if USB Endpoint Tx buffer is empty
+ *  @param aNumber - Endpoint Number
+ *  @return FW_TRUE - if data has been transmitted, FW_FALSE - otherwise
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
+ */
+FW_BOOLEAN USB_EpIsTxEmpty(U32 aNumber)
+{
+  U32 num, cnt = 0, val;
+  FW_BOOLEAN result = FW_FALSE;
+
+  /* Nothing is transmitted for OUT Endpoints */
+  if (0 == (aNumber & USB_EP_DIR_MASK)) return (result);
+
+  num = aNumber & USB_EP_NUM_MASK;
+  val = (EPREG(num) & USB_EPTX_STAT);
+
+  if (USB_EP_TX_VALID == val)
+  {
+    cnt = pEpBuffDscr[num].COUNT_TX & USB_EP_COUNT_MASK;
+  }
+
+  if (0 == cnt)
+  {
+    result = FW_TRUE;
+  }
+
+  return (result);
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Reads USB Endpoint Data
  *  @param aNumber - Endpoint Number
  *  @param pData - Pointer to Data Buffer
+ *  @param aSize - Number of bytes to read
  *  @return Number of bytes read
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
-U32 USB_EpRead(U32 aNumber, U8 *pData)
+U32 USB_EpRead(U32 aNumber, U8 *pData, U32 aSize)
 {
   /* Double Buffering is not yet supported */
   U32 num, cnt, *pv, n;
+  U16 data;
 
-  num = aNumber & 0x0F;
+  num = aNumber & USB_EP_NUM_MASK;
 
-  pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_RX));
-  cnt = (pEpBuffDscr + num)->COUNT_RX & USB_EP_COUNT_MASK;
-  for (n = 0; n < (cnt + 1) / 2; n++)
+  cnt = pEpBuffDscr[num].COUNT_RX & USB_EP_COUNT_MASK;
+  if (aSize < cnt)
+  {
+    return 0; /* The Buffer size is too small for received bytes */
+  }
+
+  pv  = (U32 *)(USB_PMAADDR + 2 * (pEpBuffDscr[num].ADDR_RX));
+
+  for (n = 0; n < (cnt >> 1); n++)
   {
     *((__packed U16 *)pData) = *pv++;
     pData += 2;
+  }
+  if (1 == (cnt % 2))
+  {
+    *((__packed U16 *)&data) = *pv++;
+    *pData = (U8)data;
+    pData++;
   }
   usb_EpSetStatus(aNumber, USB_EP_RX_VALID);
 
@@ -457,22 +598,117 @@ U32 USB_EpRead(U32 aNumber, U8 *pData)
  *  @param pData - Pointer to Data Buffer
  *  @param aSize - Number of bytes to write
  *  @return Number of bytes written
- *  @note aNumber - bits 0..3 = Address, bit 7 = Direction
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
  */
 U32 USB_EpWrite(U32 aNumber, U8 *pData, U32 aSize)
 {
   /* Double Buffering is not yet supported */
   U32 num, *pv, n;
 
-  num = aNumber & 0x0F;
+  num = aNumber & USB_EP_NUM_MASK;
 
-  pv  = (U32 *)(USB_PMAADDR + 2 * ((pEpBuffDscr + num)->ADDR_TX));
-  for (n = 0; n < (aSize + 1) / 2; n++)
+  if (aSize > USB_EpCfg[num].IMaxSize)
+  {
+    aSize = USB_EpCfg[num].IMaxSize;
+  }
+
+  pv  = (U32 *)(USB_PMAADDR + 2 * (pEpBuffDscr[num].ADDR_TX));
+  for (n = 0; n < ((aSize + 1) >> 1); n++)
   {
     *pv++ = *((__packed U16 *)pData);
     pData += 2;
   }
-  (pEpBuffDscr + num)->COUNT_TX = aSize;
+  pEpBuffDscr[num].COUNT_TX = aSize;
+  usb_EpSetStatus(aNumber, USB_EP_TX_VALID);
+
+  return (aSize);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Reads USB Endpoint Data with Callback for each Byte
+ *  @param aNumber - Endpoint Number
+ *  @param pPutByteCb - Pointer to Callback that puts Byte to the Buffer
+ *  @param aSize - Count of Bytes to be read
+ *  @return Number of bytes read
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
+ */
+U32 USB_EpReadWsCb(U32 aNumber, USB_CbByte pPutByteCb, U32 aSize)
+{
+  /* Double Buffering is not yet supported */
+  U32 num, cnt, *pv, n;
+  U8 data[2] = {0};
+
+  if (NULL == pPutByteCb)
+  {
+    return 0;
+  }
+
+  num = aNumber & USB_EP_NUM_MASK;
+
+  cnt = pEpBuffDscr[num].COUNT_RX & USB_EP_COUNT_MASK;
+  if (aSize < cnt)
+  {
+    return 0; /* The Buffer size is too small for received bytes */
+  }
+
+  pv  = (U32 *)(USB_PMAADDR + 2 * (pEpBuffDscr[num].ADDR_RX));
+
+  for (n = 0; n < (cnt >> 1); n++)
+  {
+    *((U16 *)data) = *pv++;
+    pPutByteCb(&data[0]);
+    pPutByteCb(&data[1]);
+  }
+  if (1 == (cnt % 2))
+  {
+    *((U16 *)data) = *pv++;
+    pPutByteCb(&data[0]);
+  }
+  usb_EpSetStatus(aNumber, USB_EP_RX_VALID);
+
+  return (cnt);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Writes USB Endpoint Data with Callback for each Byte
+ *  @param aNumber - Endpoint Number
+ *  @param pGetByteCb - Pointer to Callback that gets Byte from the Buffer
+ *  @param aSize - Number of bytes to be written
+ *  @return Number of bytes written
+ *  @note aNumber - bits 0..2 = Address, bit 7 = Direction
+ */
+U32 USB_EpWriteWsCb(U32 aNumber, USB_CbByte pGetByteCb, U32 aSize)
+{
+  /* Double Buffering is not yet supported */
+  U32 num, *pv, n;
+  U8 data[2] = {0};
+
+  if (NULL == pGetByteCb)
+  {
+    return 0;
+  }
+
+  num = aNumber & USB_EP_NUM_MASK;
+
+  if (aSize > USB_EpCfg[num].IMaxSize)
+  {
+    aSize = USB_EpCfg[num].IMaxSize;
+  }
+
+  pv  = (U32 *)(USB_PMAADDR + 2 * (pEpBuffDscr[num].ADDR_TX));
+  for (n = 0; n < (aSize >> 1); n++)
+  {
+    pGetByteCb(&data[0]);
+    pGetByteCb(&data[1]);
+    *pv++ = *((U16 *)data);
+  }
+  if (1 == (aSize % 2))
+  {
+    pGetByteCb(&data[0]);
+    data[1] = 0;
+    *pv++ = *((U16 *)data);
+  }
+  pEpBuffDscr[num].COUNT_TX = aSize;
   usb_EpSetStatus(aNumber, USB_EP_TX_VALID);
 
   return (aSize);
@@ -499,6 +735,46 @@ void USB_IRQHandler(void)
 
   istr = USB->ISTR;
 
+  /* Start of Frame */
+  if (istr & USB_ISTR_SOF)
+  {
+    if (NULL != pUSB_CbSOF) pUSB_CbSOF();
+    USB->ISTR = (U16)~(USB_ISTR_SOF);
+  }
+
+  /* Endpoint Interrupts */
+  while ((istr = USB->ISTR) & USB_ISTR_CTR)
+  {
+    USB->ISTR = (U16)~(USB_ISTR_CTR);
+
+    num = istr & USB_ISTR_EP_ID;
+
+    val = EPREG(num);
+    if (val & USB_EP_CTR_RX)
+    {
+      EPREG(num) = val & ~USB_EP_CTR_RX & USB_EPREG_MASK;
+      if (NULL != USB_EpCfg[num].OCb)
+      {
+        if (val & USB_EP_SETUP)
+        {
+          USB_EpCfg[num].OCb(USB_EVNT_EP_SETUP);
+        }
+        else
+        {
+          USB_EpCfg[num].OCb(USB_EVNT_EP_OUT);
+        }
+      }
+    }
+    if (val & USB_EP_CTR_TX)
+    {
+      EPREG(num) = val & ~USB_EP_CTR_TX & USB_EPREG_MASK;
+      if (NULL != USB_EpCfg[num].ICb)
+      {
+        USB_EpCfg[num].ICb(USB_EVNT_EP_IN);
+      }
+    }
+  }
+
   /* USB Reset Request */
   if (istr & USB_ISTR_RESET)
   {
@@ -523,13 +799,6 @@ void USB_IRQHandler(void)
     USB->ISTR = (U16)~(USB_ISTR_WKUP);
   }
 
-  /* Start of Frame */
-  if (istr & USB_ISTR_SOF)
-  {
-    if (NULL != pUSB_CbSOF) pUSB_CbSOF();
-    USB->ISTR = (U16)~(USB_ISTR_SOF);
-  }
-
   /* PMA Over/underrun */
   if (istr & USB_ISTR_PMAOVR)
   {
@@ -537,43 +806,16 @@ void USB_IRQHandler(void)
     USB->ISTR = (U16)~(USB_ISTR_PMAOVR);
   }
 
+  /* Expected Start of Frame */
+  if (istr & USB_ISTR_ESOF)
+  {
+    USB->ISTR = (U16)~(USB_ISTR_ESOF);
+  }
+
   /* Error: No Answer, CRC Error, Bit Stuff Error, Frame Format Error */
   if (istr & USB_ISTR_ERR)
   {
     if (NULL != pUSB_CbError) pUSB_CbError(0);
     USB->ISTR = (U16)~(USB_ISTR_ERR);
-  }
-
-  /* Endpoint Interrupts */
-  while ((istr = USB->ISTR) & USB_ISTR_CTR)
-  {
-    USB->ISTR = (U16)~(USB_ISTR_CTR);
-
-    num = istr & USB_ISTR_EP_ID;
-
-    val = EPREG(num);
-    if (val & USB_EP_CTR_RX)
-    {
-      EPREG(num) = val & ~USB_EP_CTR_RX & USB_EPREG_MASK;
-      if (NULL != pUSB_CbEp[num])
-      {
-        if (val & USB_EP_SETUP)
-        {
-          pUSB_CbEp[num](USB_EVNT_EP_SETUP);
-        }
-        else
-        {
-          pUSB_CbEp[num](USB_EVNT_EP_OUT);
-        }
-      }
-    }
-    if (val & USB_EP_CTR_TX)
-    {
-      EPREG(num) = val & ~USB_EP_CTR_TX & USB_EPREG_MASK;
-      if (pUSB_CbEp[num])
-      {
-        pUSB_CbEp[num](USB_EVNT_EP_IN);
-      }
-    }
   }
 }
