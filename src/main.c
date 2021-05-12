@@ -41,10 +41,10 @@ void vJTAGICEmkIITask(void * pvParameters)
 //  U16 RxLen = 0;
 //  U32 time;
 
-    LOG("JTAG ICE mkII Task Started\r\n");
+    DBG("JTAG ICE mkII Task Started\r\n");
 
     /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
-    GPIO_Init(GPIOB, 2, GPIO_TYPE_OUT_OD_2MHZ);
+    GPIO_Init(GPIOB, 2, GPIO_TYPE_OUT_OD_2MHZ, 0);
     GPIO_Hi(GPIOB, 2);
 
     /* Delay */
@@ -94,26 +94,26 @@ int main(void)
   DBG_ClearScreen();
   DBG_SetDefaultColors();
 
-  printf("STM32F103C8 Started!\r\n");
-  printf("ID0         = 0x%04X\r\n", UDID_0);
-  printf("ID1         = 0x%04X\r\n", UDID_1);
-  printf("ID2         = 0x%08X\r\n", UDID_2);
-  printf("ID2         = 0x%08X\r\n", UDID_3);
-  printf("Memory Size = %d kB\r\n", FLASH_SIZE);
-  printf("CPU clock   = %d Hz\r\n", CPUClock);
-  printf("AHB clock   = %d Hz\r\n", AHBClock);
-  printf("APB1 clock  = %d Hz\r\n", APB1Clock);
-  printf("APB2 clock  = %d Hz\r\n", APB2Clock);
+  DBG("STM32F103C8 Started!\r\n");
+  DBG("ID0         = 0x%04X\r\n", UDID_0);
+  DBG("ID1         = 0x%04X\r\n", UDID_1);
+  DBG("ID2         = 0x%08X\r\n", UDID_2);
+  DBG("ID2         = 0x%08X\r\n", UDID_3);
+  DBG("Memory Size = %d kB\r\n", FLASH_SIZE);
+  DBG("CPU clock   = %d Hz\r\n", CPUClock);
+  DBG("AHB clock   = %d Hz\r\n", AHBClock);
+  DBG("APB1 clock  = %d Hz\r\n", APB1Clock);
+  DBG("APB2 clock  = %d Hz\r\n", APB2Clock);
 
-  xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
-
-    LOG("STM32F103C8 Started!\r\n");
-    LOG("ID0 = 0x%04X\r\n", UDID_0);
-    LOG("ID1 = 0x%04X\r\n", UDID_1);
-    LOG("ID2 = 0x%08X\r\n", UDID_2);
-    LOG("ID2 = 0x%08X\r\n", UDID_3);
-    LOG("Memory Size = %d kB\r\n", FLASH_SIZE);
-    LOG("SysClock = %d Hz\r\n", SystemCoreClock);
+  xTaskCreate
+  (
+    vLEDTask,
+    "LEDTask",
+    configMINIMAL_STACK_SIZE,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  );
 
   while (FW_TRUE) {};
 }

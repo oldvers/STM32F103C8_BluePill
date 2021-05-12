@@ -1,10 +1,12 @@
 #include "types.h"
 
 #include "usb.h"
-#include "usb_cfg.h"
-#include "usb_defs.h"
-#include "usb_core.h"
-#include "usb_icemkii_defs.h"
+//#include "usb_cfg.h"
+#include "usb_definitions.h"
+#include "usb_control.h"
+//#include "usb_device.h"
+#include "usb_descriptor.h"
+#include "usb_icemkii_definitions.h"
 #include "usb_icemkii.h"
 
 //#define ICEMKII_TEST_MODE
@@ -175,7 +177,7 @@ USB_CTRL_STAGE ICEMKII_CtrlSetupReq
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
 
-  LOG("ICEMKII Setup: Req = %d Len = %d\r\n", pSetup->bRequest, *pSize);
+  DBG("ICEMKII Setup: Req = %d Len = %d\r\n", pSetup->bRequest, *pSize);
 
 //  switch (pSetup->bRequest)
 //  {
@@ -215,7 +217,7 @@ USB_CTRL_STAGE ICEMKII_CtrlOutReq
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
 
-  LOG("ICEMKII Out: Req = %d Len = %d\r\n", pSetup->bRequest, *pSize);
+  DBG("ICEMKII Out: Req = %d Len = %d\r\n", pSetup->bRequest, *pSize);
 
 //  switch (pSetup->bRequest)
 //  {
@@ -243,7 +245,7 @@ USB_CTRL_STAGE ICEMKII_CtrlOutReq
  *  @param aEvent - Event
  *  @return None
  */
-STATIC void icemkii_BulkIn(U32 aEvent)
+void ICEMKII_BulkIn(U32 aEvent)
 {
   (void)aEvent;
   icemkii_ProcessTx();
@@ -254,7 +256,7 @@ STATIC void icemkii_BulkIn(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
-STATIC void icemkii_BulkOut(U32 aEvent)
+void ICEMKII_BulkOut(U32 aEvent)
 {
   (void)aEvent;
   icemkii_ProcessRx();
@@ -319,8 +321,8 @@ void ICEMKII_Init(void)
 //  );
 //#else
   /* Register appropriate EP callbacks */
-  USB_SetCb_Ep(USB_ICEMKII_EP_BULK_OUT, icemkii_BulkOut);
-  USB_SetCb_Ep(USB_ICEMKII_EP_BULK_IN,  icemkii_BulkIn);
+//  USB_SetCb_Ep(USB_ICEMKII_EP_BULK_OUT, icemkii_BulkOut);
+//  USB_SetCb_Ep(USB_ICEMKII_EP_BULK_IN,  icemkii_BulkIn);
 //#endif
 
   /* Create Semaphores/Mutex for VCP */
@@ -367,10 +369,12 @@ void ICEMKII_Init(void)
  *  @param None
  *  @return None
  */
-STATIC U8 icemkii_Put(U8 * pByte)
+//STATIC U8 icemkii_Put(U8 * pByte)
+STATIC void icemkii_Put(U8 * pByte)
 {
-  LOG(" %0.2X", *pByte);
-  return (U8)FIFO_Put(&gRxFifo, pByte);
+  DBG(" %0.2X", *pByte);
+  //return (U8)
+  (void)FIFO_Put(&gRxFifo, pByte);
 }
 //typedef U8   (*USB_CbEpGet)(U8 * pByte);
 //EventBits_t uxReturned;
@@ -407,14 +411,9 @@ STATIC void icemkii_ProcessRx(void)
 //  while ( 0 );
 //#else
   /* Read from OUT EP */
-  LOG("ICEMKII OUT:\r\n   - ");
-  size = USB_EpReadToFifo
-         (
-           USB_ICEMKII_EP_BULK_OUT,
-           icemkii_Put,
-           FIFO_Free(&gRxFifo)
-         );
-  LOG(" : Len = %d\r\n", size);
+  DBG("ICEMKII OUT:\r\n   - ");
+  size = USBD_ICEMKII_OEndPointRdWsCb(icemkii_Put, FIFO_Free(&gRxFifo));
+  DBG(" : Len = %d\r\n", size);
 //#endif
 
   /* Successful reading */
@@ -510,14 +509,13 @@ FW_RESULT ICEMKII_ReadByte(U8 * pValue, U32 aTimeOutMs)
     //    while ( 0 );
     //#else
             /* Read from OUT EP */
-            LOG("ICEMKII READ:\r\n  - ");
-            size = USB_EpReadToFifo
+            DBG("ICEMKII READ:\r\n  - ");
+            size = USBD_ICEMKII_OEndPointRdWsCb
                    (
-                     USB_ICEMKII_EP_BULK_OUT,
                      icemkii_Put,
                      FIFO_Free(&gRxFifo)
                    );
-            LOG(" : Len = %d\r\n", size);
+            DBG(" : Len = %d\r\n", size);
 
         //(void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
     //#endif
@@ -526,7 +524,7 @@ FW_RESULT ICEMKII_ReadByte(U8 * pValue, U32 aTimeOutMs)
         if (0 != (uxReturned & ICEMKII_RX_READY))
         {
             size = FIFO_Get(&gRxFifo, pValue);
-            LOG("  - %0.2X\r\n", result);
+            DBG("  - %0.2X\r\n", result);
 
             if (FW_EMPTY == size)
             {
