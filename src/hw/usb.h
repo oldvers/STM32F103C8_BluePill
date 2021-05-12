@@ -48,42 +48,53 @@ typedef enum USB_EP_TYPE_E
 typedef void (*USB_CbGeneric)(void);
 typedef void (*USB_CbError)(U32 aError);
 typedef void (*USB_CbEp)(U32 aEvent);
-/* Put/Get byte functions - return 0 on Success */
-typedef U8   (*USB_CbEpPut)(U8 * pByte);
-typedef U8   (*USB_CbEpGet)(U8 * pByte);
+typedef void (*USB_CbByte)(U8 * pByte);
 
 /* Function Declarations */
-void USB_SetCb_Reset       (USB_CbGeneric pCbReset);
-void USB_SetCb_Suspend     (USB_CbGeneric pCbSuspend);
-void USB_SetCb_WakeUp      (USB_CbGeneric pCbWakeUp);
-void USB_SetCb_SOF         (USB_CbGeneric pCbSOF);
-void USB_SetCb_Error       (USB_CbError pCbError);
-void USB_SetCb_Ep          (U32 aNumber, USB_CbEp pCbEp);
-void USB_Init              (U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize);
-void USB_DeInit            (void);
-void USB_Connect           (FW_BOOLEAN aConnnect);
-void USB_Reset             (void);
-void USB_PreapareReConfig  (void);
-void USB_Suspend           (void);
-void USB_Resume            (void);
-void USB_WakeUp            (void);
-void USB_WakeUpConfigure   (U32 aConfig);
-void USB_SetAddress        (U32 aAddress);
-void USB_Configure         (U32 aConfig);
-void USB_EpConfigure       (U8 aAddress, U16 aMaxPacketSize, USB_EP_TYPE aType);
-void USB_EpDirCtrl         (U32 aDirection);
-void USB_EpEnable          (U32 aNumber);
-void USB_EpDisable         (U32 aNumber);
-void USB_EpReset           (U32 aNumber);
-void USB_EpSetStall        (U32 aNumber);
-void USB_EpClrStall        (U32 aNumber);
-U32  USB_EpRead            (U32 aNumber, U8 *pData, U32 aSize);
-U32  USB_EpWrite           (U32 aNumber, U8 *pData, U32 aSize);
-U32  USB_EpReadToFifo      (U32 aNumber, USB_CbEpPut pPutCb, U32 aSize);
-U32  USB_EpWriteFromFifo   (U32 aNumber, USB_CbEpGet pGetCb, U32 aSize);
-U32  USB_EpIsDataAvailable (U32 aNumber);
-U32  USB_GetFrame          (void);
+void       USB_SetCb_Reset       (USB_CbGeneric pCbReset);
+void       USB_SetCb_Suspend     (USB_CbGeneric pCbSuspend);
+void       USB_SetCb_WakeUp      (USB_CbGeneric pCbWakeUp);
+void       USB_SetCb_SOF         (USB_CbGeneric pCbSOF);
+void       USB_SetCb_Error       (USB_CbError pCbError);
+void       USB_SetCb_Ep          (U32 aNumber, USB_CbEp pCbEp);
+void       USB_Init              (U32 aCtrlEpMaxPacketSize);
+void       USB_DeInit            (void);
+void       USB_Connect           (FW_BOOLEAN aConnnect);
+void       USB_Reset             (void);
+void       USB_PreapareReConfig  (void);
+void       USB_Suspend           (void);
+void       USB_Resume            (void);
+void       USB_WakeUp            (void);
+void       USB_WakeUpConfigure   (U32 aConfig);
+void       USB_SetAddress        (U32 aAddress);
+void       USB_Configure         (U32 aConfig);
+void       USB_EpConfigure       (
+                                   U8 aAddress,
+                                   U16 aMaxPacketSize,
+                                   USB_EP_TYPE aType
+                                 );
+void       USB_EpDirCtrl         (U32 aDirection);
+void       USB_EpEnable          (U32 aNumber);
+void       USB_EpDisable         (U32 aNumber);
+void       USB_EpReset           (U32 aNumber);
+void       USB_EpSetStall        (U32 aNumber);
+void       USB_EpClrStall        (U32 aNumber);
+U32        USB_EpRead            (U32 aNumber, U8 *pData, U32 aSize);
+U32        USB_EpWrite           (U32 aNumber, U8 *pData, U32 aSize);
+U32        USB_EpReadWsCb        (
+                                   U32 aNumber,
+                                   USB_CbByte pPutByteCb,
+                                   U32 aSize
+                                 );
+U32        USB_EpWriteWsCb       (
+                                   U32 aNumber,
+                                   USB_CbByte pGetByteCb,
+                                   U32 aSize
+                                 );
+FW_BOOLEAN USB_EpIsRxEmpty       (U32 aNumber);
+U32        USB_GetFrame          (void);
+FW_BOOLEAN USB_EpIsTxEmpty       (U32 aNumber);
 /* Interrupt Handler Declaration */
-void USB_IRQHandler        (void);
+void       USB_IRQHandler        (void);
 
 #endif  /* __USBHW_H__ */

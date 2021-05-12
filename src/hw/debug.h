@@ -1,16 +1,22 @@
-#ifndef __H_DUART_H__
-#define __H_DUART_H__
+#ifndef __H_DEBUG_H__
+#define __H_DEBUG_H__
 
 #include <stdio.h>
 
-#define ENABLE_DEBUG
+#define DBG_ENABLE
 
-#ifdef ENABLE_DEBUG
-#  define LOG(...)      printf(__VA_ARGS__)
+#ifdef DBG_ENABLE
+#  define DBG(...)    printf(__VA_ARGS__)
 #else
-#  define LOG(...)
+#  define DBG(...)
 #endif
 
-void Debug_Init(void);
+void DBG_Init(void);
+void DBG_SetDefaultColors(void);
+void DBG_ClearScreen(void);
+void DBG_SetTextColorRed(void);
+void DBG_SetTextColorGreen(void);
+void DBG_SetTextColorYellow(void);
+void DBG_SetTextColorBlue(void);
 
-#endif //__H_DUART_H__
+#endif //__H_DEBUG_H__
