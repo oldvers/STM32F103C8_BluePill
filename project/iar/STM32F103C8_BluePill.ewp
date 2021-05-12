@@ -32,11 +32,11 @@
                 </option>
                 <option>
                     <name>Input description</name>
-                    <state>Full formatting.</state>
+                    <state>Full formatting, without multibyte support.</state>
                 </option>
                 <option>
                     <name>Output description</name>
-                    <state>Full formatting.</state>
+                    <state>Full formatting, without multibyte support.</state>
                 </option>
                 <option>
                     <name>GOutputBinary</name>
@@ -82,7 +82,7 @@
                 </option>
                 <option>
                     <name>GenLowLevelInterface</name>
-                    <state>0</state>
+                    <state>1</state>
                 </option>
                 <option>
                     <name>GEndianModeBE</name>
@@ -217,6 +217,7 @@
                     <name>CCDefines</name>
                     <state>STM32F103xB</state>
                     <state>STM32F10X_MD</state>
+                    <state>DBG_RTT</state>
                 </option>
                 <option>
                     <name>CCPreprocFile</name>
@@ -348,10 +349,8 @@
                     <state>$PROJ_DIR$\..\..\src\lib\freertos\Source\include</state>
                     <state>$PROJ_DIR$\..\..\src\hw</state>
                     <state>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\usb</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\usb\msc</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\usb\hid</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\usb\cdc</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\rtt</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\rtt\config</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1038,6 +1037,9 @@
             <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include\stm32f103xb.h</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Source\Templates\iar\linker\stm32f103xb_flash.icf</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include\stm32f1xx.h</name>
         </file>
         <file>
@@ -1050,10 +1052,16 @@
     <group>
         <name>Hardware</name>
         <file>
+            <name>$PROJ_DIR$\..\..\src\hw\board.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\hw\debug.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\debug.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\gpio.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\gpio.h</name>
@@ -1129,66 +1137,18 @@
         </file>
     </group>
     <group>
-        <name>USB</name>
+        <name>RTT</name>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\cdc.c</name>
+            <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\cdc.h</name>
+            <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\cdc_defs.h</name>
+            <name>$PROJ_DIR$\..\..\src\lib\rtt\config\SEGGER_RTT_Conf.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\east.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\east.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\hid\hid.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\hid\hid.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\hid\hid_defs.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\msc\msc.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\msc\msc.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\msc\msc_defs.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\usb_cfg.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\usb_core.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\usb_core.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\usb_defs.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\usb_descr.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\usb_descr.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\usb_device.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\usb_device.h</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\src\lib\usb\cdc\vcp.h</name>
+            <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT_printf.c</name>
         </file>
     </group>
 </project>

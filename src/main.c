@@ -5,6 +5,8 @@
 #include "gpio.h"
 #include "debug.h"
 #include "uniquedevid.h"
+#include "system.h"
+#include "debug.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -15,13 +17,17 @@
 
 void vLEDTask(void * pvParameters)
 {
-  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
-  
+  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ, 0);
+
   while(TRUE)
   {
     GPIO_Lo(GPIOC, 13);
+    DBG_SetTextColorGreen();
+    printf("LED On\r\n");
     vTaskDelay(500);
     GPIO_Hi(GPIOC, 13);
+    DBG_SetTextColorRed();
+    printf("LED Off\r\n");
     vTaskDelay(500);
   }
   //vTaskDelete(NULL);
@@ -61,14 +67,21 @@ void vVCPTask(void * pvParameters)
 
 int main(void)
 {
-  LOG("STM32F103C8 Started!\r\n");
-  LOG("ID0 = 0x%04X\r\n", UDID_0);
-  LOG("ID1 = 0x%04X\r\n", UDID_1);
-  LOG("ID2 = 0x%08X\r\n", UDID_2);
-  LOG("ID2 = 0x%08X\r\n", UDID_3);
-  LOG("Memory Size = %d kB\r\n", FLASH_SIZE);
-  LOG("SysClock = %d Hz\r\n", SystemCoreClock);
-  
+  DBG_Init();
+  DBG_ClearScreen();
+  DBG_SetDefaultColors();
+
+  printf("STM32F103C8 Started!\r\n");
+  printf("ID0         = 0x%04X\r\n", UDID_0);
+  printf("ID1         = 0x%04X\r\n", UDID_1);
+  printf("ID2         = 0x%08X\r\n", UDID_2);
+  printf("ID2         = 0x%08X\r\n", UDID_3);
+  printf("Memory Size = %d kB\r\n", FLASH_SIZE);
+  printf("CPU clock   = %d Hz\r\n", CPUClock);
+  printf("AHB clock   = %d Hz\r\n", AHBClock);
+  printf("APB1 clock  = %d Hz\r\n", APB1Clock);
+  printf("APB2 clock  = %d Hz\r\n", APB2Clock);
+
   USBD_Init();
   
 //  GPIO_Init(GPIOB, 6, GPIO_TYPE_OUT_PP_2MHZ);
@@ -81,28 +94,10 @@ int main(void)
 
   vTaskStartScheduler();
 
-  while(TRUE) {};
+  while (FW_TRUE) {};
 }
 
-void Fault(U32 stack[])
+void on_error(void)
 {
-  enum {r0, r1, r2, r3, r12, lr, pc, psr};
-  
-  LOG("Hard Fault\r\n");
-  LOG("  SHCSR    = 0x%08x\r\n", SCB->SHCSR);
-  LOG("  CFSR     = 0x%08x\r\n", SCB->CFSR);
-  LOG("  HFSR     = 0x%08x\r\n", SCB->HFSR);
-  LOG("  MMFAR    = 0x%08x\r\n", SCB->MMFAR);
-  LOG("  BFAR     = 0x%08x\r\n", SCB->BFAR);  
-
-  LOG("  R0       = 0x%08x\r\n", stack[r0]);
-  LOG("  R1       = 0x%08x\r\n", stack[r1]);
-  LOG("  R2       = 0x%08x\r\n", stack[r2]);
-  LOG("  R3       = 0x%08x\r\n", stack[r3]);
-  LOG("  R12      = 0x%08x\r\n", stack[r12]);
-  LOG("  LR [R14] = 0x%08x - Subroutine call return address\r\n", stack[lr]);
-  LOG("  PC [R15] = 0x%08x - Program counter\r\n", stack[pc]);
-  LOG("  PSR      = 0x%08x\r\n", stack[psr]);
-
-  while(TRUE) {};
+  while (FW_TRUE) {};
 }
