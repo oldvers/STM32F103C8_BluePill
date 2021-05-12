@@ -150,7 +150,6 @@ USB_CTRL_STAGE HID_CtrlOutReq
  */
 void HID_IrqInReq(U32 aEvent)
 {
-  //USB_EpWrite(USB_HID_EP_IRQ_IN, &gIReport, sizeof(gIReport));
   DBG("HID IRQ IN\r\n");
 }
 

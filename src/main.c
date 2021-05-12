@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "board.h"
 #include "stm32f1xx.h"
 #include "types.h"
 #include "gpio.h"
@@ -17,17 +18,13 @@
 
 void vLEDTask(void * pvParameters)
 {
-  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ, 0);
-
-  while(TRUE)
+  while (FW_TRUE)
   {
-    GPIO_Lo(GPIOC, 13);
     DBG_SetTextColorGreen();
-    printf("LED On\r\n");
+    //printf("LED On\r\n");
     vTaskDelay(500);
-    GPIO_Hi(GPIOC, 13);
     DBG_SetTextColorRed();
-    printf("LED Off\r\n");
+    //printf("LED Off\r\n");
     vTaskDelay(500);
   }
   //vTaskDelete(NULL);
@@ -38,26 +35,38 @@ void vVCPTask(void * pvParameters)
   U8  Rx[130];
   U16 RxLen = 0;
   U32 time;
-  
-  if (TRUE == VCP_Open())
+
+  /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
+  GPIO_Init(USB_PUP_PORT, USB_PUP_PIN, GPIO_TYPE_OUT_OD_2MHZ, 1);
+
+  /* Delay */
+  vTaskDelay(200);
+
+  /* Init USB. Switch-on 1k5 PullUp to USB D+ - connect USB device */
+  USBD_Init();
+  GPIO_Lo(USB_PUP_PORT, USB_PUP_PIN);
+
+  vTaskDelay(5000);
+
+  if (FW_TRUE == VCP_Open())
   {
-    while(TRUE)
+    while (FW_TRUE)
     {
       RxLen = VCP_Read(Rx, sizeof(Rx), 5000);
       if (0 < RxLen)
       {
-        LOG("VCP Rx: len = %d\r\n", RxLen);
-        LOG("VCP Rx: ");
-        for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
-        LOG("\r\n");
+        DBG("VCP Rx: len = %d\r\n", RxLen);
+        DBG("VCP Rx: ");
+        for (U8 i = 0; i < RxLen; i++) DBG("%02X ", Rx[i]);
+        DBG("\r\n");
 
         time = xTaskGetTickCount();
         VCP_Write(Rx, RxLen, 5000);
-        LOG("VCP Tx: time = %d\r\n", xTaskGetTickCount() - time);
+        DBG("VCP Tx: time = %d\r\n", xTaskGetTickCount() - time);
       }
       else
       {
-        LOG("VCP Rx: Timout\r\n");
+        DBG("VCP Rx: Timout\r\n");
       }
     }
   }
@@ -82,15 +91,32 @@ int main(void)
   printf("APB1 clock  = %d Hz\r\n", APB1Clock);
   printf("APB2 clock  = %d Hz\r\n", APB2Clock);
 
-  USBD_Init();
-  
+//  USBD_Init();
+
 //  GPIO_Init(GPIOB, 6, GPIO_TYPE_OUT_PP_2MHZ);
 //  GPIO_Lo(GPIOB, 6);
 //  GPIO_Init(GPIOB, 8, GPIO_TYPE_OUT_PP_2MHZ);
 //  GPIO_Hi(GPIOB, 8);
-  
-  xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
-  xTaskCreate(vVCPTask,"VCPTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+
+  xTaskCreate
+  (
+    vLEDTask,
+    "LEDTask",
+    configMINIMAL_STACK_SIZE,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  );
+
+  xTaskCreate
+  (
+    vVCPTask,
+    "VCPTask",
+    configMINIMAL_STACK_SIZE * 4,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  );
 
   vTaskStartScheduler();
 

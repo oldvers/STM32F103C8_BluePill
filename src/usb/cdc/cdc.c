@@ -3,7 +3,7 @@
 #include "usb.h"
 //#include "usb_config.h"
 #include "usb_definitions.h"
-#include "usb_control.h"
+#include "usb_descriptor.h"
 #include "usb_cdc_definitions.h"
 #include "cdc.h"
 
@@ -58,23 +58,8 @@ typedef __packed struct _CDC_SERIAL_STATE
 
 //-----------------------------------------------------------------------------
 /* Global Variables */
-static CDC_LINE_CODING   gLineCoding =
-{
-  115200, /* dwBaudRate */
-  0,      /* bCharFormat */
-  0,      /* bParityType */
-  8,      /* bDataBits */
-};
-static CDC_SERIAL_STATE  gNotification =
-{
-  /* bmRequestType */
-  {REQUEST_TO_INTERFACE, REQUEST_CLASS, REQUEST_DEVICE_TO_HOST},
-  CDC_NTF_SERIAL_STATE, /* bNotification */
-  0,                    /* wValue */
-  USB_CDC_IF_NUM0,      /* wIndex */
-  2,                    /* wLength */
-  0,                    /* Data */
-};
+static CDC_LINE_CODING   gLineCoding = {0};
+static CDC_SERIAL_STATE  gNotification = {0};
 static U8                gOBuffer[USB_CDC_PACKET_SIZE];
 static U8                gIBuffer[USB_CDC_PACKET_SIZE];
 static U8               *gIrqBuff = NULL;
@@ -83,7 +68,7 @@ static SemaphoreHandle_t gVcpSemRx = NULL;
 static SemaphoreHandle_t gVcpMutRx = NULL;
 static SemaphoreHandle_t gVcpSemTx = NULL;
 static SemaphoreHandle_t gVcpMutTx = NULL;
-static U8                gVcpReading = FALSE;
+static FW_BOOLEAN        gVcpReading = FW_FALSE;
 static EAST_STATE        gVcpRxState;
 static EAST_STATE        gVcpTxState;
 
@@ -112,8 +97,8 @@ void cdc_IrqInStage(void)
     len = gIrqBuffLen;
   }
 
-  LOG("CDC IRQ IN: len = %d\r\n", len);
-  USB_EpWrite(USB_CDC_EP_IRQ_IN, gIrqBuff, len);
+  DBG("CDC IRQ IN: len = %d\r\n", len);
+  USBD_CDC_IrqEndPointWr(gIrqBuff, len);
 
   gIrqBuff += len;
   gIrqBuffLen -= len;
@@ -155,17 +140,17 @@ USB_CTRL_STAGE CDC_CtrlSetupReq
   switch (pSetup->bRequest)
   {
     case CDC_REQ_SET_LINE_CODING:
-      LOG("CDC Setup: Set Line Coding: Len = %d\r\n", *pSize);
+      DBG("CDC Setup: Set Line Coding: Len = %d\r\n", *pSize);
       *pData = (U8 *)&gLineCoding;
       result = USB_CTRL_STAGE_WAIT;
       break;
     case CDC_REQ_GET_LINE_CODING:
-      LOG("CDC Setup: Get Line Coding\r\n");
+      DBG("CDC Setup: Get Line Coding\r\n");
       *pData = (U8 *)&gLineCoding;
       result = USB_CTRL_STAGE_DATA;
       break;
     case CDC_REQ_SET_CONTROL_LINE_STATE:
-      LOG("CDC Setup: Set Ctrl Line State\r\n");
+      DBG("CDC Setup: Set Ctrl Line State\r\n");
       result = USB_CTRL_STAGE_STATUS;
       break;
   }
@@ -193,7 +178,12 @@ USB_CTRL_STAGE CDC_CtrlOutReq
   switch (pSetup->bRequest)
   {
     case CDC_REQ_SET_LINE_CODING:
-      LOG("CDC Out: Set Line Coding: Baud = %d, Len = %d\r\n", gLineCoding.dwBaudRate, *pSize);
+      DBG
+      (
+        "CDC Out: Set Line Coding: Baud = %d, Len = %d\r\n",
+        gLineCoding.dwBaudRate,
+        *pSize
+      );
       result = USB_CTRL_STAGE_STATUS;
       break;
   }
@@ -206,7 +196,7 @@ USB_CTRL_STAGE CDC_CtrlOutReq
  *  @param aEvent - Event
  *  @return None
  */
-void cdc_InterruptIn(U32 aEvent)
+void CDC_InterruptIn(U32 aEvent)
 {
   cdc_IrqInStage();
 }
@@ -216,7 +206,7 @@ void cdc_InterruptIn(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
-void cdc_BulkIn(U32 aEvent)
+void CDC_BulkIn(U32 aEvent)
 {
   cdc_InStage();
 }
@@ -226,7 +216,7 @@ void cdc_BulkIn(U32 aEvent)
  *  @param aEvent - Event
  *  @return None
  */
-void cdc_BulkOut(U32 aEvent)
+void CDC_BulkOut(U32 aEvent)
 {
   cdc_OutStage();
 }
@@ -238,10 +228,19 @@ void cdc_BulkOut(U32 aEvent)
  */
 void CDC_Init(void)
 {
-  /* Register appropriate EP callbacks */
-  USB_SetCb_Ep(USB_CDC_EP_BULK_OUT, cdc_BulkOut);
-  USB_SetCb_Ep(USB_CDC_EP_BULK_IN,  cdc_BulkIn);
-  USB_SetCb_Ep(USB_CDC_EP_IRQ_IN,   cdc_InterruptIn);
+  gLineCoding.dwBaudRate  = 115200;
+  gLineCoding.bCharFormat = 0;
+  gLineCoding.bParityType = 0;
+  gLineCoding.bDataBits   = 8;
+
+  gNotification.bmRequestType.BM.Recipient = REQUEST_TO_INTERFACE;
+  gNotification.bmRequestType.BM.Type      = REQUEST_CLASS;
+  gNotification.bmRequestType.BM.Dir       = REQUEST_DEVICE_TO_HOST;
+  gNotification.bNotification              = CDC_NTF_SERIAL_STATE;
+  gNotification.wValue                     = 0;
+  gNotification.wIndex                     = USBD_CDC_GetInterfaceNumber();
+  gNotification.wLength                    = 2;
+  gNotification.Data.Raw                   = 0;
 
   /* Create Semaphores/Mutex for VCP */
   gVcpSemRx = xSemaphoreCreateBinary();
@@ -255,19 +254,19 @@ void CDC_Init(void)
  *  @param None
  *  @return TRUE - Port opened, FALSE - Error
  */
-U32 VCP_Open(void)
+FW_BOOLEAN VCP_Open(void)
 {
   /* Check if VCP Semaphore/Mutex were created successfuly */
   if ( (NULL == gVcpSemRx) || (NULL == gVcpMutRx) ||
        (NULL == gVcpSemTx) || (NULL == gVcpMutTx) )
   {
-    return FALSE;
+    return FW_FALSE;
   }
 
   /* Indicate that there is no reading in progress */
-  gVcpReading = FALSE;
+  gVcpReading = FW_FALSE;
 
-  return TRUE;
+  return FW_TRUE;
 }
 
 //-----------------------------------------------------------------------------
@@ -278,7 +277,7 @@ U32 VCP_Open(void)
 void cdc_OutCompleted(void)
 {
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  gVcpReading = FALSE;
+  gVcpReading = FW_FALSE;
   xSemaphoreGiveFromISR(gVcpSemRx, &xHigherPriorityTaskWoken);
 }
 
@@ -292,17 +291,17 @@ void cdc_OutStage(void)
   U32 len, i = 0;
 
   /* Read from OUT EP */
-  len = USB_EpRead(USB_CDC_EP_BULK_OUT, gOBuffer);
-  LOG("CDC OUT: len = %d\r\n", len);
+  len = USBD_CDC_OEndPointRd(gOBuffer, USB_CDC_PACKET_SIZE);
+  DBG("CDC OUT: len = %d\r\n", len);
 
   /* If there is no reading in progress - ignore */
-  LOG(" EAST Rx:");
-  while ((TRUE == gVcpReading) && (i < len))
+  DBG(" EAST Rx:");
+  while ((FW_TRUE == gVcpReading) && (i < len))
   {
-    LOG(" %0.2X", gOBuffer[i]);
+    DBG(" %0.2X", gOBuffer[i]);
     EAST_PutByte(&gVcpRxState, gOBuffer[i++]);
   }
-  LOG("\r\n");
+  DBG("\r\n");
 }
 
 //-----------------------------------------------------------------------------
@@ -329,7 +328,7 @@ U32 VCP_Read(U8 * pData, U32 aSize, U32 aTimeout)
   gVcpRxState.OnComplete = cdc_OutCompleted;
 
   /* Indicate VCP reading is in progress */
-  gVcpReading = TRUE;
+  gVcpReading = FW_TRUE;
 
   /* Wait for Rx Complete */
   if (pdTRUE == xSemaphoreTake(gVcpSemRx, aTimeout))
@@ -366,22 +365,22 @@ void cdc_InStage(void)
 {
   U8 data, len = 0;
 
-  LOG(" EAST Tx:");
+  DBG(" EAST Tx:");
   while
   (
     (len < USB_CDC_PACKET_SIZE) &&
-    (TRUE == EAST_GetByte(&gVcpTxState, &data))
+    (FW_TRUE == EAST_GetByte(&gVcpTxState, &data))
   )
   {
-    LOG(" %0.2X", data);
+    DBG(" %0.2X", data);
     gIBuffer[len++] = data;
   }
-  LOG("\r\n");
+  DBG("\r\n");
 
   if (0 < len)
   {
-    len = USB_EpWrite(USB_CDC_EP_BULK_IN, gIBuffer, len);
-    LOG("CDC IN: len = %d\r\n", len);
+    len = USBD_CDC_IEndPointWr(gIBuffer, len);
+    DBG("CDC IN: len = %d\r\n", len);
   }
 }
 
@@ -433,5 +432,5 @@ U32 VCP_Write(U8 * pData, U32 aSize, U32 aTimeout)
 void VCP_Close(void)
 {
   /* Indicate that there is no reading in progress */
-  gVcpReading = FALSE;
+  gVcpReading = FW_FALSE;
 }

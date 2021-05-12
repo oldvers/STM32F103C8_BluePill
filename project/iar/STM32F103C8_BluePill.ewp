@@ -1166,6 +1166,15 @@
             <file>
                 <name>$PROJ_DIR$\..\..\src\usb\cdc\cdc.h</name>
             </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\east.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\east.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\vcp.h</name>
+            </file>
         </group>
         <group>
             <name>Core</name>

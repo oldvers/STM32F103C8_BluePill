@@ -110,6 +110,49 @@ void USBD_MSC_OEndPointSetStall(void)
 
 /* -------------------------------------------------------------------------- */
 
+U8 USBD_CDC_GetInterfaceNumber(void)
+{
+  return USB_INTERFACE_IDX_CDC_IRQ;
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_CDC_IrqEndPointWr(U8 *pData, U8 aSize)
+{
+  return USBD_EndPointWr
+         (
+           USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_IRQ),
+           pData,
+           aSize
+         );
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_CDC_IEndPointWr(U8 *pData, U8 aSize)
+{
+  return USBD_EndPointWr
+         (
+           USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_DATA),
+           pData,
+           aSize
+         );
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_CDC_OEndPointRd(U8 *pData, U8 aSize)
+{
+  return USBD_EndPointRd
+         (
+           USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDC_DATA),
+           pData,
+           aSize
+         );
+}
+
+/* -------------------------------------------------------------------------- */
+
 void USBD_MSC_IEndPointSetStall(void)
 {
   USBD_EndPointSetStall(USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC));
@@ -147,7 +190,7 @@ static const U8 USB_ConfigDescriptor[] =
   WBVAL((                                /* wTotalLength */
    USB_CONFIGURATION_DESCRIPTOR_SIZE  * (1)                              +
    USB_INTERFACE_DESCRIPTOR_SIZE      * (USB_INTERFACE_IDX_CNT)          +
-   USB_ENDPOINT_DESCRIPTOR_SIZE       * (5)                              +
+   USB_ENDPOINT_DESCRIPTOR_SIZE       * (6)                              +
    USB_IF_ASSOCIATION_DESCRIPTOR_SIZE * (2)                              +
    USB_HID_DESCRIPTOR_SIZE            * (1)                              +
    CDC_FNC_DESC_SUM_SIZE              * (1)
@@ -230,7 +273,7 @@ static const U8 USB_ConfigDescriptor[] =
   USB_ENDPOINT_TYPE_INTERRUPT,           /* bmAttributes */
   WBVAL(USB_CDC_IRQ_PACKET_SIZE),        /* wMaxPacketSize */
   USB_CDC_IRQ_INTERVAL,                  /* bInterval */
-/* Data Class Interface Descriptor */
+/* Interface 2, Data Class Interface Descriptor */
   USB_INTERFACE_DESCRIPTOR_SIZE,         /* bLength */
   USB_INTERFACE_DESCRIPTOR_TYPE,         /* bDescriptorType */
   USB_INTERFACE_IDX_CDC_DATA,            /* bInterfaceNumber */
@@ -263,7 +306,7 @@ static const U8 USB_ConfigDescriptor[] =
 	HID_SUBCLASS_NONE,                     /* bFunctionSubClass */
 	HID_PROTOCOL_NONE,                     /* bFunctionProtocol */
 	STR_DESCRIPTOR_IDX_HID,                /* iFunction (String descr. index) */
-/* Interface 2, Alternate Setting 0, HID Class */
+/* Interface 3, Alternate Setting 0, HID Class */
   USB_INTERFACE_DESCRIPTOR_SIZE,         /* bLength */
   USB_INTERFACE_DESCRIPTOR_TYPE,         /* bDescriptorType */
   USB_INTERFACE_IDX_HID,                 /* bInterfaceNumber */
@@ -509,6 +552,28 @@ const USBD_INTERFACE_CALLBACKS_DESCRIPTOR
     .CbEndPointO = MSC_BulkOut,
     .EndPointI   = USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC),
     .EndPointO   = USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC),
+  },
+  [USB_INTERFACE_IDX_CDC_IRQ] =
+  {
+    .CbInit      = CDC_Init,
+    .CbCtrlSetup = CDC_CtrlSetupReq,
+    .CbCtrlOut   = CDC_CtrlOutReq,
+    .CbSOF       = NULL,
+    .CbEndPointI = CDC_InterruptIn,
+    .CbEndPointO = NULL,
+    .EndPointI   = USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_IRQ),
+    .EndPointO   = 0,
+  },
+  [USB_INTERFACE_IDX_CDC_DATA] =
+  {
+    .CbInit      = NULL,
+    .CbCtrlSetup = NULL,
+    .CbCtrlOut   = NULL,
+    .CbSOF       = NULL,
+    .CbEndPointI = CDC_BulkIn,
+    .CbEndPointO = CDC_BulkOut,
+    .EndPointI   = USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_DATA),
+    .EndPointO   = USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDC_DATA),
   },
   [USB_INTERFACE_IDX_HID] =
   {
