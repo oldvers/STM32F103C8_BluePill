@@ -364,3 +364,18 @@ void USBD_EndPointClrStall(U8 aNumber)
 }
 
 /* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN USBD_EndPointIsRxEmpty(U8 aNumber)
+{
+  return USB_EpIsRxEmpty(aNumber);
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN USBD_EndPointIsTxEmpty(U8 aNumber)
+{
+  return USB_EpIsTxEmpty(aNumber);
+}
+
+/* -------------------------------------------------------------------------- */
+

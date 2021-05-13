@@ -430,9 +430,7 @@ static void cdc_ProcessCollectedData(CDC_PORT * pPort)
 void CDC_SOF(void)
 {
   cdc_ProcessCollectedData(&gPortA);
-#if (USB_CDD)
   cdc_ProcessCollectedData(&gPortB);
-#endif
 }
 
 //-----------------------------------------------------------------------------
