@@ -36,34 +36,6 @@ typedef enum
 
 /* -------------------------------------------------------------------------- */
 
-U8 USBD_MSC_IEndPointWr(U8 *pData, U8 aSize)
-{
-  return USBD_EndPointWr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC), pData, aSize);
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 USBD_MSC_OEndPointRd(U8 *pData, U8 aSize)
-{
-  return USBD_EndPointRd(USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC), pData, aSize);
-}
-
-/* -------------------------------------------------------------------------- */
-
-void USBD_MSC_OEndPointSetStall(void)
-{
-  USBD_EndPointSetStall(USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC));
-}
-
-/* -------------------------------------------------------------------------- */
-
-void USBD_MSC_IEndPointSetStall(void)
-{
-  USBD_EndPointSetStall(USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC));
-}
-
-/* -------------------------------------------------------------------------- */
-
 /* USB Standard Device Descriptor */
 static const U8 USB_DeviceDescriptor[] =
 {
@@ -204,7 +176,7 @@ static const U8 usbd_StrDescriptor_SerialNumber[] =
   '0', 0,
 };
 
-static const U8 usbd_StrDescriptor_HID[] =
+static const U8 usbd_StrDescriptor_MSC[] =
 {
   0x0E,                                  /* bLength */
   USB_STRING_DESCRIPTOR_TYPE,            /* bDescriptorType */
@@ -222,7 +194,7 @@ static const U8 * usbd_StrDescriptor[STR_DESCRIPTOR_IDX_CNT] =
   usbd_StrDescriptor_Manufacturer,
   usbd_StrDescriptor_Product,
   usbd_StrDescriptor_SerialNumber,
-  usbd_StrDescriptor_HID,
+  usbd_StrDescriptor_MSC,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -294,126 +266,29 @@ const USBD_INTERFACE_CALLBACKS_DESCRIPTOR
 
 /* -------------------------------------------------------------------------- */
 
+U8 USBD_MSC_IEndPointWr(U8 *pData, U8 aSize)
+{
+  return USBD_EP_Wr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC), pData, aSize);
+}
 
-//static const U8 USB_StringDescriptor[] =
-//{
-///* Index 0x00: LANGID Codes */
-//  0x04,                              /* bLength */
-//  USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
-//  WBVAL(0x0409), /* US English */    /* wLANGID */
-///* Index 0x04: Manufacturer */
-//  0x1C,                              /* bLength */
-//  USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
-//  'K',0,
-//  'e',0,
-//  'i',0,
-//  'l',0,
-//  ' ',0,
-//  'S',0,
-//  'o',0,
-//  'f',0,
-//  't',0,
-//  'w',0,
-//  'a',0,
-//  'r',0,
-//  'e',0,
-///* Index 0x20: Product */
-//  0x2A,                              /* bLength */
-//  USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
-//  'K',0,
-//  'e',0,
-//  'i',0,
-//  'l',0,
-//  ' ',0,
-//  'M',0,
-//  'C',0,
-//  'B',0,
-//  'S',0,
-//  'T',0,
-//  'M',0,
-//  '3',0,
-//  '2',0,
-//  ' ',0,
-//  'M',0,
-//  'e',0,
-//  'm',0,
-//  'o',0,
-//  'r',0,
-//  'y',0,
-///* Index 0x4A: Serial Number */
-//  0x1A,                              /* bLength */
-//  USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
-//  'D',0,
-//  'E',0,
-//  'M',0,
-//  'O',0,
-//  ' ',0,
-//  '0',0,
-//  '1',0,
-//  '.',0,
-//  '0',0,
-//  '0',0,
-//  ' ',0,
-//  ' ',0,
-///* Index 0x64: Interface 0, Alternate Setting 0 */
-//  0x0E,                              /* bLength */
-//  USB_STRING_DESCRIPTOR_TYPE,        /* bDescriptorType */
-//  'M',0,
-//  'e',0,
-//  'm',0,
-//  'o',0,
-//  'r',0,
-//  'y',0,
-//};
-//
-////-----------------------------------------------------------------------------
-//U8 *USB_GetDeviceDescriptor(void)
-//{
-//  return (U8 *)USB_DeviceDescriptor;
-//};
-//
-////-----------------------------------------------------------------------------
-//U8 *USB_GetConfigDescriptor(void)
-//{
-//  return (U8 *)USB_ConfigDescriptor;
-//};
-//
-////-----------------------------------------------------------------------------
-//U8 *USB_GetStringDescriptor(void)
-//{
-//  return (U8 *)USB_StringDescriptor;
-//}
-//
-////-----------------------------------------------------------------------------
-//U32 USB_GetItrfaceDescriptor(USB_SETUP_PACKET * pSetup, U8 **pData, U16 *pSize)
-//{
-//  U32 result = FALSE;
-//
-//  switch (pSetup->wValue.WB.H)
-//  {
-////#if USB_HID
-////    case HID_HID_DESCRIPTOR_TYPE:
-////      if (pSetup.wIndex.WB.L == USB_HID_IF_NUM)
-////      {
-////        *pData = (U8 *)USB_ConfigDescriptor + HID_DESC_OFFSET;
-////        *pSize = HID_DESC_SIZE;
-////        result = TRUE;
-////      }
-////      break;
-////    case HID_REPORT_DESCRIPTOR_TYPE:
-////      if (pSetup.wIndex.WB.L == USB_HID_IF_NUM)
-////      {
-////        *pData = (U8 *)HID_ReportDescriptor;
-////        *pSize = HID_ReportDescSize;
-////        result = TRUE;
-////      }
-////      break;
-////    case HID_PHYSICAL_DESCRIPTOR_TYPE:
-////      break;
-////#endif
-//    default:
-//      break;
-//  }
-//
-//  return result;
-//}
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_MSC_OEndPointRd(U8 *pData, U8 aSize)
+{
+  return USBD_EP_Rd(USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC), pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USBD_MSC_OEndPointSetStall(void)
+{
+  USBD_EP_SetStall(USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC));
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USBD_MSC_IEndPointSetStall(void)
+{
+  USBD_EP_SetStall(USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC));
+}
+
