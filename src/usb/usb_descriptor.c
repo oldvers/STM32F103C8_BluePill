@@ -82,84 +82,6 @@ const U8 USB_HID_ReportDescriptor[] =
 
 /* -------------------------------------------------------------------------- */
 
-U8 USBD_HID_InEndPointWr(U8 *pData, U8 aSize)
-{
-  return USBD_EndPointWr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_HID), pData, aSize);
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 USBD_MSC_IEndPointWr(U8 *pData, U8 aSize)
-{
-  return USBD_EndPointWr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC), pData, aSize);
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 USBD_MSC_OEndPointRd(U8 *pData, U8 aSize)
-{
-  return USBD_EndPointRd(USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC), pData, aSize);
-}
-
-/* -------------------------------------------------------------------------- */
-
-void USBD_MSC_OEndPointSetStall(void)
-{
-  USBD_EndPointSetStall(USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC));
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 USBD_CDC_GetInterfaceNumber(void)
-{
-  return USB_INTERFACE_IDX_CDC_IRQ;
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 USBD_CDC_IrqEndPointWr(U8 *pData, U8 aSize)
-{
-  return USBD_EndPointWr
-         (
-           USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_IRQ),
-           pData,
-           aSize
-         );
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 USBD_CDC_IEndPointWr(U8 *pData, U8 aSize)
-{
-  return USBD_EndPointWr
-         (
-           USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_DATA),
-           pData,
-           aSize
-         );
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 USBD_CDC_OEndPointRd(U8 *pData, U8 aSize)
-{
-  return USBD_EndPointRd
-         (
-           USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDC_DATA),
-           pData,
-           aSize
-         );
-}
-
-/* -------------------------------------------------------------------------- */
-
-void USBD_MSC_IEndPointSetStall(void)
-{
-  USBD_EndPointSetStall(USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC));
-}
-
-/* -------------------------------------------------------------------------- */
-
 /* USB Standard Device Descriptor */
 static const U8 USB_DeviceDescriptor[] =
 {
@@ -587,5 +509,68 @@ const USBD_INTERFACE_CALLBACKS_DESCRIPTOR
     .EndPointO   = 0,
   },
 };
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_HID_InEndPointWr(U8 *pData, U8 aSize)
+{
+  return USBD_EP_Wr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_HID), pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_MSC_IEndPointWr(U8 *pData, U8 aSize)
+{
+  return USBD_EP_Wr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC), pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_MSC_OEndPointRd(U8 *pData, U8 aSize)
+{
+  return USBD_EP_Rd(USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC), pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USBD_MSC_OEndPointSetStall(void)
+{
+  USBD_EP_SetStall(USB_ENDPOINT_O(USB_ENDPOINT_IDX_MSC));
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_CDC_GetInterfaceNumber(void)
+{
+  return USB_INTERFACE_IDX_CDC_IRQ;
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_CDC_IrqEndPointWr(U8 *pData, U8 aSize)
+{
+  return USBD_EP_Wr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_IRQ), pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_CDC_IEndPointWr(U8 *pData, U8 aSize)
+{
+  return USBD_EP_Wr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_DATA), pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_CDC_OEndPointRd(U8 *pData, U8 aSize)
+{
+  return USBD_EP_Rd(USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDC_DATA), pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USBD_MSC_IEndPointSetStall(void)
+{
+  USBD_EP_SetStall(USB_ENDPOINT_I(USB_ENDPOINT_IDX_MSC));
+}
 
 /* -------------------------------------------------------------------------- */
