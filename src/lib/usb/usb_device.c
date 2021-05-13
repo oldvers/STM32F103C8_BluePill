@@ -323,30 +323,30 @@ void USBD_DeInit(void)
 
 /* --- Wrappers for the low level layer to avoid cross-layer includes ------- */
 
-U8 USBD_EndPointRd(U8 aNumber, U8 *pData, U8 aSize)
+U32 USBD_EndPointRd(U8 aNumber, U8 *pData, U32 aSize)
 {
-  return (U8)USB_EpRead(aNumber, pData, aSize);
+  return USB_EpRead(aNumber, pData, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
 
-U8 USBD_EndPointWr(U8 aNumber, U8 *pData, U8 aSize)
+U32 USBD_EndPointWr(U8 aNumber, U8 *pData, U32 aSize)
 {
-  return (U8)USB_EpWrite(aNumber, pData, aSize);
+  return USB_EpWrite(aNumber, pData, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
 
-U8 USBD_EndPointRdWsCb(U8 aNumber, USBD_CbByte pPutByteCb, U8 aSize)
+U32 USBD_EndPointRdWsCb(U8 aNumber, USBD_CbByte pPutByteCb, U32 aSize)
 {
-  return (U8)USB_EpReadWsCb(aNumber, pPutByteCb, aSize);
+  return USB_EpReadWsCb(aNumber, pPutByteCb, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
 
-U8 USBD_EndPointWrWsCb(U8 aNumber, USBD_CbByte pGetByteCb, U8 aSize)
+U32 USBD_EndPointWrWsCb(U8 aNumber, USBD_CbByte pGetByteCb, U32 aSize)
 {
-  return (U8)USB_EpWriteWsCb(aNumber, pGetByteCb, aSize);
+  return USB_EpWriteWsCb(aNumber, pGetByteCb, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
