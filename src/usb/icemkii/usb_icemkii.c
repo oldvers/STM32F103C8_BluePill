@@ -93,14 +93,14 @@
 //  0,                    /* Data */
 //};
 
-STATIC FIFO_t                gRxFifo = {0};
-STATIC FIFO_t                gTxFifo = {0};
+STATIC FIFO_p  gRxFifo                                     = NULL;
+STATIC FIFO_p  gTxFifo                                     = NULL;
 //#ifdef ICEMKII_TEST_MODE
 //static U8     gRxBuffer[USB_ICEMKII_PACKET_SIZE + 1];
 //static U8     gTxBuffer[USB_ICEMKII_PACKET_SIZE + 1];
 //#else
-STATIC U8                    gRxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1] = {0};
-STATIC U8                    gTxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1] = {0};
+STATIC U8      gRxBuffer[USB_ICEMKII_PACKET_SIZE * 17 + 1] = {0};
+STATIC U8      gTxBuffer[USB_ICEMKII_PACKET_SIZE * 17 + 1] = {0};
 //#endif
 
 //static U8               *gIrqBuff = NULL;
@@ -299,8 +299,8 @@ void ICEMKII_Init(void)
   hEvtGroup = xEventGroupCreate();
 
   /* FIFOs */
-  FIFO_Init(&gRxFifo, gRxBuffer, sizeof(gRxBuffer));
-  FIFO_Init(&gTxFifo, gTxBuffer, sizeof(gTxBuffer));
+  gRxFifo = FIFO_Init(gRxBuffer, sizeof(gRxBuffer));
+  gTxFifo = FIFO_Init(gTxBuffer, sizeof(gTxBuffer));
 
 //#ifdef ICEMKII_TEST_MODE
 //  xTaskCreate
@@ -377,7 +377,7 @@ STATIC void icemkii_Put(U8 * pByte)
 {
   DBG(" %0.2X", *pByte);
   //return (U8)
-  (void)FIFO_Put(&gRxFifo, pByte);
+  (void)FIFO_Put(gRxFifo, pByte);
 }
 //typedef U8   (*USB_CbEpGet)(U8 * pByte);
 //EventBits_t uxReturned;
@@ -414,8 +414,8 @@ STATIC void icemkii_ProcessRx(void)
 //  while ( 0 );
 //#else
   /* Read from OUT EP */
-  DBG("ICEMKII OUT:\r\n   - ");
-  size = USBD_ICEMKII_OEndPointRdWsCb(icemkii_Put, FIFO_Free(&gRxFifo));
+  DBG("ICEMKII OUT:\r\n - ");
+  size = USBD_ICEMKII_OEndPointRdWsCb(icemkii_Put, FIFO_Free(gRxFifo));
   DBG(" : Len = %d\r\n", size);
 //#endif
 
@@ -516,7 +516,7 @@ FW_RESULT ICEMKII_ReadByte(U8 * pValue, U32 aTimeOutMs)
             size = USBD_ICEMKII_OEndPointRdWsCb
                    (
                      icemkii_Put,
-                     FIFO_Free(&gRxFifo)
+                     FIFO_Free(gRxFifo)
                    );
             DBG(" : Len = %d\r\n", size);
 
@@ -526,7 +526,7 @@ FW_RESULT ICEMKII_ReadByte(U8 * pValue, U32 aTimeOutMs)
 
         if (0 != (uxReturned & ICEMKII_RX_READY))
         {
-            size = FIFO_Get(&gRxFifo, pValue);
+            size = FIFO_Get(gRxFifo, pValue);
             DBG("  - %0.2X\r\n", result);
 
             if (FW_EMPTY == size)
