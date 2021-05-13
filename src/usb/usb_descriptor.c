@@ -39,49 +39,6 @@ typedef enum
 
 /* -------------------------------------------------------------------------- */
 
-U8 USBD_CDC_GetInterfaceNumber(void)
-{
-  return USB_INTERFACE_IDX_CDC_IRQ;
-}
-
-/* -------------------------------------------------------------------------- */
-
-U32 USBD_CDC_IrqEndPointWr(U8 *pData, U32 aSize)
-{
-  return USBD_EndPointWr
-         (
-           USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_IRQ),
-           pData,
-           aSize
-         );
-}
-
-/* -------------------------------------------------------------------------- */
-
-U32 USBD_CDC_IEndPointWr(U8 *pData, U32 aSize)
-{
-  return USBD_EndPointWr
-         (
-           USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_DATA),
-           pData,
-           aSize
-         );
-}
-
-/* -------------------------------------------------------------------------- */
-
-U32 USBD_CDC_OEndPointRd(U8 *pData, U32 aSize)
-{
-  return USBD_EndPointRd
-         (
-           USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDC_DATA),
-           pData,
-           aSize
-         );
-}
-
-/* -------------------------------------------------------------------------- */
-
 /* USB Standard Device Descriptor */
 static const U8 USB_DeviceDescriptor[] =
 {
@@ -363,5 +320,33 @@ const USBD_INTERFACE_CALLBACKS_DESCRIPTOR
     .EndPointO   = USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDC_DATA),
   },
 };
+
+/* -------------------------------------------------------------------------- */
+
+U8 USBD_CDC_GetInterfaceNumber(void)
+{
+  return USB_INTERFACE_IDX_CDC_IRQ;
+}
+
+/* -------------------------------------------------------------------------- */
+
+U32 USBD_CDC_IrqEndPointWr(U8 *pData, U32 aSize)
+{
+  return USBD_EP_Wr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_IRQ), pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U32 USBD_CDC_IEndPointWr(U8 *pData, U32 aSize)
+{
+  return USBD_EP_Wr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_DATA), pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U32 USBD_CDC_OEndPointRd(U8 *pData, U32 aSize)
+{
+  return USBD_EP_Rd(USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDC_DATA), pData, aSize);
+}
 
 /* -------------------------------------------------------------------------- */
