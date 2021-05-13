@@ -11,7 +11,7 @@ typedef __packed struct _EAST_STATE
   U16             ActSize;
   U16             Index;
   U8              CS;
-  U8              OK;
+  FW_BOOLEAN      OK;
   U8            * Buffer;
   EAST_Completed  OnComplete;
 } EAST_STATE;

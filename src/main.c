@@ -19,7 +19,7 @@
 
 void PWM_On(U16 aPrescaler, U16 aReload, U16 aDuty)
 {
-  GPIO_Init(GPIOA, 6, GPIO_TYPE_ALT_PP_2MHZ);
+  GPIO_Init(GPIOA, 6, GPIO_TYPE_ALT_PP_2MHZ, 0);
 
   RCC->APB1ENR  |= RCC_APB1ENR_TIM3EN;
   RCC->APB1RSTR |= RCC_APB1RSTR_TIM3RST;
@@ -42,7 +42,7 @@ void PWM_Off(void)
 
   RCC->APB1ENR  &= (~RCC_APB1ENR_TIM3EN);
 
-  GPIO_Init(GPIOA, 6, GPIO_TYPE_IN_FLOATING);
+  GPIO_Init(GPIOA, 6, GPIO_TYPE_IN_FLOATING, 0);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -180,7 +180,7 @@ void vVCPTask(void * pvParameters)
   U16 RxLen = 0;
 
   /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
-  GPIO_Init(GPIOB, 2, GPIO_TYPE_OUT_OD_2MHZ);
+  GPIO_Init(GPIOB, 2, GPIO_TYPE_OUT_OD_2MHZ, 0);
   GPIO_Hi(GPIOB, 2);
 
   /* Delay */
@@ -190,27 +190,27 @@ void vVCPTask(void * pvParameters)
   USBD_Init();
   GPIO_Lo(GPIOB, 2);
 
-  GPIO_Init(GPIOA, 0, GPIO_TYPE_OUT_PP_2MHZ);
-  GPIO_Init(GPIOA, 1, GPIO_TYPE_OUT_PP_2MHZ);
-  GPIO_Init(GPIOA, 2, GPIO_TYPE_OUT_PP_2MHZ);
-  GPIO_Init(GPIOA, 3, GPIO_TYPE_OUT_PP_2MHZ);
+  GPIO_Init(GPIOA, 0, GPIO_TYPE_OUT_PP_2MHZ, 0);
+  GPIO_Init(GPIOA, 1, GPIO_TYPE_OUT_PP_2MHZ, 0);
+  GPIO_Init(GPIOA, 2, GPIO_TYPE_OUT_PP_2MHZ, 0);
+  GPIO_Init(GPIOA, 3, GPIO_TYPE_OUT_PP_2MHZ, 0);
 
-  if (TRUE == VCP_Open())
+  if (FW_TRUE == VCP_Open())
   {
-    while(TRUE)
+    while (FW_TRUE)
     {
       RxLen = VCP_Read(Rx, sizeof(Rx), 5000);
 
       if (0 == RxLen)
       {
-        LOG("VCP Rx: Timout\r\n");
+        DBG("VCP Rx: Timout\r\n");
         continue;
       }
 
-      LOG("VCP Rx: len = %d\r\n", RxLen);
-      LOG("VCP Rx: ");
-      for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
-      LOG("\r\n");
+      DBG("VCP Rx: len = %d\r\n", RxLen);
+      DBG("VCP Rx: ");
+      for (U8 i = 0; i < RxLen; i++) DBG("%02X ", Rx[i]);
+      DBG("\r\n");
 
       RxPkt = (PourReq_p)Rx;
 
