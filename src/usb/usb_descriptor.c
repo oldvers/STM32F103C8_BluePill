@@ -36,30 +36,6 @@ typedef enum
 
 /* -------------------------------------------------------------------------- */
 
-U32 USBD_ICEMKII_IEndPointWrWsCb(USBD_CbByte pGetByteCb, U32 aSize)
-{
-  return USBD_EndPointWrWsCb
-         (
-           USB_ENDPOINT_I(USB_ENDPOINT_IDX_ICEMKII),
-           pGetByteCb,
-           aSize
-         );
-}
-
-/* -------------------------------------------------------------------------- */
-
-U32 USBD_ICEMKII_OEndPointRdWsCb(USBD_CbByte pPutByteCb, U32 aSize)
-{
-  return USBD_EndPointRdWsCb
-         (
-           USB_ENDPOINT_O(USB_ENDPOINT_IDX_ICEMKII),
-           pPutByteCb,
-           aSize
-         );
-}
-
-/* -------------------------------------------------------------------------- */
-
 /* USB Standard Device Descriptor */
 static const U8 USB_DeviceDescriptor[] =
 {
@@ -256,5 +232,29 @@ const USBD_INTERFACE_CALLBACKS_DESCRIPTOR
     .EndPointO   = USB_ENDPOINT_O(USB_ENDPOINT_IDX_ICEMKII),
   },
 };
+
+/* -------------------------------------------------------------------------- */
+
+U32 USBD_ICEMKII_IEndPointWrWsCb(USBD_CbByte pGetByteCb, U32 aSize)
+{
+  return USBD_EP_WrWsCb
+         (
+           USB_ENDPOINT_I(USB_ENDPOINT_IDX_ICEMKII),
+           pGetByteCb,
+           aSize
+         );
+}
+
+/* -------------------------------------------------------------------------- */
+
+U32 USBD_ICEMKII_OEndPointRdWsCb(USBD_CbByte pPutByteCb, U32 aSize)
+{
+  return USBD_EP_RdWsCb
+         (
+           USB_ENDPOINT_O(USB_ENDPOINT_IDX_ICEMKII),
+           pPutByteCb,
+           aSize
+         );
+}
 
 /* -------------------------------------------------------------------------- */
