@@ -449,19 +449,14 @@ U8 USBD_CDD_GetInterfaceNumber(void)
 
 U32 USBD_CDC_IrqEndPointWr(U8 *pData, U32 aSize)
 {
-  return USBD_EndPointWr
-         (
-           USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_IRQ),
-           pData,
-           aSize
-         );
+  return USBD_EP_Wr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_IRQ), pData, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
 
 U32 USBD_CDC_IEndPointWrWsCb(USBD_CbByte pGetByteCb, U32 aSize)
 {
-  return USBD_EndPointWrWsCb
+  return USBD_EP_WrWsCb
          (
            USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_DATA),
            pGetByteCb,
@@ -473,14 +468,14 @@ U32 USBD_CDC_IEndPointWrWsCb(USBD_CbByte pGetByteCb, U32 aSize)
 
 FW_BOOLEAN USBD_CDC_IEndPointIsTxEmpty(void)
 {
-  return USBD_EndPointIsTxEmpty(USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_DATA));
+  return USBD_EP_IsTxEmpty(USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_DATA));
 }
 
 /* -------------------------------------------------------------------------- */
 
 U32 USBD_CDC_OEndPointRdWsCb(USBD_CbByte pPutByteCb, U32 aSize)
 {
-  return USBD_EndPointRdWsCb
+  return USBD_EP_RdWsCb
          (
            USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDC_DATA),
            pPutByteCb,
@@ -492,26 +487,21 @@ U32 USBD_CDC_OEndPointRdWsCb(USBD_CbByte pPutByteCb, U32 aSize)
 
 FW_BOOLEAN USBD_CDC_OEndPointIsRxEmpty(void)
 {
-  return USBD_EndPointIsRxEmpty(USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDC_DATA));
+  return USBD_EP_IsRxEmpty(USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDC_DATA));
 }
 
 /* -------------------------------------------------------------------------- */
 
 U32 USBD_CDD_IrqEndPointWr(U8 *pData, U32 aSize)
 {
-  return USBD_EndPointWr
-         (
-           USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDD_IRQ),
-           pData,
-           aSize
-         );
+  return USBD_EP_Wr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDD_IRQ), pData, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
 
 U32 USBD_CDD_IEndPointWrWsCb(USBD_CbByte pGetByteCb, U32 aSize)
 {
-  return USBD_EndPointWrWsCb
+  return USBD_EP_WrWsCb
          (
            USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDD_DATA),
            pGetByteCb,
@@ -523,13 +513,13 @@ U32 USBD_CDD_IEndPointWrWsCb(USBD_CbByte pGetByteCb, U32 aSize)
 
 FW_BOOLEAN USBD_CDD_IEndPointIsTxEmpty(void)
 {
-  return USBD_EndPointIsTxEmpty(USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDD_DATA));
+  return USBD_EP_IsTxEmpty(USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDD_DATA));
 }
 
 /* -------------------------------------------------------------------------- */
 U32 USBD_CDD_OEndPointRdWsCb(USBD_CbByte pPutByteCb, U32 aSize)
 {
-  return USBD_EndPointRdWsCb
+  return USBD_EP_RdWsCb
          (
            USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDD_DATA),
            pPutByteCb,
@@ -541,7 +531,7 @@ U32 USBD_CDD_OEndPointRdWsCb(USBD_CbByte pPutByteCb, U32 aSize)
 
 FW_BOOLEAN USBD_CDD_OEndPointIsRxEmpty(void)
 {
-  return USBD_EndPointIsRxEmpty(USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDD_DATA));
+  return USBD_EP_IsRxEmpty(USB_ENDPOINT_O(USB_ENDPOINT_IDX_CDD_DATA));
 }
 
 /* -------------------------------------------------------------------------- */
