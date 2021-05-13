@@ -35,3 +35,14 @@ void GPIO_Init(GPIO_TypeDef * pPort, U8 aPin, U8 aMode, U8 aValue)
   temp |= (aMode << ((aPin % 8) * 4));
   ((GPIO *)pPort)->CR[aPin / 8] = temp;
 }
+
+void GPIO_IrqEnable(GPIO_TypeDef * pPort, U8 aPin, U8 aEdgeMask)
+{
+  RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+  AFIO->EXTICR[aPin / 4] &= ~(GPIO_TYPE_MASK << ((aPin % 4) * 4));
+  AFIO->EXTICR[aPin / 4] |=
+    ((((U32)pPort >> 10) & 0x07) - 2) << ((aPin % 4) * 4);
+  SYS_BITBAND_HW(EXTI->IMR, aPin) = 1;
+  SYS_BITBAND_HW(EXTI->FTSR, aPin) = aEdgeMask;
+  SYS_BITBAND_HW(EXTI->RTSR, aPin) = (aEdgeMask >> 1);
+}

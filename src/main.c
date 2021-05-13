@@ -70,7 +70,7 @@ void WS2812_SetColor(U16 aLed, U8 aR, U8 aG, U8 aB)
     *pPwmBit = *pLed;
     pLed += 1;
     //pPwmBit += 8;
-    pPwmBit -= 8;    
+    pPwmBit -= 8;
   }
 }
 
@@ -90,7 +90,7 @@ void WS2812_InitE()
   for (i = LED_COUNT * 3 * 8; i < (LED_COUNT * 3 * 8 + 6); i++) LEDBUF[i] = 0;
   WS2812_Convert();
 
-  GPIO_Init(GPIOB, 9, GPIO_TYPE_ALT_PP_50MHZ);
+  GPIO_Init(GPIOB, 9, GPIO_TYPE_ALT_PP_50MHZ, 0);
 
   /* NVIC */
   //NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
@@ -182,7 +182,7 @@ void Fill_Rainbow(U32 sat, U32 val)
 
 void Rainbow(void)
 {
-  U32 i, loop;
+  U32 /*i,*/ loop;
 
   loop = 0;
   while (255 > loop)
@@ -190,24 +190,24 @@ void Rainbow(void)
     Fill_Rainbow(loop, loop);
     WS2812_StartE();
     vTaskDelay(100);
-    
+
     loop += 3;
   }
 
-//  loop = 0;  
+//  loop = 0;
 //  while (5 > loop)
 //  {
 //    Fill_Rainbow(200, 100);
 //    WS2812_StartE();
 //    vTaskDelay(100);
-//  
+//
 //    for (i = 0; i < LED_COUNT; i++)
 //    {
 //      WS2812_SetColor(i, 0, 0, 0);
 //    }
 //    WS2812_StartE();
 //    vTaskDelay(100);
-//    
+//
 //    loop++;
 //  }
 }
@@ -216,8 +216,8 @@ void Rainbow(void)
 void RunningPixel(void)
 {
   U32 col = 1, led = 0, x[3], loop = 0;
-  
-  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
+
+  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ, 1);
 
   x[0] = 255;
   x[1] = 0;
@@ -240,7 +240,7 @@ void RunningPixel(void)
     vTaskDelay(30);
     GPIO_Hi(GPIOC, 13);
     vTaskDelay(10);
-    
+
     loop++;
   }
 }
@@ -248,11 +248,11 @@ void RunningPixel(void)
 void BrightnessR(void)
 {
   U32 led = 0, loop = 0;
-  
-  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
+
+  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ, 1);
 
   vTaskDelay(300);
-  
+
   while (255 >= loop)
   {
     for (led = 0; led < LED_COUNT; led++)
@@ -263,9 +263,9 @@ void BrightnessR(void)
     vTaskDelay(30);
     loop++;
   }
-  
+
   vTaskDelay(300);
-  
+
   loop = 255;
   while (0 != loop)
   {
@@ -277,18 +277,18 @@ void BrightnessR(void)
     vTaskDelay(30);
     loop--;
   }
-  
+
   vTaskDelay(300);
 }
 
 void BrightnessG(void)
 {
   U32 led = 0, loop = 0;
-  
-  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
+
+  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ, 1);
 
   vTaskDelay(300);
-  
+
   while (255 >= loop)
   {
     for (led = 0; led < LED_COUNT; led++)
@@ -299,9 +299,9 @@ void BrightnessG(void)
     vTaskDelay(30);
     loop++;
   }
-  
+
   vTaskDelay(300);
-  
+
   loop = 255;
   while (0 != loop)
   {
@@ -313,18 +313,18 @@ void BrightnessG(void)
     vTaskDelay(30);
     loop--;
   }
-  
+
   vTaskDelay(300);
 }
 
 void BrightnessB(void)
 {
   U32 led = 0, loop = 0;
-  
-  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ);
+
+  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ, 1);
 
   vTaskDelay(300);
-  
+
   while (255 >= loop)
   {
     for (led = 0; led < LED_COUNT; led++)
@@ -335,9 +335,9 @@ void BrightnessB(void)
     vTaskDelay(30);
     loop++;
   }
-  
+
   vTaskDelay(300);
-  
+
   loop = 255;
   while (0 != loop)
   {
@@ -349,7 +349,7 @@ void BrightnessB(void)
     vTaskDelay(30);
     loop--;
   }
-  
+
   vTaskDelay(300);
 }
 
@@ -375,12 +375,12 @@ void vLEDTask(void * pvParameters)
 //    WS2812_SetColor(6, col, 0, 0);
 //    WS2812_SetColor(7, 0, 0, col);
 //    Fill_Rainbow(255, 120);
-  
-  
+
+
 //  U8 col = 1, led = 0, x[3];
 
   WS2812_InitE();
-  
+
 //  x[0] = 100;
 //  x[1] = 0;
 //  x[2] = 0;
@@ -427,7 +427,15 @@ int main(void)
   printf("APB1 clock  = %d Hz\r\n", APB1Clock);
   printf("APB2 clock  = %d Hz\r\n", APB2Clock);
 
-  xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+  xTaskCreate
+  (
+    vLEDTask,
+    "LEDTask",
+    configMINIMAL_STACK_SIZE,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  );
 
   vTaskStartScheduler();
 

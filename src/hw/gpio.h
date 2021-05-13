@@ -44,32 +44,6 @@
 #define GPIO_TYPE_ALT_OD_2MHZ              ((U32)0x0E)
 #define GPIO_TYPE_ALT_OD_50MHZ             ((U32)0x0F)
 
-typedef struct
-{
-  volatile U32 CR[2];
-  volatile U32 IDR;
-  volatile U32 ODR;
-  volatile U32 BSRR;
-  volatile U32 BRR;
-  volatile U32 LCKR;
-} GPIO;
-
-#define GPIO_IrqEnable(port,pin,edgemask) \
-  RCC->APB2ENR |= RCC_APB2ENR_AFIOEN; \
-  AFIO->EXTICR[pin / 4] &= ~(GPIO_TYPE_MASK << ((pin % 4) * 4)); \
-  AFIO->EXTICR[pin / 4] |= \
-    ((((U32)port >> 10) & 0x07) - 2) << ((pin % 4) * 4); \
-  SYS_BITBAND_HW(EXTI->IMR,pin) = 1; \
-  SYS_BITBAND_HW(EXTI->FTSR,pin) = edgemask; \
-  SYS_BITBAND_HW(EXTI->RTSR,pin) = (edgemask >> 1);
-
-#define GPIO_Init(port,pin,mode) \
-  RCC->APB2ENR |= \
-    (U32)((1 << (((U32)port >> 10) & GPIO_TYPE_MASK)) | \
-    (RCC_APB2ENR_AFIOEN * (U8)(mode > 8))); \
-  ((GPIO *)port)->CR[pin / 8] &= ~(GPIO_TYPE_MASK << ((pin % 8) * 4)); \
-  ((GPIO *)port)->CR[pin / 8] |= (mode << ((pin % 8) * 4));
-
 #define GPIO_Hi(port,pin) \
   (port->BSRR = (1 << pin))
 
