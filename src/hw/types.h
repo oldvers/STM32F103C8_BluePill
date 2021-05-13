@@ -1,53 +1,44 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__
 
-#ifndef NULL
-#define NULL  ((void *)0)
+#ifdef NULL
+#   undef NULL
 #endif
+#define NULL                 ((void *)0)
 
-#ifndef FALSE
-#define FALSE   0
-#endif
+#include "stdint.h"
 
-#ifndef TRUE
-#define TRUE    1
-#endif
+typedef uint8_t              U8;
+typedef int8_t               S8;
+typedef uint16_t             U16;
+typedef int16_t              S16;
+typedef uint32_t             U32;
+typedef int32_t              S32;
+typedef uint64_t             U64;
+typedef int64_t              S64;
 
-#ifndef U8
-  typedef unsigned char        U8;
-#endif
-#ifndef S8
-  typedef char                 S8;
-#endif
-#ifndef U8C
-  typedef unsigned char const  U8C;
-#endif
-#ifndef CU8
-  typedef const unsigned char  CU8;
-#endif
-#ifndef U16
-  typedef unsigned short       U16;
-#endif
-#ifndef S16
-  typedef short                S16;
-#endif
-#ifndef U16C
-  typedef unsigned short const U16C;
-#endif
-#ifndef CU16
-  typedef const unsigned short CU16;
-#endif
-#ifndef S32
-  typedef int                  S32;
-#endif
-#ifndef U32
-  typedef unsigned int         U32;
-#endif
-#ifndef U32C
-  typedef unsigned int const   U32C;
-#endif
-#ifndef CU32
-  typedef const unsigned int   CU32;
+typedef enum
+{
+    FW_FALSE     = 0,
+    FW_TRUE      = 1,
+} FW_BOOLEAN;
+
+typedef enum
+{
+    FW_SUCCESS    = 0x0000,
+    FW_COMPLETE   = 0x0001,
+    FW_FULL       = 0x0002,
+    FW_EMPTY      = 0x0003,
+    FW_INPROGRESS = 0x0004,
+    FW_ERROR      = 0xBAD0,
+    FW_FAIL       = 0xFAC0,
+    FW_TIMEOUT    = 0xFFFF,
+} FW_RESULT;
+
+#ifndef TEST
+#  define STATIC             static
+#else
+#  define STATIC
 #endif
 
 #endif /* __TYPES_H__ */

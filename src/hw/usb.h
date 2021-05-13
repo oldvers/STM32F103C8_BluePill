@@ -2,7 +2,11 @@
 #define __USB_H__
 
 /* Endpoint Direction */
-#define USB_EP_ADDR_DIR_MASK             (0x80)
+#define USB_EP_DIR_MASK                  (0x80)
+/* Endpoint Quantity */
+#define USB_EP_QUANTITY                  (1 << 3)
+#define USB_EP_NUM_MASK                  (USB_EP_QUANTITY - 1)
+
 /* Endpoint Type */
 typedef enum USB_EP_TYPE_E
 {
@@ -44,34 +48,53 @@ typedef enum USB_EP_TYPE_E
 typedef void (*USB_CbGeneric)(void);
 typedef void (*USB_CbError)(U32 aError);
 typedef void (*USB_CbEp)(U32 aEvent);
+typedef void (*USB_CbByte)(U8 * pByte);
+
 /* Function Declarations */
-void USB_SetCb_Reset     (USB_CbGeneric pCbReset);
-void USB_SetCb_Suspend   (USB_CbGeneric pCbSuspend);
-void USB_SetCb_WakeUp    (USB_CbGeneric pCbWakeUp);
-void USB_SetCb_SOF       (USB_CbGeneric pCbSOF);
-void USB_SetCb_Error     (USB_CbError pCbError);
-void USB_SetCb_Ep        (U32 aNumber, USB_CbEp pCbEp);
-void USB_Init            (U32 aMaxEpCount, U32 aCtrlEpMaxPacketSize);
-void USB_Connect         (U32 aConnnect);
-void USB_Reset           (void);
-void USB_PreapareReConfig(void);
-void USB_Suspend         (void);
-void USB_Resume          (void);
-void USB_WakeUp          (void);
-void USB_WakeUpConfigure (U32 aConfig);
-void USB_SetAddress      (U32 aAddress);
-void USB_Configure       (U32 aConfig);
-void USB_EpConfigure     (U8 aAddress, U16 aMaxPacketSize, USB_EP_TYPE aType);
-void USB_EpDirCtrl       (U32 aDirection);
-void USB_EpEnable        (U32 aNumber);
-void USB_EpDisable       (U32 aNumber);
-void USB_EpReset         (U32 aNumber);
-void USB_EpSetStall      (U32 aNumber);
-void USB_EpClrStall      (U32 aNumber);
-U32  USB_EpRead          (U32 aNumber, U8 *pData);
-U32  USB_EpWrite         (U32 aNumber, U8 *pData, U32 aSize);
-U32  USB_GetFrame        (void);
+void       USB_SetCb_Reset       (USB_CbGeneric pCbReset);
+void       USB_SetCb_Suspend     (USB_CbGeneric pCbSuspend);
+void       USB_SetCb_WakeUp      (USB_CbGeneric pCbWakeUp);
+void       USB_SetCb_SOF         (USB_CbGeneric pCbSOF);
+void       USB_SetCb_Error       (USB_CbError pCbError);
+void       USB_SetCb_Ep          (U32 aNumber, USB_CbEp pCbEp);
+void       USB_Init              (U32 aCtrlEpMaxPacketSize);
+void       USB_DeInit            (void);
+void       USB_Connect           (FW_BOOLEAN aConnnect);
+void       USB_Reset             (void);
+void       USB_PreapareReConfig  (void);
+void       USB_Suspend           (void);
+void       USB_Resume            (void);
+void       USB_WakeUp            (void);
+void       USB_WakeUpConfigure   (U32 aConfig);
+void       USB_SetAddress        (U32 aAddress);
+void       USB_Configure         (U32 aConfig);
+void       USB_EpConfigure       (
+                                   U8 aAddress,
+                                   U16 aMaxPacketSize,
+                                   USB_EP_TYPE aType
+                                 );
+void       USB_EpDirCtrl         (U32 aDirection);
+void       USB_EpEnable          (U32 aNumber);
+void       USB_EpDisable         (U32 aNumber);
+void       USB_EpReset           (U32 aNumber);
+void       USB_EpSetStall        (U32 aNumber);
+void       USB_EpClrStall        (U32 aNumber);
+U32        USB_EpRead            (U32 aNumber, U8 *pData, U32 aSize);
+U32        USB_EpWrite           (U32 aNumber, U8 *pData, U32 aSize);
+U32        USB_EpReadWsCb        (
+                                   U32 aNumber,
+                                   USB_CbByte pPutByteCb,
+                                   U32 aSize
+                                 );
+U32        USB_EpWriteWsCb       (
+                                   U32 aNumber,
+                                   USB_CbByte pGetByteCb,
+                                   U32 aSize
+                                 );
+FW_BOOLEAN USB_EpIsRxEmpty       (U32 aNumber);
+U32        USB_GetFrame          (void);
+FW_BOOLEAN USB_EpIsTxEmpty       (U32 aNumber);
 /* Interrupt Handler Declaration */
-void USB_IRQHandler      (void);
+void       USB_IRQHandler        (void);
 
 #endif  /* __USBHW_H__ */
