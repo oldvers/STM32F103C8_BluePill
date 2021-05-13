@@ -323,44 +323,59 @@ void USBD_DeInit(void)
 
 /* --- Wrappers for the low level layer to avoid cross-layer includes ------- */
 
-U32 USBD_EndPointRd(U8 aNumber, U8 *pData, U32 aSize)
+U32 USBD_EP_Rd(U8 aNumber, U8 *pData, U32 aSize)
 {
   return USB_EpRead(aNumber, pData, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
 
-U32 USBD_EndPointWr(U8 aNumber, U8 *pData, U32 aSize)
+U32 USBD_EP_Wr(U8 aNumber, U8 *pData, U32 aSize)
 {
   return USB_EpWrite(aNumber, pData, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
 
-U32 USBD_EndPointRdWsCb(U8 aNumber, USBD_CbByte pPutByteCb, U32 aSize)
+U32 USBD_EP_RdWsCb(U8 aNumber, USBD_CbByte pPutByteCb, U32 aSize)
 {
   return USB_EpReadWsCb(aNumber, pPutByteCb, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
 
-U32 USBD_EndPointWrWsCb(U8 aNumber, USBD_CbByte pGetByteCb, U32 aSize)
+U32 USBD_EP_WrWsCb(U8 aNumber, USBD_CbByte pGetByteCb, U32 aSize)
 {
   return USB_EpWriteWsCb(aNumber, pGetByteCb, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
 
-void USBD_EndPointSetStall(U8 aNumber)
+void USBD_EP_SetStall(U8 aNumber)
 {
   USB_EpSetStall(aNumber);
 }
 
 /* -------------------------------------------------------------------------- */
 
-void USBD_EndPointClrStall(U8 aNumber)
+void USBD_EP_ClrStall(U8 aNumber)
 {
   USB_EpSetStall(aNumber);
 }
 
 /* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN USBD_EP_IsRxEmpty(U8 aNumber)
+{
+  return USB_EpIsRxEmpty(aNumber);
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN USBD_EP_IsTxEmpty(U8 aNumber)
+{
+  return USB_EpIsTxEmpty(aNumber);
+}
+
+/* -------------------------------------------------------------------------- */
+
