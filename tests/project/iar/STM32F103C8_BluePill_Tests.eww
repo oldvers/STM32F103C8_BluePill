@@ -12,6 +12,9 @@
     <project>
         <path>$WS_DIR$\..\..\usb_library\project\iar\STM32F103C8_BluePill_Test_UsbLibrary.ewp</path>
     </project>
+    <project>
+        <path>$WS_DIR$\..\..\icemkii\project\iar\STM32F103C8_BluePill_Test_ICEmkII.ewp</path>
+    </project>
     <batchBuild>
         <batchDefinition>
             <name>All_Projects</name>
@@ -29,6 +32,10 @@
             </member>
             <member>
                 <project>STM32F103C8_BluePill_Test_UsbLibrary</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_ICEmkII</project>
                 <configuration>Test</configuration>
             </member>
         </batchDefinition>

@@ -22,6 +22,9 @@
 
 #include "debug.h"
 
+#undef STATIC
+#define STATIC
+
 //-----------------------------------------------------------------------------
 /* Private Types definitions */
 /* Line Coding Structure */
@@ -90,14 +93,14 @@
 //  0,                    /* Data */
 //};
 
-STATIC FIFO_t                gRxFifo;
-STATIC FIFO_t                gTxFifo;
+STATIC FIFO_t                gRxFifo = {0};
+STATIC FIFO_t                gTxFifo = {0};
 //#ifdef ICEMKII_TEST_MODE
 //static U8     gRxBuffer[USB_ICEMKII_PACKET_SIZE + 1];
 //static U8     gTxBuffer[USB_ICEMKII_PACKET_SIZE + 1];
 //#else
-STATIC U8                    gRxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1];
-STATIC U8                    gTxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1];
+STATIC U8                    gRxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1] = {0};
+STATIC U8                    gTxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1] = {0};
 //#endif
 
 //static U8               *gIrqBuff = NULL;
@@ -110,7 +113,7 @@ STATIC U8                    gTxBuffer[USB_ICEMKII_PACKET_SIZE * 16 + 1];
 //static EAST_STATE        gVcpRxState;
 //static EAST_STATE        gVcpTxState;
 
-STATIC EventGroupHandle_t    hEvtGroup;
+STATIC EventGroupHandle_t    hEvtGroup = {0};
 
 //-----------------------------------------------------------------------------
 /* Private Functions declarations */
