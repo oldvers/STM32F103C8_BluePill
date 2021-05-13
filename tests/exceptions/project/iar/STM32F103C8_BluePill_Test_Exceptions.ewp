@@ -2,29 +2,29 @@
 <project>
     <fileVersion>3</fileVersion>
     <configuration>
-        <name>Release</name>
+        <name>Test</name>
         <toolchain>
             <name>ARM</name>
         </toolchain>
-        <debug>0</debug>
+        <debug>1</debug>
         <settings>
             <name>General</name>
             <archiveVersion>3</archiveVersion>
             <data>
                 <version>29</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>ExePath</name>
-                    <state>build\Release\exe</state>
+                    <state>build\test\exe</state>
                 </option>
                 <option>
                     <name>ObjPath</name>
-                    <state>build\Release\obj</state>
+                    <state>build\test\obj</state>
                 </option>
                 <option>
                     <name>ListPath</name>
-                    <state>build\Release\lst</state>
+                    <state>build\test\lst</state>
                 </option>
                 <option>
                     <name>GEndianMode</name>
@@ -82,7 +82,7 @@
                 </option>
                 <option>
                     <name>GenLowLevelInterface</name>
-                    <state>1</state>
+                    <state>0</state>
                 </option>
                 <option>
                     <name>GEndianModeBE</name>
@@ -208,7 +208,7 @@
             <data>
                 <version>34</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>CCOptimizationNoSizeConstraints</name>
                     <state>0</state>
@@ -343,13 +343,14 @@
                 <option>
                     <name>CCIncludePath2</name>
                     <state>$PROJ_DIR$\..\..\src</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\cmsis\Include</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\freertos</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\freertos\Source\include</state>
-                    <state>$PROJ_DIR$\..\..\src\hw</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\rtt</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Include</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\include</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\hw</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\rtt</state>
                     <state>$PROJ_DIR$\..\..\src\lib\rtt\config</state>
                 </option>
                 <option>
@@ -472,7 +473,7 @@
             <data>
                 <version>10</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>AObjPrefix</name>
                     <state>1</state>
@@ -512,7 +513,7 @@
                 </option>
                 <option>
                     <name>ADebug</name>
-                    <state>0</state>
+                    <state>1</state>
                 </option>
                 <option>
                     <name>AltRegisterNames</name>
@@ -612,7 +613,7 @@
                 </option>
                 <option>
                     <name>AUserIncludes</name>
-                    <state>$PROJ_DIR$\..\..\src\lib\freertos</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos</state>
                 </option>
                 <option>
                     <name>AExtraOptionsCheckV2</name>
@@ -634,7 +635,7 @@
             <data>
                 <version>1</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>OOCOutputFormat</name>
                     <version>3</version>
@@ -686,7 +687,7 @@
             <data>
                 <version>20</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>IlinkOutputFile</name>
                     <state>$PROJ_FNAME$.out</state>
@@ -765,7 +766,7 @@
                 </option>
                 <option>
                     <name>IlinkIcfFile</name>
-                    <state>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Source\Templates\iar\linker\stm32f103xb_flash.icf</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Source\Templates\iar\linker\stm32f103xb_flash.icf</state>
                 </option>
                 <option>
                     <name>IlinkIcfFileSlave</name>
@@ -1004,7 +1005,7 @@
             <data>
                 <version>0</version>
                 <wantNonLocal>1</wantNonLocal>
-                <debug>0</debug>
+                <debug>1</debug>
                 <option>
                     <name>IarchiveInputs</name>
                     <state></state>
@@ -1028,121 +1029,127 @@
     <group>
         <name>CMSIS</name>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\cmsis\Include\core_cm3.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Include\core_cm3.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Source\Templates\iar\startup_stm32f103xb.s</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Source\Templates\iar\startup_stm32f103xb.s</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include\stm32f103xb.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include\stm32f103xb.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Source\Templates\iar\linker\stm32f103xb_flash.icf</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Source\Templates\iar\linker\stm32f103xb_flash.icf</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include\stm32f1xx.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include\stm32f1xx.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Source\Templates\system_stm32f1xx.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Source\Templates\system_stm32f1xx.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include\system_stm32f1xx.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include\system_stm32f1xx.h</name>
         </file>
     </group>
     <group>
         <name>Hardware</name>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\board.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\board.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\debug.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\debug.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\debug.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\debug.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\gpio.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\gpio.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\gpio.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\gpio.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\interrupts.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\interrupts.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\interrupts.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\interrupts.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\system.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\system.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\system.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\system.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\types.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\types.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\hw\uniquedevid.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\uniquedevid.h</name>
         </file>
     </group>
     <group>
         <name>Main</name>
         <file>
-            <name>$PROJ_DIR$\..\..\src\main.c</name>
+            <name>$PROJ_DIR$\..\..\..\main.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\mocks.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\test.c</name>
         </file>
     </group>
     <group>
         <name>RTOS</name>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\croutine.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\croutine.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\event_groups.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\event_groups.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\include\FreeRTOS.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\include\FreeRTOS.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\FreeRTOSConfig.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\FreeRTOSConfig.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\MemMang\heap_2.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\portable\MemMang\heap_2.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\list.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\list.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3\port.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3\port.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3\portasm.s</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3\portasm.s</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3\portmacro.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3\portmacro.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\queue.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\queue.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\tasks.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\tasks.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\timers.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\timers.c</name>
         </file>
     </group>
     <group>
         <name>RTT</name>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\rtt\SEGGER_RTT.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\rtt\SEGGER_RTT.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\rtt\config\SEGGER_RTT_Conf.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT_printf.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\rtt\SEGGER_RTT_printf.c</name>
         </file>
     </group>
 </project>

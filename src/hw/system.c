@@ -1,7 +1,6 @@
 #include "types.h"
-#include "stm32f1xx.h"
-#include "system_stm32f1xx.h"
 #include "system.h"
+#include "interrupts.h"
 
 #define NVIC_PRIORITYGROUP_P0S4         (0x00000007U)
 #define NVIC_PRIORITYGROUP_P1S3         (0x00000006U)
@@ -14,22 +13,42 @@
 #define RCC_CFGR_PLLSRC_HSE             (1U << RCC_CFGR_PLLSRC_Pos)
 
 static void SystemClockConfig( void );
+static void SYS_ClockConfig( void );
 
-void ApplicationInit( void )
+/* -------------------------------------------------------------------------- */
+
+__no_init U32 CPUClock;
+__no_init U32 AHBClock;
+__no_init U32 APB1Clock;
+__no_init U32 APB2Clock;
+
+static const U16 AHBDiv[16] =
+{
+  1,   1,   1,   1,   1,   1,   1,   1,
+  2,   4,   8,  16,  64, 128, 256, 512,
+};
+static const U8 APBDiv[8] =
+{
+  1,   1,   1,   1,   2,   4,   8,  16,
+};
+
+/* -------------------------------------------------------------------------- */
+
+void SYS_ApplicationInit( void )
 {
   /* Setup interrupts priority grouping */
-  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_P4S0);
+  IRQ_SetPriorityGrouping();
 
   /* First of all - Init the system */
   SystemInit();
 
   /* Initialize system clock */
-  SystemClockConfig();
+  SYS_ClockConfig();
 }
 
-/* ---------------------------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 
-/* Configuration of System clock frequency, AHB/APBx prescalers and Flash settings.
+/* Configuration of System clock frequency, AHB/APBx prescalers and Flash WS
     - System Clock source - PLL(HSE)
     - SYSCLK              - 72000000 Hz
     - HCLK                - 72000000 Hz
@@ -39,20 +58,20 @@ void ApplicationInit( void )
     - HSE Frequency       - 8000000 Hz
     - PLL MUL             - 9
     - VDD                 - 3.3 V
-    - Flash Latency       - 2 WS                                                                  */
+    - Flash Latency       - 2 WS                                              */
 
-void SystemClockConfig( void )
+void SYS_ClockConfig( void )
 {
   volatile U32 StartUpCounter = 0, HSEStatus = 0;
 
-  /* Enable HSE */    
+  /* Enable HSE */
   RCC->CR |= ((U32)RCC_CR_HSEON);
 
   /* Wait till HSE is ready and if Time out is reached exit */
   do
   {
     HSEStatus = RCC->CR & RCC_CR_HSERDY;
-    StartUpCounter++;  
+    StartUpCounter++;
   }
   while ((HSEStatus == 0) && (StartUpCounter != SYSTEM_STARTUP_TIMEOUT));
 
@@ -72,14 +91,14 @@ void SystemClockConfig( void )
 
     /* Flash 2 wait state */
     FLASH->ACR &= (U32)((U32)~FLASH_ACR_LATENCY);
-    FLASH->ACR |= (U32)FLASH_ACR_LATENCY_1;    
- 
+    FLASH->ACR |= (U32)FLASH_ACR_LATENCY_1;
+
     /* HCLK = SYSCLK */
     RCC->CFGR |= (U32)RCC_CFGR_HPRE_DIV1;
-      
+
     /* PCLK2 = HCLK */
     RCC->CFGR |= (U32)RCC_CFGR_PPRE2_DIV1;
-    
+
     /* PCLK1 = HCLK */
     RCC->CFGR |= (U32)RCC_CFGR_PPRE1_DIV2;
 
@@ -96,10 +115,10 @@ void SystemClockConfig( void )
     {
         //
     }
-    
+
     /* Select PLL as system clock source */
     RCC->CFGR &= (U32)((U32)~(RCC_CFGR_SW));
-    RCC->CFGR |= (U32)RCC_CFGR_SW_PLL;    
+    RCC->CFGR |= (U32)RCC_CFGR_SW_PLL;
 
     /* Wait till PLL is used as system clock source */
     while (RCC_CFGR_SWS_PLL != (RCC->CFGR & (U32)RCC_CFGR_SWS))
@@ -109,9 +128,17 @@ void SystemClockConfig( void )
   }
   else
   {
-    /* If HSE fails to start-up, the application will have wrong clock 
+    /* If HSE fails to start-up, the application will have wrong clock
     configuration. User can add here some code to deal with this error */
   }
-  
-  SystemCoreClockUpdate();  
+
+  SystemCoreClockUpdate();
+
+  CPUClock  = SystemCoreClock;
+  AHBClock  = AHBDiv[(RCC->CFGR & RCC_CFGR_HPRE) >> RCC_CFGR_HPRE_Pos];
+  AHBClock  = CPUClock / AHBClock;
+  APB1Clock = APBDiv[(RCC->CFGR & RCC_CFGR_PPRE1) >> RCC_CFGR_PPRE1_Pos];
+  APB1Clock = CPUClock / APB1Clock;
+  APB2Clock = APBDiv[(RCC->CFGR & RCC_CFGR_PPRE2) >> RCC_CFGR_PPRE2_Pos];
+  APB2Clock = CPUClock / APB2Clock;
 }

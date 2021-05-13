@@ -4,6 +4,8 @@
 #include "types.h"
 #include "gpio.h"
 #include "uniquedevid.h"
+#include "system.h"
+#include "debug.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -410,39 +412,29 @@ void vLEDTask(void * pvParameters)
 
 int main(void)
 {
+  DBG_Init();
+  DBG_ClearScreen();
+  DBG_SetDefaultColors();
+
   printf("STM32F103C8 Started!\r\n");
-  printf("ID0 = 0x%04X\r\n", UDID_0);
-  printf("ID1 = 0x%04X\r\n", UDID_1);
-  printf("ID2 = 0x%08X\r\n", UDID_2);
-  printf("ID2 = 0x%08X\r\n", UDID_3);
+  printf("ID0         = 0x%04X\r\n", UDID_0);
+  printf("ID1         = 0x%04X\r\n", UDID_1);
+  printf("ID2         = 0x%08X\r\n", UDID_2);
+  printf("ID2         = 0x%08X\r\n", UDID_3);
   printf("Memory Size = %d kB\r\n", FLASH_SIZE);
+  printf("CPU clock   = %d Hz\r\n", CPUClock);
+  printf("AHB clock   = %d Hz\r\n", AHBClock);
+  printf("APB1 clock  = %d Hz\r\n", APB1Clock);
+  printf("APB2 clock  = %d Hz\r\n", APB2Clock);
 
   xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 
   vTaskStartScheduler();
 
-  while(TRUE) {};
+  while (FW_TRUE) {};
 }
 
-void Fault(U32 stack[])
+void on_error(void)
 {
-  enum {r0, r1, r2, r3, r12, lr, pc, psr};
-
-  printf("Hard Fault\r\n");
-  printf("  SHCSR    = 0x%08x\r\n", SCB->SHCSR);
-  printf("  CFSR     = 0x%08x\r\n", SCB->CFSR);
-  printf("  HFSR     = 0x%08x\r\n", SCB->HFSR);
-  printf("  MMFAR    = 0x%08x\r\n", SCB->MMFAR);
-  printf("  BFAR     = 0x%08x\r\n", SCB->BFAR);
-
-  printf("  R0       = 0x%08x\r\n", stack[r0]);
-  printf("  R1       = 0x%08x\r\n", stack[r1]);
-  printf("  R2       = 0x%08x\r\n", stack[r2]);
-  printf("  R3       = 0x%08x\r\n", stack[r3]);
-  printf("  R12      = 0x%08x\r\n", stack[r12]);
-  printf("  LR [R14] = 0x%08x - Subroutine call return address\r\n", stack[lr]);
-  printf("  PC [R15] = 0x%08x - Program counter\r\n", stack[pc]);
-  printf("  PSR      = 0x%08x\r\n", stack[psr]);
-
-  while(TRUE) {};
+  while (FW_TRUE) {};
 }

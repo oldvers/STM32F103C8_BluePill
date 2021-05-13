@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workspace>
+    <project>
+        <path>$WS_DIR$\..\..\exceptions\project\iar\STM32F103C8_BluePill_Test_Exceptions.ewp</path>
+    </project>
+    <project>
+        <path>$WS_DIR$\..\..\real_hw_template\project\iar\STM32F103C8_BluePill_Test_RealHwTemplate.ewp</path>
+    </project>
+    <project>
+        <path>$WS_DIR$\..\..\simulator_template\project\iar\STM32F103C8_BluePill_Test_SimulatorTemplate.ewp</path>
+    </project>
+    <batchBuild>
+        <batchDefinition>
+            <name>All_Projects</name>
+            <member>
+                <project>STM32F103C8_BluePill_Test_Exceptions</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_RealHwTemplate</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_SimulatorTemplate</project>
+                <configuration>Test</configuration>
+            </member>
+        </batchDefinition>
+    </batchBuild>
+</workspace>

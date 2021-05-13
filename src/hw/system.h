@@ -13,4 +13,12 @@
 #define SYS_BBRAM_A(p,b)      (SRAM_BB_BASE + SYS_BBRAM_P(p) + SYS_BBRAM_B(b))
 #define SYS_BITBAND_RAM(p,b)  (*((U32 *)SYS_BBRAM_A(p,b)))
 
+#include "stm32f1xx.h"
+#include "system_stm32f1xx.h"
+
+extern U32 CPUClock;
+extern U32 AHBClock;
+extern U32 APB1Clock;
+extern U32 APB2Clock;
+
 #endif /* __SYSTEM_H__ */
