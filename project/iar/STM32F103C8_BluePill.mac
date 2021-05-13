@@ -34,7 +34,7 @@ simulationSetup()
 //    __message "Could not open file.\n" ;
 //  }
 
-  IRQ_ID_SysTick = __orderInterrupt("SysTick", 600000, 72000, 0, 0, 100, 100);
+  IRQ_ID_SysTick = __orderInterrupt("SysTick", 800000, 8000, 0, 0, 100, 100);
   if( -1 == IRQ_ID_SysTick )
   {
     __message "Error: failed to order interrupt.\n";

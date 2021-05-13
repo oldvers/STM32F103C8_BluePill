@@ -1,16 +1,12 @@
 #include "types.h"
 
 #include "usb.h"
-#include "usb_cfg.h"
-#include "usb_defs.h"
-#include "usb_core.h"
-#include "msc.h"
-#include "hid.h"
-#include "cdc.h"
+#include "usb_config.h"
+#include "usb_definitions.h"
+#include "usb_descriptor.h"
+#include "usb_device.h"
 
-#include "debug.h"
-
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief USB Device Reset Event Callback
  *  @param None
  *  @return None
@@ -24,7 +20,7 @@ static void usbd_CbReset(void)
 }
 #endif
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief USB Device Suspend Event Callback
  *  @param None
  *  @return None
@@ -37,7 +33,7 @@ static void usbd_CbSuspend(void)
 }
 #endif
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief USB Device Resume Event Callback
  *  @param None
  *  @return None
@@ -50,7 +46,7 @@ static void usbd_CbResume(void)
 }
 #endif
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief USB Device Remote Wakeup Event Callback
  *  @param None
  *  @return None
@@ -63,7 +59,7 @@ static void usbd_CbWakeUp(void)
 }
 #endif
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief USB Device Start of Frame Event Callback
  *  @param None
  *  @return None
@@ -72,11 +68,19 @@ static void usbd_CbWakeUp(void)
 #if USB_SOF_EVENT
 static void usbd_CbSOF(void)
 {
-  CDC_SOF();
+  U8 i = 0;
+
+  for (i = 0; i < USBD_GetItrfacesCount(); i++)
+  {
+    if (NULL != USBD_IfCbDescriptor[i].CbSOF)
+    {
+      USBD_IfCbDescriptor[i].CbSOF();
+    }
+  }
 }
 #endif
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief USB Device Error Event Callback
  *  @param aError - Error Code
  *  @return None
@@ -89,7 +93,7 @@ static void usbd_CbError(U32 aError)
 }
 #endif
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief USB Core Set Configuration Event Callback
  *  @param aConfig - Configuration result
  *  @return None
@@ -110,7 +114,7 @@ void usbc_CbConfigure(U8 aConfig)
 #endif
 }
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief USB Core Set Interface Event Callback
  *  @param None
  *  @return None
@@ -123,7 +127,7 @@ void usbc_CbInterface(void)
 #endif
 }
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief USB Core Set/Clear Feature Event Callback
  *  @param None
  *  @return None
@@ -136,7 +140,7 @@ void usbc_CbFeature(void)
 #endif
 }
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief Class Control Setup USB Request
  *  @param pSetup - Pointer to Setup Packet
  *  @param pData - Pointer to place for setting the pointer to requested data
@@ -154,33 +158,15 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
+  U8             i      = 0;
 
   if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
   {
-    switch (pSetup->wIndex.WB.L)
+    i = pSetup->wIndex.WB.L;
+    if ( (i < USBD_GetItrfacesCount()) &&
+         (NULL != USBD_IfCbDescriptor[i].CbCtrlSetup) )
     {
-#if (USB_MSC)
-      case USB_MSC_IF_NUM:
-        result = MSC_CtrlSetupReq(pSetup, pData, pSize);
-        break;
-#endif
-#if USB_CDC
-      case USB_CDC_IF_NUM0:
-        result = CDC_CtrlSetupReq(pSetup, pData, pSize);
-        break;
-#endif
-#if USB_HID
-      case USB_HID_IF_NUM:
-        result = HID_CtrlSetupReq(pSetup, pData, pSize);
-        break;
-#endif
-#if USB_CDD
-      case USB_CDD_IF_NUM0:
-        result = CDC_CtrlSetupReq(pSetup, pData, pSize);
-        break;
-#endif
-      default:
-        break;
+      result = USBD_IfCbDescriptor[i].CbCtrlSetup(pSetup, pData, pSize);
     }
   }
   else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
@@ -191,7 +177,7 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
   return result;
 }
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief Class USB Out Request
  *  @param pSetup - Pointer to Setup Packet
  *  @param pData - Pointer to place for setting the pointer to requested data
@@ -207,28 +193,15 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
+  U8             i      = 0;
 
   if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
   {
-    switch (pSetup->wIndex.WB.L)
+    i = pSetup->wIndex.WB.L;
+    if ( (i < USBD_GetItrfacesCount()) &&
+         (NULL != USBD_IfCbDescriptor[i].CbCtrlOut) )
     {
-#if USB_CDC
-      case USB_CDC_IF_NUM0:
-        result = CDC_CtrlOutReq(pSetup, pData, pSize);
-        break;
-#endif
-#if USB_HID
-      case USB_HID_IF_NUM:
-        result = HID_CtrlOutReq(pSetup, pData, pSize);
-        break;
-#endif
-#if USB_CDD
-      case USB_CDD_IF_NUM0:
-        result = CDC_CtrlOutReq(pSetup, pData, pSize);
-        break;
-#endif
-      default:
-        break;
+      result = USBD_IfCbDescriptor[i].CbCtrlOut(pSetup, pData, pSize);
     }
   }
   else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
@@ -239,7 +212,7 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
   return result;
 }
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief USB Core Event Callbacks Table
  *  @param None
  *  @return None
@@ -254,7 +227,7 @@ const USB_CORE_EVENTS USBC_Events =
   usbc_CbCtrlOutReqClass,
 };
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief Initializes USB Device
  *  @param None
  *  @return None
@@ -262,6 +235,8 @@ const USB_CORE_EVENTS USBC_Events =
  */
 void USBD_Init(void)
 {
+  U8 i = 0;
+
 #if USB_RESET_EVENT
   USB_SetCb_Reset(usbd_CbReset);
 #endif
@@ -278,63 +253,40 @@ void USBD_Init(void)
   USB_SetCb_Error(usbd_CbError);
 #endif
 
-  LOG("--- MSC --------------------------------------\r\n");
-  LOG("Interface Count = %d\r\n",     USB_MSC_IF_CNT);
-  LOG("    IF Num 0    = %d\r\n",     USB_MSC_IF_NUM);
-  LOG("Endpoint Count  = %d\r\n",     USB_MSC_EP_CNT);
-  LOG("    EP 0 Blk I  = 0x%02X\r\n", USB_MSC_EP_BLK_I);
-  LOG("    EP 1 Blk O  = 0x%02X\r\n", USB_MSC_EP_BLK_O);
-
-  LOG("--- CDC 1 ------------------------------------\r\n");
-  LOG("Interface Count = %d\r\n",     USB_CDC_IF_CNT);
-  LOG("    IF Num 0    = %d\r\n",     USB_CDC_IF_NUM0);
-  LOG("    IF Num 1    = %d\r\n",     USB_CDC_IF_NUM1);
-  LOG("Endpoint Count  = %d\r\n",     USB_CDC_EP_CNT);
-  LOG("    EP 0 Blk O  = 0x%02X\r\n", USB_CDC_EP_BLK_O);
-  LOG("    EP 1 Blk I  = 0x%02X\r\n", USB_CDC_EP_BLK_I);
-  LOG("    EP 2 Irq I  = 0x%02X\r\n", USB_CDC_EP_IRQ_I);
-  
-  LOG("--- HID --------------------------------------\r\n");
-  LOG("Interface Count = %d\r\n",     USB_HID_IF_CNT);
-  LOG("    IF Num 0    = %d\r\n",     USB_HID_IF_NUM);
-  LOG("Endpoint Count  = %d\r\n",     USB_HID_EP_CNT);
-  LOG("    EP 0 Irq I  = 0x%02X\r\n", USB_HID_EP_IRQ_I);
-  
-  LOG("--- CDC 2 ------------------------------------\r\n");
-  LOG("Interface Count = %d\r\n",     USB_CDD_IF_CNT);
-  LOG("    IF Num 0    = %d\r\n",     USB_CDD_IF_NUM0);
-  LOG("    IF Num 1    = %d\r\n",     USB_CDD_IF_NUM1);
-  LOG("Endpoint Count  = %d\r\n",     USB_CDD_EP_CNT);
-  LOG("    EP 0 Blk O  = 0x%02X\r\n", USB_CDD_EP_BLK_O);
-  LOG("    EP 1 Blk I  = 0x%02X\r\n", USB_CDD_EP_BLK_I);
-  LOG("    EP 2 Irq I  = 0x%02X\r\n", USB_CDD_EP_IRQ_I);
-  
-  LOG("--- Total ------------------------------------\r\n");
-  LOG("Interface Count = %d\r\n",     USB_IF_CNT);
-  LOG("Endpoint Count  = %d\r\n",     USB_EP_CNT);
-  LOG("    EP 0 Ctl I  = 0x%02X\r\n", EP0_I);
-  LOG("    EP 1 Ctl O  = 0x%02X\r\n", EP0_O);
-
   /* Init Hardware */
   USB_Init(USB_CTRL_PACKET_SIZE);
+
   /* Register Callback for Control Endpoint */
   USB_SetCb_Ep(EP0_O, USBC_ControlInOut);
   USB_SetCb_Ep(EP0_I, USBC_ControlInOut);
 
-#if (USB_MSC)
-  /* Init Mass Storage Device */
-  MSC_Init();
-#endif
+  /* Class Specific Init */
+  for (i = 0; i < USBD_GetItrfacesCount(); i++)
+  {
+    /* Register Callback for Endpoints */
+    if (NULL != USBD_IfCbDescriptor[i].CbEndPointI)
+    {
+      USB_SetCb_Ep
+      (
+        USBD_IfCbDescriptor[i].EndPointI,
+        USBD_IfCbDescriptor[i].CbEndPointI
+      );
+    }
+    if (NULL != USBD_IfCbDescriptor[i].CbEndPointO)
+    {
+      USB_SetCb_Ep
+      (
+        USBD_IfCbDescriptor[i].EndPointO,
+        USBD_IfCbDescriptor[i].CbEndPointO
+      );
+    }
 
-#if (0 < (USB_CDC + USB_CDD))
-  /* Init Communication Device Class */
-  CDC_Init();
-#endif
-
-#if (USB_HID)
-  /* Init Human Interface Device */
-  HID_Init();
-#endif
+    /* Call Specific Initialization */
+    if (NULL != USBD_IfCbDescriptor[i].CbInit)
+    {
+      USBD_IfCbDescriptor[i].CbInit();
+    }
+  }
 
   /* Init Core */
   USBC_Init(&USBC_Events);
@@ -342,7 +294,7 @@ void USBD_Init(void)
   USB_Connect(FW_TRUE);
 }
 
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
 /** @brief De-Initializes USB Device
  *  @param None
  *  @return None
@@ -368,3 +320,47 @@ void USBD_DeInit(void)
   USB_SetCb_Error(NULL);
 #endif
 }
+
+/* --- Wrappers for the low level layer to avoid cross-layer includes ------- */
+
+U32 USBD_EndPointRd(U8 aNumber, U8 *pData, U32 aSize)
+{
+  return USB_EpRead(aNumber, pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U32 USBD_EndPointWr(U8 aNumber, U8 *pData, U32 aSize)
+{
+  return USB_EpWrite(aNumber, pData, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U32 USBD_EndPointRdWsCb(U8 aNumber, USBD_CbByte pPutByteCb, U32 aSize)
+{
+  return USB_EpReadWsCb(aNumber, pPutByteCb, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U32 USBD_EndPointWrWsCb(U8 aNumber, USBD_CbByte pGetByteCb, U32 aSize)
+{
+  return USB_EpWriteWsCb(aNumber, pGetByteCb, aSize);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USBD_EndPointSetStall(U8 aNumber)
+{
+  USB_EpSetStall(aNumber);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USBD_EndPointClrStall(U8 aNumber)
+{
+  USB_EpSetStall(aNumber);
+}
+
+/* -------------------------------------------------------------------------- */

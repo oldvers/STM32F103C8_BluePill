@@ -3,27 +3,14 @@
 
 #include "stm32f1xx.h"
 
-//-----------------------------------------------------------------------------
-/* Critical area */
+/* --- Critical Area -------------------------------------------------------- */
+
 #define IRQ_SAFE_AREA()    unsigned int IrqState;
 #define IRQ_DISABLE()      {                               \
                              IrqState = __get_PRIMASK();   \
                              __set_PRIMASK(1);
 #define IRQ_RESTORE()        __set_PRIMASK(IrqState);      \
                            }
-                                  
-//-----------------------------------------------------------------------------
-/* Interrupts priority grouping */
-#define IRQ_PRIORITY_GROUP_16_SUB_01    (3)
-#define IRQ_PRIORITY_GROUP_08_SUB_02    (4)
-#define IRQ_PRIORITY_GROUP_04_SUB_04    (5)
-#define IRQ_PRIORITY_GROUP_02_SUB_08    (6)
-#define IRQ_PRIORITY_GROUP_01_SUB_16    (7)
-
-//-----------------------------------------------------------------------------
-/* Interrupt groups and priorities */
-/* The highest priority group */
-#define IRQ_PRIORITY_GROUP_CRITICAL     (0)
 
 /* The group for the most of hardware*/
 #define IRQ_PRIORITY_GROUP_SYSTEM       (1)
@@ -52,5 +39,11 @@ void IRQ_USART2_Enable(void);
 void IRQ_USART2_Disable(void);
 void IRQ_USART3_Enable(void);
 void IRQ_USART3_Disable(void);
+
+/* --- Public Functions ----------------------------------------------------- */
+
+void IRQ_SetPriorityGrouping(void);
+void IRQ_USB_Enable(void);
+void IRQ_USB_Disable(void);
 
 #endif /* __INTERRUPTS_H__ */
