@@ -12,6 +12,9 @@
     <project>
         <path>$WS_DIR$\..\..\fifo\project\iar\STM32F103C8_BluePill_Test_FIFO.ewp</path>
     </project>
+    <project>
+        <path>$WS_DIR$\..\..\block_queue\project\iar\STM32F103C8_BluePill_Test_BlockQueue.ewp</path>
+    </project>
     <batchBuild>
         <batchDefinition>
             <name>All_Projects</name>
@@ -29,6 +32,10 @@
             </member>
             <member>
                 <project>STM32F103C8_BluePill_Test_FIFO</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_BlockQueue</project>
                 <configuration>Test</configuration>
             </member>
         </batchDefinition>
