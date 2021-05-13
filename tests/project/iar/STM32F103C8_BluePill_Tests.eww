@@ -10,6 +10,15 @@
         <path>$WS_DIR$\..\..\simulator_template\project\iar\STM32F103C8_BluePill_Test_SimulatorTemplate.ewp</path>
     </project>
     <project>
+        <path>$WS_DIR$\..\..\fifo\project\iar\STM32F103C8_BluePill_Test_FIFO.ewp</path>
+    </project>
+    <project>
+        <path>$WS_DIR$\..\..\block_queue\project\iar\STM32F103C8_BluePill_Test_BlockQueue.ewp</path>
+    </project>
+    <project>
+        <path>$WS_DIR$\..\..\east_message\project\iar\STM32F103C8_BluePill_Test_EastMessage.ewp</path>
+    </project>
+    <project>
         <path>$WS_DIR$\..\..\usb_library\project\iar\STM32F103C8_BluePill_Test_UsbLibrary.ewp</path>
     </project>
     <project>
@@ -28,6 +37,18 @@
             </member>
             <member>
                 <project>STM32F103C8_BluePill_Test_SimulatorTemplate</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_FIFO</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_BlockQueue</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_EastMessage</project>
                 <configuration>Test</configuration>
             </member>
             <member>
