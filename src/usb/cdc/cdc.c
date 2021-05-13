@@ -1,10 +1,12 @@
+#include <string.h>
+
 #include "types.h"
 
-#include "usb.h"
-#include "usb_cfg.h"
-#include "usb_defs.h"
-#include "usb_core.h"
-#include "cdc_defs.h"
+#include "usb_definitions.h"
+#include "usb_control.h"
+#include "usb_device.h"
+#include "usb_descriptor.h"
+#include "usb_cdc_definitions.h"
 #include "cdc.h"
 
 #include "FreeRTOS.h"
@@ -12,7 +14,6 @@
 #include "fifo.h"
 
 #include "debug.h"
-#include "string.h"
 
 #include "gpio.h"
 #include "uart.h"
@@ -584,19 +585,25 @@ SERIAL_STATUS_t gSerialStatusB = {0};
 static U8 gPartNumber = CP210X_PARTNUM_CP2105;
 
 //-----------------------------------------------------------------------------
+
+typedef FW_BOOLEAN (*CDC_EP_FUNCTION)(void);
+typedef U32 (*CDC_EP_DATA_FUNCTION)(USBD_CbByte pPutByteCb, U32 aSize);
+
 /* CDC Port Context */
 typedef struct _CDC_PORT
 {
-  U8                    epBlkO;
-  U8                    epBlkI;
+  CDC_EP_DATA_FUNCTION  epOBlkRd;
+  CDC_EP_FUNCTION       epOBlkIsRxEmpty;
+  CDC_EP_DATA_FUNCTION  epIBlkWr;
+  CDC_EP_FUNCTION       epIBlkIsTxEmpty;
   U16                   modemHandshake;
   U8                    modemStatus;
   FW_BOOLEAN            rxComplete;
   U32                   baudrate;
   FIFO_t                rxFifo;
   FIFO_t                txFifo;
-  USB_CbByte            rxFifoPutCb;
-  USB_CbByte            txFifoGetCb;
+  USBD_CbByte           rxFifoPutCb;
+  USBD_CbByte           txFifoGetCb;
   U8                    rxBuffer[USB_CDC_FIFO_SIZE + 1];
   U8                    txBuffer[USB_CDC_FIFO_SIZE + 1];
   COMM_PROP_RSP_p       pCommProp;
@@ -635,7 +642,7 @@ static CDC_PORT * cdc_GetPort(U16 aInterface)
 {
   CDC_PORT * result = &gPortA;
 
-  if (USB_CDC_IF_NUM == aInterface)
+  if (USBD_CDC_GetInterfaceNumber() == aInterface)
   {
     result = &gPortA;
   }
@@ -1086,12 +1093,7 @@ USB_CTRL_STAGE CDC_CtrlOutReq
 static void cdc_OutStage(CDC_PORT * pPort)
 {
   /* Read from OUT EP */
-  (void)USB_EpReadWsCb
-  (
-    pPort->epBlkO,
-    pPort->rxFifoPutCb,
-    FIFO_Free(&pPort->rxFifo)
-  );
+  (void)pPort->epOBlkRd(pPort->rxFifoPutCb, FIFO_Free(&pPort->rxFifo));
 
   /* Write to UART */
   if (0 < FIFO_Count(&pPort->rxFifo))
@@ -1112,12 +1114,7 @@ static void cdc_InStage(CDC_PORT * pPort)
   if (0 < FIFO_Count(&pPort->txFifo))
   {
     /* Write to IN EP */
-    (void)USB_EpWriteWsCb
-    (
-      pPort->epBlkI,
-      pPort->txFifoGetCb,
-      FIFO_Count(&pPort->txFifo)
-    );
+    (void)pPort->epIBlkWr(pPort->txFifoGetCb, FIFO_Count(&pPort->txFifo));
   }
   else
   {
@@ -1136,14 +1133,14 @@ static void cdc_ProcessCollectedData(CDC_PORT * pPort)
   /* Check if there are some unprocessed data */
   if (FW_TRUE == pPort->ready)
   {
-    if (FW_FALSE == USB_EpIsRxEmpty(pPort->epBlkO))
+    if (FW_FALSE == pPort->epOBlkIsRxEmpty())
     {
       cdc_OutStage(pPort);
     }
 
     if (((FW_TRUE == pPort->rxComplete) ||
          (USB_CDC_PACKET_SIZE < FIFO_Count(&pPort->txFifo))) &&
-        (FW_TRUE == USB_EpIsTxEmpty(pPort->epBlkI)))
+        (FW_TRUE == pPort->epIBlkIsTxEmpty()))
     {
       cdc_InStage(pPort);
     }
@@ -1159,9 +1156,7 @@ static void cdc_ProcessCollectedData(CDC_PORT * pPort)
 void CDC_SOF(void)
 {
   cdc_ProcessCollectedData(&gPortA);
-#if (USB_CDD)
   cdc_ProcessCollectedData(&gPortB);
-#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -1170,7 +1165,7 @@ void CDC_SOF(void)
  *  @return None
  */
 
-static void cdc_BulkAIn(U32 aEvent)
+void CDC_BulkAIn(U32 aEvent)
 {
   cdc_InStage(&gPortA);
 }
@@ -1181,7 +1176,7 @@ static void cdc_BulkAIn(U32 aEvent)
  *  @return None
  */
 
-static void cdc_BulkAOut(U32 aEvent)
+void CDC_BulkAOut(U32 aEvent)
 {
   cdc_OutStage(&gPortA);
 }
@@ -1259,7 +1254,7 @@ static FW_BOOLEAN uart_TxCompleteA(U8 * pByte)
  *  @return None
  */
 
-static void cdc_BulkBIn(U32 aEvent)
+void CDC_BulkBIn(U32 aEvent)
 {
   cdc_InStage(&gPortB);
 }
@@ -1270,7 +1265,7 @@ static void cdc_BulkBIn(U32 aEvent)
  *  @return None
  */
 
-static void cdc_BulkBOut(U32 aEvent)
+void CDC_BulkBOut(U32 aEvent)
 {
   cdc_OutStage(&gPortB);
 }
@@ -1350,17 +1345,16 @@ static FW_BOOLEAN uart_TxCompleteB(U8 * pByte)
 
 void CDC_Init(void)
 {
-  /* Register appropriate EP callbacks */
-  USB_SetCb_Ep(USB_CDC_EP_BLK_O, cdc_BulkAOut);
-  USB_SetCb_Ep(USB_CDC_EP_BLK_I, cdc_BulkAIn);
   /* Clear Port context */
   memset(&gPortA, 0, sizeof(gPortA));
   /* Port is not ready yet */
   gPortA.ready = FW_FALSE;
   gPortA.rxComplete = FW_FALSE;
   /* Initialize Endpoints */
-  gPortA.epBlkO = USB_CDC_EP_BLK_O;
-  gPortA.epBlkI = USB_CDC_EP_BLK_I;
+  gPortA.epOBlkRd        = USBD_CDC_OEndPointRdWsCb;
+  gPortA.epOBlkIsRxEmpty = USBD_CDC_OEndPointIsRxEmpty;
+  gPortA.epIBlkWr        = USBD_CDC_IEndPointWrWsCb;
+  gPortA.epOBlkIsRxEmpty = USBD_CDC_IEndPointIsTxEmpty;
   /* Initialize FIFOs */
   FIFO_Init(&gPortA.rxFifo, gPortA.rxBuffer, sizeof(gPortA.rxBuffer));
   FIFO_Init(&gPortA.txFifo, gPortA.txBuffer, sizeof(gPortA.txBuffer));
@@ -1374,17 +1368,16 @@ void CDC_Init(void)
   /* Initialize UART Number */
   gPortA.uart = UART1;
 
-  /* Register appropriate EP callbacks */
-  USB_SetCb_Ep(USB_CDD_EP_BLK_O, cdc_BulkBOut);
-  USB_SetCb_Ep(USB_CDD_EP_BLK_I, cdc_BulkBIn);
   /* Clear Port context */
   memset(&gPortB, 0, sizeof(gPortB));
   /* Port is not ready yet */
   gPortB.ready = FW_FALSE;
   gPortB.rxComplete = FW_FALSE;
   /* Initialize Endpoints */
-  gPortB.epBlkO = USB_CDD_EP_BLK_O;
-  gPortB.epBlkI = USB_CDD_EP_BLK_I;
+  gPortB.epOBlkRd        = USBD_CDD_OEndPointRdWsCb;
+  gPortA.epOBlkIsRxEmpty = USBD_CDD_OEndPointIsRxEmpty;
+  gPortB.epIBlkWr        = USBD_CDD_IEndPointWrWsCb;
+  gPortA.epIBlkIsTxEmpty = USBD_CDC_IEndPointIsTxEmpty;
   /* Initialize FIFOs */
   FIFO_Init(&gPortB.rxFifo, gPortB.rxBuffer, sizeof(gPortB.rxBuffer));
   FIFO_Init(&gPortB.txFifo, gPortB.txBuffer, sizeof(gPortB.txBuffer));
