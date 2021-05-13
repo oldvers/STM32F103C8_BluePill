@@ -50,7 +50,7 @@ extern void icemkii_ProcessRx(void);
 
 /* --- Mocks ---------------------------------------------------------------- */
 
-U32 USBD_EndPointRdWsCb(U32 aNumber, USB_CbByte pPutCb, U8 aSize)
+U32 USBD_EndPointRdWsCb(U32 aNumber, USB_CbByte pPutCb, U32 aSize)
 {
     (void)aNumber;
 

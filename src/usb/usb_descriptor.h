@@ -6,7 +6,7 @@
 
 /* --- Class Specific Optional Function Prototypes -------------------------- */
 
-U8 USBD_ICEMKII_IEndPointWrWsCb(USBD_CbByte pGetByteCb, U8 aSize);
-U8 USBD_ICEMKII_OEndPointRdWsCb(USBD_CbByte pPutByteCb, U8 aSize);
+U32 USBD_ICEMKII_IEndPointWrWsCb(USBD_CbByte pGetByteCb, U32 aSize);
+U32 USBD_ICEMKII_OEndPointRdWsCb(USBD_CbByte pPutByteCb, U32 aSize);
 
 #endif  /* __USB_DESCRIPTOR_H__ */
