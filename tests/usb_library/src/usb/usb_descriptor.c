@@ -72,7 +72,7 @@ const U8 USB_HID_ReportDescriptor[] =
 
 U8 USBD_HID_InEndPointWr(U8 *pData, U8 aSize)
 {
-  return USBD_EndPointWr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_HID), pData, aSize);
+  return USBD_EP_Wr(USB_ENDPOINT_I(USB_ENDPOINT_IDX_HID), pData, aSize);
 }
 
 /* -------------------------------------------------------------------------- */
