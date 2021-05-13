@@ -12,7 +12,6 @@
 #define RCC_CFGR_PLLSRC_HSI             (0U << RCC_CFGR_PLLSRC_Pos)
 #define RCC_CFGR_PLLSRC_HSE             (1U << RCC_CFGR_PLLSRC_Pos)
 
-static void SystemClockConfig( void );
 static void SYS_ClockConfig( void );
 
 /* -------------------------------------------------------------------------- */
