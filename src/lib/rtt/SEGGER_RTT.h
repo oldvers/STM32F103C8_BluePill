@@ -49,7 +49,7 @@
 ---------------------------END-OF-HEADER------------------------------
 File    : SEGGER_RTT.h
 Purpose : Implementation of SEGGER real-time transfer which allows
-          real-time communication on targets which support debugger 
+          real-time communication on targets which support debugger
           memory accesses while the CPU is running.
 Revision: $Rev: 16714 $
 ----------------------------------------------------------------------
@@ -198,6 +198,7 @@ unsigned     SEGGER_RTT_HasData                 (unsigned BufferIndex);
 int          SEGGER_RTT_HasKey                  (void);
 unsigned     SEGGER_RTT_HasDataUp               (unsigned BufferIndex);
 void         SEGGER_RTT_Init                    (void);
+void         SEGGER_RTT_Reset                   (void);
 unsigned     SEGGER_RTT_Read                    (unsigned BufferIndex,       void* pBuffer, unsigned BufferSize);
 unsigned     SEGGER_RTT_ReadNoLock              (unsigned BufferIndex,       void* pData,   unsigned BufferSize);
 int          SEGGER_RTT_SetNameDownBuffer       (unsigned BufferIndex, const char* sName);

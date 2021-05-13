@@ -6,6 +6,8 @@
 #include "gpio.h"
 #include "debug.h"
 #include "uniquedevid.h"
+#include "system.h"
+#include "debug.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -19,19 +21,20 @@
 
 void vLEDTask(void * pvParameters)
 {
-    /* LED */
-    GPIO_Init(LED_PORT, LED_PIN, GPIO_TYPE_OUT_OD_2MHZ, 1);
+  GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ, 0);
 
-    while(FW_TRUE)
-    {
-        /* LED */
-        GPIO_Lo(LED_PORT, LED_PIN);
-        vTaskDelay(500);
-        GPIO_Hi(LED_PORT, LED_PIN);
-        vTaskDelay(500);
-        //LOG("LED\r\n");
-    }
-    //vTaskDelete(NULL);
+  while(1)
+  {
+    GPIO_Lo(GPIOC, 13);
+    DBG_SetTextColorGreen();
+    printf("LED On\r\n");
+    vTaskDelay(500);
+    GPIO_Hi(GPIOC, 13);
+    DBG_SetTextColorRed();
+    printf("LED Off\r\n");
+    vTaskDelay(500);
+  }
+  //vTaskDelete(NULL);
 }
 
 extern const U8 USB_ConfigDescriptor[];
@@ -42,6 +45,22 @@ void vDualUartTask(void * pvParameters)
     USB_CONFIGURATION_DESCRIPTOR * cd;
     cd = (USB_CONFIGURATION_DESCRIPTOR *)USB_ConfigDescriptor;
 #endif
+  DBG_Init();
+  DBG_ClearScreen();
+  DBG_SetDefaultColors();
+
+  printf("STM32F103C8 Started!\r\n");
+  printf("ID0         = 0x%04X\r\n", UDID_0);
+  printf("ID1         = 0x%04X\r\n", UDID_1);
+  printf("ID2         = 0x%08X\r\n", UDID_2);
+  printf("ID2         = 0x%08X\r\n", UDID_3);
+  printf("Memory Size = %d kB\r\n", FLASH_SIZE);
+  printf("CPU clock   = %d Hz\r\n", CPUClock);
+  printf("AHB clock   = %d Hz\r\n", AHBClock);
+  printf("APB1 clock  = %d Hz\r\n", APB1Clock);
+  printf("APB2 clock  = %d Hz\r\n", APB2Clock);
+
+  xTaskCreate(vLEDTask,"LEDTask", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 
     LOG("Double UART Converter Task Started\r\n");
 
@@ -106,11 +125,12 @@ void vDualUartTask(void * pvParameters)
         vTaskDelay(5000);
     }
     //vTaskDelete(NULL);
+  while (FW_TRUE) {};
 }
 
-
-int main(void)
+void on_error(void)
 {
+  while (FW_TRUE) {};
     LOG("STM32F103C8 Started!\r\n");
     LOG("ID0 = 0x%04X\r\n", UDID_0);
     LOG("ID1 = 0x%04X\r\n", UDID_1);

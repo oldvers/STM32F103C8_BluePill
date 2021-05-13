@@ -1,55 +1,156 @@
 #include <stdio.h>
 
-#include "stm32f1xx.h"
+#include "types.h"
 #include "debug.h"
+#include "system.h"
 #include "uniquedevid.h"
+
 #include "FreeRTOS.h"
 #include "task.h"
 
-extern void Prepare_And_Run_Test( void );
+/* -------------------------------------------------------------------------- */
 
-//-----------------------------------------------------------------------------
+typedef FW_BOOLEAN (* TestFunction_t)(void);
+
+static U32 gPass                  = 0;
+static U32 gFail                  = 0;
+static U32 gTested                = 0;
+static U32 gTotal                 = 0;
+
+extern void  vTestStartUpFunction ( void );
+extern void  vTestPrepareFunction ( void );
+extern void  vTestHelpTaskFunction( void * pvParameters );
+extern U32   uiTestsGetCount      ( void );
+
+extern const TestFunction_t       gTests[];
+
+/* -------------------------------------------------------------------------- */
+
+static void vLogTestResult(FW_BOOLEAN result)
+{
+  if (FW_TRUE == result)
+  {
+    DBG_SetTextColorGreen();
+    DBG(" ----> PASS\r\n");
+    gPass++;
+  }
+  else
+  {
+    DBG_SetTextColorRed();
+    DBG(" ----> FAIL\r\n");
+    gFail++;
+  }
+  DBG_SetDefaultColors();
+  gTested++;
+}
+
+/* -------------------------------------------------------------------------- */
+
+void vTestMainTask(void * pvParameters)
+{
+  FW_BOOLEAN result = FW_FALSE;
+  U32        test   = 0;
+
+  DBG("-----------------------------------------------------------\r\n");
+  DBG(" --- Test Main Task Started\r\n");
+
+  gTotal = uiTestsGetCount();
+
+  for (test = 0; test < gTotal; test++)
+  {
+    DBG_SetTextColorYellow();
+    DBG("-----------------------------------------------------------\r\n");
+    DBG_SetDefaultColors();
+    result = gTests[test]();
+    vLogTestResult(result);
+    if (FW_FALSE == result) break;
+  }
+
+  DBG_SetTextColorYellow();
+  DBG("-----------------------------------------------------------\r\n");
+
+  DBG_SetDefaultColors();
+  DBG(" - Total  = %d\r\n", gTotal);
+  DBG(" - Tested = %d  ", gTested);
+
+  if (0 < gPass)
+  {
+    DBG_SetTextColorGreen();
+  }
+  else
+  {
+    DBG_SetDefaultColors();
+  }
+  DBG("Pass = %d  ", gPass);
+
+  if (0 < gFail)
+  {
+    DBG_SetTextColorRed();
+  }
+  else
+  {
+    DBG_SetDefaultColors();
+  }
+  DBG("Fail = %d\r\n", gFail);
+
+  DBG_SetTextColorYellow();
+  DBG("-----------------------------------------------------------\r\n");
+  DBG_SetDefaultColors();
+
+  while (FW_TRUE)
+  {
+    vTaskDelay(500);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 
 int main(void)
 {
-    LOG("STM32F103C8 Started!\r\n");
-    LOG("ID0 = 0x%04X\r\n", UDID_0);
-    LOG("ID1 = 0x%04X\r\n", UDID_1);
-    LOG("ID2 = 0x%08X\r\n", UDID_2);
-    LOG("ID2 = 0x%08X\r\n", UDID_3);
-    LOG("Memory Size = %d kB\r\n", FLASH_SIZE);
-    LOG("SysClock = %d Hz\r\n", SystemCoreClock);
+  DBG_Init();
+  DBG_SetDefaultColors();
 
-    Prepare_And_Run_Test();
+  vTestStartUpFunction();
 
-    vTaskStartScheduler();
+  DBG("-----------------------------------------------------------\r\n");
+  DBG("STM32F103C8 Started!\r\n");
+  DBG("ID0         = 0x%04X\r\n", UDID_0);
+  DBG("ID1         = 0x%04X\r\n", UDID_1);
+  DBG("ID2         = 0x%08X\r\n", UDID_2);
+  DBG("ID2         = 0x%08X\r\n", UDID_3);
+  DBG("Memory Size = %d kB\r\n", FLASH_SIZE);
+  DBG("CPU clock   = %d Hz\r\n", CPUClock);
+  DBG("AHB clock   = %d Hz\r\n", AHBClock);
+  DBG("APB1 clock  = %d Hz\r\n", APB1Clock);
+  DBG("APB2 clock  = %d Hz\r\n", APB2Clock);
 
-    while(FW_TRUE) {};
+  DBG("Preparing Test Tasks To Run...\r\n");
+
+  vTestPrepareFunction();
+
+  xTaskCreate
+  (
+    vTestMainTask,
+    "TestMainTask",
+    configMINIMAL_STACK_SIZE * 2,
+    NULL,
+    tskIDLE_PRIORITY + 2,
+    NULL
+  );
+
+  xTaskCreate
+  (
+    vTestHelpTaskFunction,
+    "TestHelpTask",
+    configMINIMAL_STACK_SIZE * 2,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  );
+
+  vTaskStartScheduler();
+
+  while (FW_TRUE) {};
 }
 
-//-----------------------------------------------------------------------------
-
-void Fault(U32 stack[])
-{
-    enum {r0, r1, r2, r3, r12, lr, pc, psr};
-
-    LOG("Hard Fault\r\n");
-    LOG("  SHCSR    = 0x%08x\r\n", SCB->SHCSR);
-    LOG("  CFSR     = 0x%08x\r\n", SCB->CFSR);
-    LOG("  HFSR     = 0x%08x\r\n", SCB->HFSR);
-    LOG("  MMFAR    = 0x%08x\r\n", SCB->MMFAR);
-    LOG("  BFAR     = 0x%08x\r\n", SCB->BFAR);
-
-    LOG("  R0       = 0x%08x\r\n", stack[r0]);
-    LOG("  R1       = 0x%08x\r\n", stack[r1]);
-    LOG("  R2       = 0x%08x\r\n", stack[r2]);
-    LOG("  R3       = 0x%08x\r\n", stack[r3]);
-    LOG("  R12      = 0x%08x\r\n", stack[r12]);
-    LOG("  LR [R14] = 0x%08x - Subroutine call return address\r\n", stack[lr]);
-    LOG("  PC [R15] = 0x%08x - Program counter\r\n", stack[pc]);
-    LOG("  PSR      = 0x%08x\r\n", stack[psr]);
-
-    while(FW_TRUE) {};
-}
-
-//-----------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
