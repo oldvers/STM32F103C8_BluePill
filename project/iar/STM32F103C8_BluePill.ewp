@@ -351,6 +351,10 @@
                     <state>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3</state>
                     <state>$PROJ_DIR$\..\..\src\lib\rtt</state>
                     <state>$PROJ_DIR$\..\..\src\lib\rtt\config</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\usb</state>
+                    <state>$PROJ_DIR$\..\..\src\usb</state>
+                    <state>$PROJ_DIR$\..\..\src\usb\cdc</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\fifo</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1082,6 +1086,12 @@
             <name>$PROJ_DIR$\..\..\src\hw\types.h</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\src\hw\uart.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\uart.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\hw\uniquedevid.h</name>
         </file>
         <file>
@@ -1149,6 +1159,75 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\rtt\SEGGER_RTT_printf.c</name>
+        </file>
+    </group>
+    <group>
+        <name>USB</name>
+        <group>
+            <name>CDC</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\cdc.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\cdc.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\east.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\east.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\cdc\vcp.h</name>
+            </file>
+        </group>
+        <group>
+            <name>Core</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_cdc_definitions.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_control.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_control.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_definitions.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_descriptor_definitions.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_device.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_device.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_hid_definitions.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\lib\usb\usb_msc_definitions.h</name>
+            </file>
+        </group>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_config.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_descriptor.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\usb\usb_descriptor.h</name>
+        </file>
+    </group>
+    <group>
+        <name>Utils</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\fifo\fifo.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\fifo\fifo.h</name>
         </file>
     </group>
 </project>

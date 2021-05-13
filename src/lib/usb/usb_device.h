@@ -12,4 +12,7 @@ U32  USBD_EndPointWrWsCb    (U8 aNumber, USBD_CbByte pGetByteCb, U32 aSize);
 void USBD_EndPointSetStall  (U8 aNumber);
 void USBD_EndPointClrStall  (U8 aNumber);
 
+FW_BOOLEAN USBD_EpIsRxEmpty (U8 aNumber);
+FW_BOOLEAN USBD_EpIsTxEmpty (U8 aNumber);
+
 #endif /* __USB_DEVICE_H__ */
