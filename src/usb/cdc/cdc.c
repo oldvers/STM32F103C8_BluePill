@@ -96,12 +96,15 @@ typedef struct _CDC_PORT
 //-----------------------------------------------------------------------------
 /* Global Variables */
 
-STATIC CDC_LINE_CODING   gLineCodingA   = { 0 };
-STATIC CDC_SERIAL_STATE  gNotificationA = { 0 };
-STATIC CDC_PORT          gPortA         = { 0 };
-STATIC CDC_LINE_CODING   gLineCodingB   = { 0 };
-STATIC CDC_SERIAL_STATE  gNotificationB = { 0 };
-STATIC CDC_PORT          gPortB         = { 0 };
+STATIC CDC_LINE_CODING   gLineCodingUART   = { 0 };
+STATIC CDC_SERIAL_STATE  gNotificationUART = { 0 };
+STATIC CDC_PORT          gPortUART         = { 0 };
+STATIC CDC_LINE_CODING   gLineCodingI2C    = { 0 };
+STATIC CDC_SERIAL_STATE  gNotificationI2C  = { 0 };
+STATIC CDC_PORT          gPortI2C          = { 0 };
+STATIC CDC_LINE_CODING   gLineCodingSPI    = { 0 };
+STATIC CDC_SERIAL_STATE  gNotificationSPI  = { 0 };
+STATIC CDC_PORT          gPortSPI          = { 0 };
 
 //-----------------------------------------------------------------------------
 /* Private Functions declarations */
@@ -131,7 +134,7 @@ static void uart_Init(UART_t aUART)
     UART_Init
     (
       UART1,
-      gPortA.lineCoding->dwBaudRate,
+      gPortUART.lineCoding->dwBaudRate,
       uart_FifoPutA,
       NULL,
       uart_FifoGetA,
@@ -156,7 +159,7 @@ static void uart_Init(UART_t aUART)
     UART_Init
     (
       UART2,
-      gPortB.lineCoding->dwBaudRate,
+      gPortUART.lineCoding->dwBaudRate,
       uart_FifoPutB,
       NULL,
       uart_FifoGetB,
@@ -179,15 +182,15 @@ static void uart_Init(UART_t aUART)
 
 static CDC_PORT * cdc_GetPort(U16 aInterface)
 {
-  CDC_PORT * result = &gPortA;
+  CDC_PORT * result = &gPortUART;
 
-  if (USBD_CDC_GetInterfaceNumber() == aInterface)
+  if (USBD_CDC_UART_GetInterfaceNumber() == aInterface)
   {
-    result = &gPortA;
+    result = &gPortUART;
   }
   else
   {
-    result = &gPortB;
+    result = &gPortI2C;
   }
 
   return (result);
@@ -343,7 +346,7 @@ USB_CTRL_STAGE CDC_CtrlOutReq
 )
 {
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
-  CDC_PORT * port = &gPortA;
+  CDC_PORT * port = &gPortUART;
 
   switch (pSetup->bRequest)
   {
@@ -429,8 +432,9 @@ static void cdc_ProcessCollectedData(CDC_PORT * pPort)
 
 void CDC_SOF(void)
 {
-  cdc_ProcessCollectedData(&gPortA);
-  cdc_ProcessCollectedData(&gPortB);
+  cdc_ProcessCollectedData(&gPortUART);
+  cdc_ProcessCollectedData(&gPortI2C);
+  cdc_ProcessCollectedData(&gPortSPI);
 }
 
 //-----------------------------------------------------------------------------
@@ -439,9 +443,9 @@ void CDC_SOF(void)
  *  @return None
  */
 
-void CDC_InterruptAIn(U32 aEvent)
+void CDC_UART_InterruptIn(U32 aEvent)
 {
-  cdc_IrqInStage(&gPortA);
+  cdc_IrqInStage(&gPortUART);
 }
 
 //-----------------------------------------------------------------------------
@@ -450,9 +454,9 @@ void CDC_InterruptAIn(U32 aEvent)
  *  @return None
  */
 
-void CDC_BulkAIn(U32 aEvent)
+void CDC_UART_BulkIn(U32 aEvent)
 {
-  cdc_InStage(&gPortA);
+  cdc_InStage(&gPortUART);
 }
 
 //-----------------------------------------------------------------------------
@@ -461,9 +465,9 @@ void CDC_BulkAIn(U32 aEvent)
  *  @return None
  */
 
-void CDC_BulkAOut(U32 aEvent)
+void CDC_UART_BulkOut(U32 aEvent)
 {
-  cdc_OutStage(&gPortA);
+  cdc_OutStage(&gPortUART);
 }
 
 //-----------------------------------------------------------------------------
@@ -474,7 +478,7 @@ void CDC_BulkAOut(U32 aEvent)
 
 static void cdc_RxFifoPutA(U8 * pByte)
 {
-  (void)FIFO_Put(&gPortA.rxFifo, pByte);
+  (void)FIFO_Put(&gPortUART.rxFifo, pByte);
 }
 
 //-----------------------------------------------------------------------------
@@ -485,7 +489,7 @@ static void cdc_RxFifoPutA(U8 * pByte)
 
 static void cdc_TxFifoGetA(U8 * pByte)
 {
-  (void)FIFO_Get(&gPortA.txFifo, pByte);
+  (void)FIFO_Get(&gPortUART.txFifo, pByte);
 }
 
 //-----------------------------------------------------------------------------
@@ -496,7 +500,7 @@ static void cdc_TxFifoGetA(U8 * pByte)
 
 static FW_BOOLEAN uart_FifoPutA(U8 * pByte)
 {
-  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPortA.txFifo, pByte));
+  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPortUART.txFifo, pByte));
 }
 
 //-----------------------------------------------------------------------------
@@ -507,7 +511,7 @@ static FW_BOOLEAN uart_FifoPutA(U8 * pByte)
 
 static FW_BOOLEAN uart_FifoGetA(U8 * pByte)
 {
-  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortA.rxFifo, pByte));
+  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortUART.rxFifo, pByte));
 }
 
 //-----------------------------------------------------------------------------
@@ -516,9 +520,9 @@ static FW_BOOLEAN uart_FifoGetA(U8 * pByte)
  *  @return None
  */
 
-void CDC_InterruptBIn(U32 aEvent)
+void CDC_I2C_InterruptIn(U32 aEvent)
 {
-  cdc_IrqInStage(&gPortB);
+  cdc_IrqInStage(&gPortI2C);
 }
 
 //-----------------------------------------------------------------------------
@@ -527,9 +531,9 @@ void CDC_InterruptBIn(U32 aEvent)
  *  @return None
  */
 
-void CDC_BulkBIn(U32 aEvent)
+void CDC_I2C_BulkIn(U32 aEvent)
 {
-  cdc_InStage(&gPortB);
+  cdc_InStage(&gPortI2C);
 }
 
 //-----------------------------------------------------------------------------
@@ -538,9 +542,9 @@ void CDC_BulkBIn(U32 aEvent)
  *  @return None
  */
 
-void CDC_BulkBOut(U32 aEvent)
+void CDC_I2C_BulkOut(U32 aEvent)
 {
-  cdc_OutStage(&gPortB);
+  cdc_OutStage(&gPortI2C);
 }
 
 //-----------------------------------------------------------------------------
@@ -551,7 +555,7 @@ void CDC_BulkBOut(U32 aEvent)
 
 static void cdc_RxFifoPutB(U8 * pByte)
 {
-  (void)FIFO_Put(&gPortB.rxFifo, pByte);
+  //(void)FIFO_Put(&gPortB.rxFifo, pByte);
 }
 
 //-----------------------------------------------------------------------------
@@ -562,7 +566,7 @@ static void cdc_RxFifoPutB(U8 * pByte)
 
 static void cdc_TxFifoGetB(U8 * pByte)
 {
-  (void)FIFO_Get(&gPortB.txFifo, pByte);
+  //(void)FIFO_Get(&gPortB.txFifo, pByte);
 }
 
 //-----------------------------------------------------------------------------
@@ -573,7 +577,7 @@ static void cdc_TxFifoGetB(U8 * pByte)
 
 static FW_BOOLEAN uart_FifoPutB(U8 * pByte)
 {
-  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPortB.txFifo, pByte));
+  return FW_FALSE; //(FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPortB.txFifo, pByte));
 }
 
 //-----------------------------------------------------------------------------
@@ -584,8 +588,47 @@ static FW_BOOLEAN uart_FifoPutB(U8 * pByte)
 
 static FW_BOOLEAN uart_FifoGetB(U8 * pByte)
 {
-  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortB.rxFifo, pByte));
+  return FW_FALSE; //(FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortB.rxFifo, pByte));
 }
+
+
+
+//-----------------------------------------------------------------------------
+/** @brief CDC Interrupt In Callback
+ *  @param aEvent - Event
+ *  @return None
+ */
+
+void CDC_SPI_InterruptIn(U32 aEvent)
+{
+  cdc_IrqInStage(&gPortSPI);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief CDC Bulk In Callback
+ *  @param aEvent - Event
+ *  @return None
+ */
+
+void CDC_SPI_BulkIn(U32 aEvent)
+{
+  cdc_InStage(&gPortSPI);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief CDC Bulk Out Callback
+ *  @param aEvent - Event
+ *  @return None
+ */
+
+void CDC_SPI_BulkOut(U32 aEvent)
+{
+  cdc_OutStage(&gPortSPI);
+}
+
+
+
+
 
 //-----------------------------------------------------------------------------
 /** @brief Initializes CDC
@@ -596,72 +639,108 @@ static FW_BOOLEAN uart_FifoGetB(U8 * pByte)
 void CDC_Init(void)
 {
   /* Init Line Coding */
-  gLineCodingA.dwBaudRate  = 115200;
-  gLineCodingA.bCharFormat = 0;
-  gLineCodingA.bParityType = 0;
-  gLineCodingA.bDataBits   = 8;
+  gLineCodingUART.dwBaudRate  = 115200;
+  gLineCodingUART.bCharFormat = 0;
+  gLineCodingUART.bParityType = 0;
+  gLineCodingUART.bDataBits   = 8;
   /* Init Notification */
-  gNotificationA.bmRequestType.BM.Recipient = REQUEST_TO_INTERFACE;
-  gNotificationA.bmRequestType.BM.Type      = REQUEST_CLASS;
-  gNotificationA.bmRequestType.BM.Dir       = REQUEST_DEVICE_TO_HOST;
-  gNotificationA.bNotification              = CDC_NTF_SERIAL_STATE;
-  gNotificationA.wValue                     = 0;
-  gNotificationA.wIndex                     = USBD_CDC_GetInterfaceNumber();
-  gNotificationA.wLength                    = 2;
-  gNotificationA.Data.Raw                   = 0;
+  gNotificationUART.bmRequestType.BM.Recipient = REQUEST_TO_INTERFACE;
+  gNotificationUART.bmRequestType.BM.Type      = REQUEST_CLASS;
+  gNotificationUART.bmRequestType.BM.Dir       = REQUEST_DEVICE_TO_HOST;
+  gNotificationUART.bNotification              = CDC_NTF_SERIAL_STATE;
+  gNotificationUART.wValue                     = 0;
+  gNotificationUART.wIndex                     = USBD_CDC_UART_GetInterfaceNumber();
+  gNotificationUART.wLength                    = 2;
+  gNotificationUART.Data.Raw                   = 0;
   /* Clear Port context */
-  memset(&gPortA, 0, sizeof(gPortA));
+  memset(&gPortUART, 0, sizeof(gPortUART));
   /* Port is not ready yet */
-  gPortA.ready = FW_FALSE;
+  gPortUART.ready = FW_FALSE;
   /* Initialize Endpoints */
-  gPortA.epOBlkRd        = USBD_CDC_OEndPointRdWsCb;
-  gPortA.epOBlkIsRxEmpty = USBD_CDC_OEndPointIsRxEmpty;
-  gPortA.epIBlkWr        = USBD_CDC_IEndPointWrWsCb;
-  gPortA.epOBlkIsRxEmpty = USBD_CDC_IEndPointIsTxEmpty;
-  gPortA.epIIrqWr        = USBD_CDC_IrqEndPointWr;
+  gPortUART.epOBlkRd        = USBD_CDC_UART_OEndPointRdWsCb;
+  gPortUART.epOBlkIsRxEmpty = USBD_CDC_UART_OEndPointIsRxEmpty;
+  gPortUART.epIBlkWr        = USBD_CDC_UART_IEndPointWrWsCb;
+  gPortUART.epOBlkIsRxEmpty = USBD_CDC_UART_IEndPointIsTxEmpty;
+  gPortUART.epIIrqWr        = USBD_CDC_UART_IrqEndPointWr;
   /* Initialize FIFOs */
-  FIFO_Init(&gPortA.rxFifo, gPortA.rxBuffer, sizeof(gPortA.rxBuffer));
-  FIFO_Init(&gPortA.txFifo, gPortA.txBuffer, sizeof(gPortA.txBuffer));
-  gPortA.rxFifoPutCb = cdc_RxFifoPutA;
-  gPortA.txFifoGetCb = cdc_TxFifoGetA;
+  FIFO_Init(&gPortUART.rxFifo, gPortUART.rxBuffer, sizeof(gPortUART.rxBuffer));
+  FIFO_Init(&gPortUART.txFifo, gPortUART.txBuffer, sizeof(gPortUART.txBuffer));
+  gPortUART.rxFifoPutCb = cdc_RxFifoPutA;
+  gPortUART.txFifoGetCb = cdc_TxFifoGetA;
   /* Initialize pointers */
-  gPortA.lineCoding = &gLineCodingA;
-  gPortA.notification = &gNotificationA;
+  gPortUART.lineCoding = &gLineCodingUART;
+  gPortUART.notification = &gNotificationUART;
   /* Initialize UART Number */
-  gPortA.uart = UART1;
+  gPortUART.uart = UART1;
 
   /* Init Line Coding */
-  gLineCodingB.dwBaudRate  = 115200;
-  gLineCodingB.bCharFormat = 0;
-  gLineCodingB.bParityType = 0;
-  gLineCodingB.bDataBits   = 8;
+  gLineCodingI2C.dwBaudRate  = 115200;
+  gLineCodingI2C.bCharFormat = 0;
+  gLineCodingI2C.bParityType = 0;
+  gLineCodingI2C.bDataBits   = 8;
   /* Init Notification */
-  gNotificationB.bmRequestType.BM.Recipient = REQUEST_TO_INTERFACE;
-  gNotificationB.bmRequestType.BM.Type      = REQUEST_CLASS;
-  gNotificationB.bmRequestType.BM.Dir       = REQUEST_DEVICE_TO_HOST;
-  gNotificationB.bNotification              = CDC_NTF_SERIAL_STATE;
-  gNotificationB.wValue                     = 0;
-  gNotificationB.wIndex                     = USBD_CDC_GetInterfaceNumber();
-  gNotificationB.wLength                    = 2;
-  gNotificationB.Data.Raw                   = 0;
+  gNotificationI2C.bmRequestType.BM.Recipient = REQUEST_TO_INTERFACE;
+  gNotificationI2C.bmRequestType.BM.Type      = REQUEST_CLASS;
+  gNotificationI2C.bmRequestType.BM.Dir       = REQUEST_DEVICE_TO_HOST;
+  gNotificationI2C.bNotification              = CDC_NTF_SERIAL_STATE;
+  gNotificationI2C.wValue                     = 0;
+  gNotificationI2C.wIndex                     = USBD_CDC_I2C_GetInterfaceNumber();
+  gNotificationI2C.wLength                    = 2;
+  gNotificationI2C.Data.Raw                   = 0;
   /* Clear Port context */
-  memset(&gPortB, 0, sizeof(gPortB));
+  memset(&gPortI2C, 0, sizeof(gPortI2C));
   /* Port is not ready yet */
-  gPortB.ready = FW_FALSE;
+  gPortI2C.ready = FW_FALSE;
   /* Initialize Endpoints */
-  gPortB.epOBlkRd        = USBD_CDD_OEndPointRdWsCb;
-  gPortA.epOBlkIsRxEmpty = USBD_CDD_OEndPointIsRxEmpty;
-  gPortB.epIBlkWr        = USBD_CDD_IEndPointWrWsCb;
-  gPortA.epIBlkIsTxEmpty = USBD_CDC_IEndPointIsTxEmpty;
-  gPortB.epIIrqWr        = USBD_CDD_IrqEndPointWr;
+  gPortI2C.epOBlkRd        = USBD_CDC_I2C_OEndPointRdWsCb;
+  gPortI2C.epOBlkIsRxEmpty = USBD_CDC_I2C_OEndPointIsRxEmpty;
+  gPortI2C.epIBlkWr        = USBD_CDC_I2C_IEndPointWrWsCb;
+  gPortI2C.epIBlkIsTxEmpty = USBD_CDC_I2C_IEndPointIsTxEmpty;
+  gPortI2C.epIIrqWr        = USBD_CDC_I2C_IrqEndPointWr;
   /* Initialize FIFOs */
-  FIFO_Init(&gPortB.rxFifo, gPortB.rxBuffer, sizeof(gPortB.rxBuffer));
-  FIFO_Init(&gPortB.txFifo, gPortB.txBuffer, sizeof(gPortB.txBuffer));
-  gPortB.rxFifoPutCb = cdc_RxFifoPutB;
-  gPortB.txFifoGetCb = cdc_TxFifoGetB;
+  FIFO_Init(&gPortI2C.rxFifo, gPortI2C.rxBuffer, sizeof(gPortI2C.rxBuffer));
+  FIFO_Init(&gPortI2C.txFifo, gPortI2C.txBuffer, sizeof(gPortI2C.txBuffer));
+  gPortI2C.rxFifoPutCb = cdc_RxFifoPutB;
+  gPortI2C.txFifoGetCb = cdc_TxFifoGetB;
   /* Initialize pointers */
-  gPortB.lineCoding = &gLineCodingB;
-  gPortB.notification = &gNotificationB;
+  gPortI2C.lineCoding = &gLineCodingI2C;
+  gPortI2C.notification = &gNotificationI2C;
   /* Initialize UART Number */
-  gPortB.uart = UART2;
+  gPortI2C.uart = UART2;
+
+
+  /* Init Line Coding */
+  gLineCodingSPI.dwBaudRate  = 115200;
+  gLineCodingSPI.bCharFormat = 0;
+  gLineCodingSPI.bParityType = 0;
+  gLineCodingSPI.bDataBits   = 8;
+  /* Init Notification */
+  gNotificationSPI.bmRequestType.BM.Recipient = REQUEST_TO_INTERFACE;
+  gNotificationSPI.bmRequestType.BM.Type      = REQUEST_CLASS;
+  gNotificationSPI.bmRequestType.BM.Dir       = REQUEST_DEVICE_TO_HOST;
+  gNotificationSPI.bNotification              = CDC_NTF_SERIAL_STATE;
+  gNotificationSPI.wValue                     = 0;
+  gNotificationSPI.wIndex                     = USBD_CDC_SPI_GetInterfaceNumber();
+  gNotificationSPI.wLength                    = 2;
+  gNotificationSPI.Data.Raw                   = 0;
+  /* Clear Port context */
+  memset(&gPortSPI, 0, sizeof(gPortSPI));
+  /* Port is not ready yet */
+  gPortSPI.ready = FW_FALSE;
+  /* Initialize Endpoints */
+  gPortSPI.epOBlkRd        = USBD_CDC_SPI_OEndPointRdWsCb;
+  gPortSPI.epOBlkIsRxEmpty = USBD_CDC_SPI_OEndPointIsRxEmpty;
+  gPortSPI.epIBlkWr        = USBD_CDC_SPI_IEndPointWrWsCb;
+  gPortSPI.epIBlkIsTxEmpty = USBD_CDC_SPI_IEndPointIsTxEmpty;
+  gPortSPI.epIIrqWr        = USBD_CDC_SPI_IrqEndPointWr;
+  /* Initialize FIFOs */
+  FIFO_Init(&gPortSPI.rxFifo, gPortSPI.rxBuffer, sizeof(gPortSPI.rxBuffer));
+  FIFO_Init(&gPortSPI.txFifo, gPortSPI.txBuffer, sizeof(gPortSPI.txBuffer));
+  gPortSPI.rxFifoPutCb = cdc_RxFifoPutB;
+  gPortSPI.txFifoGetCb = cdc_TxFifoGetB;
+  /* Initialize pointers */
+  gPortSPI.lineCoding = &gLineCodingSPI;
+  gPortSPI.notification = &gNotificationSPI;
+  /* Initialize UART Number */
+  gPortSPI.uart = UART2;
 }

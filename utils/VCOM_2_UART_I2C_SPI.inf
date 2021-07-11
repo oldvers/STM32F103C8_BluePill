@@ -1,0 +1,73 @@
+;
+; Copyright © ARM Ltd and ARM Germany GmbH
+; Communication Device Class driver installation file
+;
+
+[Version]
+Signature="$Windows NT$"
+Class=Ports
+ClassGuid={4D36E978-E325-11CE-BFC1-08002BE10318}
+Provider=%MANUFACTURER%
+DriverVer=05/13/2013,5.3.0.0
+CatalogFile.NTx86=VCOM_2_UART_I2C_SPI_X86.cat
+CatalogFile.NTAMD64=VCOM_2_UART_I2C_SPI_AMD64.cat
+
+[Manufacturer]
+%MANUFACTURER%=DeviceList,ntamd64
+
+[DeviceList]
+%DESCRIPTION%=MCBSTM32USB, USB\VID_c251&PID_a006
+%COMPOSITE0% =MCBSTM32USB, USB\VID_c251&PID_a006&MI_00
+%COMPOSITE2% =MCBSTM32USB, USB\VID_c251&PID_a006&MI_02
+%COMPOSITE4% =MCBSTM32USB, USB\VID_c251&PID_a006&MI_04
+
+[DeviceList.ntamd64]
+%DESCRIPTION%=MCBSTM32USB, USB\VID_c251&PID_a006
+%COMPOSITE0% =MCBSTM32USB, USB\VID_c251&PID_a006&MI_00
+%COMPOSITE2% =MCBSTM32USB, USB\VID_c251&PID_a006&MI_02
+%COMPOSITE4% =MCBSTM32USB, USB\VID_c251&PID_a006&MI_04
+
+;------------------------------------------------------------------------------
+;  Installation
+;------------------------------------------------------------------------------
+
+[SourceDisksFiles]
+
+[SourceDisksNames]
+
+[DestinationDirs]
+FakeModemCopyFileSection=12
+DefaultDestDir=12
+[FakeModemCopyFileSection]
+
+[MCBSTM32USB]
+include=mdmcpq.inf
+CopyFiles=FakeModemCopyFileSection
+AddReg=MCBSTM32USB.AddReg
+
+[MCBSTM32USB.AddReg]
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,usbser.sys
+HKR,,EnumPropPages32,,"MsPorts.dll,SerialPortPropPageProvider"
+
+[MCBSTM32USB.Services]
+AddService=usbser, 0x00000002, DriverService
+
+[DriverService]
+DisplayName=%DRIVER.SVC%
+ServiceType=1
+StartType=3
+ErrorControl=1
+ServiceBinary=%12%\usbser.sys
+
+;------------------------------------------------------------------------------
+;  String Definitions
+;------------------------------------------------------------------------------
+
+[Strings]
+MANUFACTURER = "Keil Software"
+DRIVER.SVC   = "Keil Software Driver"
+DESCRIPTION  = "Keil Composite Device"
+COMPOSITE0   = "UART"
+COMPOSITE2   = "I2C"
+COMPOSITE4   = "SPI"
