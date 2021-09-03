@@ -398,12 +398,12 @@ void vLEDTask(void * pvParameters)
 //    led %= LED_COUNT;
 //    WS2812_SetColor(led, x[0], x[1], x[2]);
 //    WS2812_StartE();
-//
-//    GPIO_Lo(GPIOC, 13);
-//    vTaskDelay(10);
-//    GPIO_Hi(GPIOC, 13);
-//    vTaskDelay(10);
-//    RunningPixel();
+
+      GPIO_Lo(GPIOC, 13);
+      vTaskDelay(10);
+      GPIO_Hi(GPIOC, 13);
+      vTaskDelay(10);
+      RunningPixel();
       BrightnessR();
       BrightnessG();
       BrightnessB();
