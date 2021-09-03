@@ -75,7 +75,7 @@ static const U8 USB_ConfigDescriptor[] =
    USB_CONFIGURATION_DESCRIPTOR_SIZE  * (1)                              +
    USB_INTERFACE_DESCRIPTOR_SIZE      * (USB_INTERFACE_IDX_CNT)          +
    USB_ENDPOINT_DESCRIPTOR_SIZE       * (6)                              +
-   USB_IF_ASSOCIATION_DESCRIPTOR_SIZE * (1)                              +
+   USB_IF_ASSOCIATION_DESCRIPTOR_SIZE * (2)                              +
    CDC_FNC_DESC_SUM_SIZE              * (2)
   )),
   USB_INTERFACE_IDX_CNT,                 /* bNumInterfaces */
@@ -84,6 +84,18 @@ static const U8 USB_ConfigDescriptor[] =
   USB_CONFIG_BUS_POWERED /*|*/           /* bmAttributes */
   /*USB_CONFIG_REMOTE_WAKEUP*/,
   USB_CONFIG_POWER_MA(100),              /* bMaxPower */
+
+
+/* Interface Association */
+  USB_IF_ASSOCIATION_DESCRIPTOR_SIZE,    /* bLength */
+  USB_IF_ASSOCIATION_DESCRIPTOR_TYPE,    /* bDescriptorType */
+  USB_INTERFACE_IDX_CDC_IRQ,             /* bFirstInterface */
+  0x02,                                  /* bInterfaceCount */
+  USB_DEVICE_CLASS_COMMUNICATIONS,       /* bFunctionClass */
+  CDC_IF_SUBCLASS_ACM,                   /* bFunctionSubClass */
+  CDC_IF_PROTOCOL_AT_CMD,                /* bFunctionProtocol */
+  STR_DESCRIPTOR_IDX_CDC,                /* iFunction (String descr. index) */
+
 
 /* Interface 0, Alternate Setting 0, CDC Class */
   USB_INTERFACE_DESCRIPTOR_SIZE,         /* bLength */
@@ -148,15 +160,19 @@ static const U8 USB_ConfigDescriptor[] =
   USB_ENDPOINT_TYPE_BULK,                /* bmAttributes */
   WBVAL(USB_CDC_PACKET_SIZE),            /* wMaxPacketSize */
   0,                                     /* bInterval */
+
+
 /* Interface Association */
   USB_IF_ASSOCIATION_DESCRIPTOR_SIZE,    /* bLength */
-	USB_IF_ASSOCIATION_DESCRIPTOR_TYPE,    /* bDescriptorType */
-	USB_INTERFACE_IDX_CDD_IRQ,             /* bFirstInterface */
-	0x02,                                  /* bInterfaceCount */
-	USB_DEVICE_CLASS_COMMUNICATIONS,       /* bFunctionClass */
-	CDC_IF_SUBCLASS_ACM,                   /* bFunctionSubClass */
-	CDC_IF_PROTOCOL_AT_CMD,                /* bFunctionProtocol */
-	STR_DESCRIPTOR_IDX_CDD,                /* iFunction (String descr. index) */
+  USB_IF_ASSOCIATION_DESCRIPTOR_TYPE,    /* bDescriptorType */
+  USB_INTERFACE_IDX_CDD_IRQ,             /* bFirstInterface */
+  0x02,                                  /* bInterfaceCount */
+  USB_DEVICE_CLASS_COMMUNICATIONS,       /* bFunctionClass */
+  CDC_IF_SUBCLASS_ACM,                   /* bFunctionSubClass */
+  CDC_IF_PROTOCOL_AT_CMD,                /* bFunctionProtocol */
+  STR_DESCRIPTOR_IDX_CDD,                /* iFunction (String descr. index) */
+
+
 /* Interface 2, Alternate Setting 0, CDC Class */
   USB_INTERFACE_DESCRIPTOR_SIZE,         /* bLength */
   USB_INTERFACE_DESCRIPTOR_TYPE,         /* bDescriptorType */
@@ -187,8 +203,8 @@ static const U8 USB_ConfigDescriptor[] =
   0x05,                                  /* bFunctionLength */
   CDC_CS_INTERFACE_DESC_TYPE,            /* bDescriptorType */
   CDC_UNION_FNC_DESC_SUBTYPE,            /* bDescriptorSubtype */
-  USB_INTERFACE_IDX_CDC_IRQ,             /* bMasterInterface */
-  USB_INTERFACE_IDX_CDC_DATA,            /* bSlaveInterface0 */
+  USB_INTERFACE_IDX_CDD_IRQ,             /* bMasterInterface */
+  USB_INTERFACE_IDX_CDD_DATA,            /* bSlaveInterface0 */
 /* Endpoint Interrupt Descriptor */
   USB_ENDPOINT_DESCRIPTOR_SIZE,          /* bLength */
   USB_ENDPOINT_DESCRIPTOR_TYPE,          /* bDescriptorType */
@@ -220,6 +236,8 @@ static const U8 USB_ConfigDescriptor[] =
   USB_ENDPOINT_TYPE_BULK,                /* bmAttributes */
   WBVAL(USB_CDC_PACKET_SIZE),            /* wMaxPacketSize */
   0,                                     /* bInterval */
+
+
 /* Terminator */
   0                                      /* bTerminator */
 };
@@ -299,26 +317,24 @@ static const U8 usbd_StrDescriptor_SerialNumber[] =
 
 static const U8 usbd_StrDescriptor_CDC[] =
 {
-  0x0E,                                  /* bLength */
+  0x0C,                                  /* bLength */
   USB_STRING_DESCRIPTOR_TYPE,            /* bDescriptorType */
-  'S', 0,
+  'U', 0,
+  'A', 0,
+  'R', 0,
   'T', 0,
-  'M', 0,
-  'C', 0,
-  'D', 0,
-  'C', 0,
+  '1', 0,
 };
 
 static const U8 usbd_StrDescriptor_CDD[] =
 {
-  0x0E,                                  /* bLength */
+  0x0C,                                  /* bLength */
   USB_STRING_DESCRIPTOR_TYPE,            /* bDescriptorType */
-  'S', 0,
+  'U', 0,
+  'A', 0,
+  'R', 0,
   'T', 0,
-  'M', 0,
-  'C', 0,
-  'D', 0,
-  'D', 0,
+  '2', 0,
 };
 
 static const U8 * usbd_StrDescriptor[STR_DESCRIPTOR_IDX_CNT] =

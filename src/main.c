@@ -108,6 +108,10 @@ int main(void)
     tskIDLE_PRIORITY + 1,
     NULL
   );
+
+  vTaskStartScheduler();
+
+  while (FW_TRUE) {};
 }
 
 void on_error(void)
