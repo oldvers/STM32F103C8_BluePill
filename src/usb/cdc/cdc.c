@@ -23,7 +23,7 @@
 //-----------------------------------------------------------------------------
 /* Private definitions */
 
-#define CDC_DEBUG
+//#define CDC_DEBUG
 
 #ifdef CDC_DEBUG
 #  define CDC_LOG           DBG
