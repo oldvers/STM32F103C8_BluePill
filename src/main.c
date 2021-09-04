@@ -24,12 +24,12 @@ void vLEDTask(void * pvParameters)
   while(1)
   {
     GPIO_Lo(GPIOC, 13);
-    DBG_SetTextColorGreen();
-    printf("LED On\r\n");
+    //DBG_SetTextColorGreen();
+    //printf("LED On\r\n");
     vTaskDelay(500);
     GPIO_Hi(GPIOC, 13);
-    DBG_SetTextColorRed();
-    printf("LED Off\r\n");
+    //DBG_SetTextColorRed();
+    //printf("LED Off\r\n");
     vTaskDelay(500);
   }
   //vTaskDelete(NULL);
@@ -49,6 +49,8 @@ void vDualUartTask(void * pvParameters)
   GPIO_Init(WIFI_EN_PORT, WIFI_EN_PIN, GPIO_TYPE_OUT_PP_2MHZ, 1);
 
   /* Test Pins */
+  GPIO_Init(GPIOA,  5, GPIO_TYPE_OUT_PP_50MHZ, 0);
+  GPIO_Init(GPIOA,  6, GPIO_TYPE_OUT_PP_50MHZ, 0);
   GPIO_Init(GPIOA,  7, GPIO_TYPE_OUT_PP_50MHZ, 0);
   GPIO_Init(GPIOB, 11, GPIO_TYPE_OUT_PP_50MHZ, 0);
 
