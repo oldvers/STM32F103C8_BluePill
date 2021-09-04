@@ -160,18 +160,22 @@ USB_CTRL_STAGE usbc_CbCtrlSetupReqClass
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
   U8             i      = 0;
 
-  if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
+  /* For now all the recipients share the same handler */
+  switch (pSetup->bmRequestType.BM.Recipient)
   {
-    i = pSetup->wIndex.WB.L;
-    if ( (i < USBD_GetItrfacesCount()) &&
-         (NULL != USBD_IfCbDescriptor[i].CbCtrlSetup) )
-    {
-      result = USBD_IfCbDescriptor[i].CbCtrlSetup(pSetup, pData, pSize);
-    }
-  }
-  else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
-  {
-    //
+    case REQUEST_TO_DEVICE:
+    case REQUEST_TO_INTERFACE:
+    case REQUEST_TO_ENDPOINT:
+      i = pSetup->wIndex.WB.L;
+      if ( (i < USBD_GetItrfacesCount()) &&
+           (NULL != USBD_IfCbDescriptor[i].CbCtrlSetup) )
+      {
+        result = USBD_IfCbDescriptor[i].CbCtrlSetup(pSetup, pData, pSize);
+      }
+      break;
+
+    default:
+      break;
   }
 
   return result;
@@ -195,18 +199,22 @@ USB_CTRL_STAGE usbc_CbCtrlOutReqClass
   USB_CTRL_STAGE result = USB_CTRL_STAGE_ERROR;
   U8             i      = 0;
 
-  if (REQUEST_TO_INTERFACE == pSetup->bmRequestType.BM.Recipient)
+  /* For now all the recipients share the same handler */
+  switch (pSetup->bmRequestType.BM.Recipient)
   {
-    i = pSetup->wIndex.WB.L;
-    if ( (i < USBD_GetItrfacesCount()) &&
-         (NULL != USBD_IfCbDescriptor[i].CbCtrlOut) )
-    {
-      result = USBD_IfCbDescriptor[i].CbCtrlOut(pSetup, pData, pSize);
-    }
-  }
-  else if (REQUEST_TO_ENDPOINT == pSetup->bmRequestType.BM.Recipient)
-  {
-    //
+    case REQUEST_TO_DEVICE:
+    case REQUEST_TO_INTERFACE:
+    case REQUEST_TO_ENDPOINT:
+      i = pSetup->wIndex.WB.L;
+      if ( (i < USBD_GetItrfacesCount()) &&
+           (NULL != USBD_IfCbDescriptor[i].CbCtrlOut) )
+      {
+        result = USBD_IfCbDescriptor[i].CbCtrlOut(pSetup, pData, pSize);
+      }
+      break;
+
+    default:
+      break;
   }
 
   return result;
