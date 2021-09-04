@@ -23,10 +23,10 @@
 //-----------------------------------------------------------------------------
 /* Private definitions */
 
-//#define CDC_DEBUG
+#define CDC_DEBUG
 
 #ifdef CDC_DEBUG
-#  define CDC_LOG           LOG
+#  define CDC_LOG           DBG
 #else
 #  define CDC_LOG(...)
 #endif
@@ -1354,7 +1354,7 @@ void CDC_Init(void)
   gPortA.epOBlkRd        = USBD_CDC_OEndPointRdWsCb;
   gPortA.epOBlkIsRxEmpty = USBD_CDC_OEndPointIsRxEmpty;
   gPortA.epIBlkWr        = USBD_CDC_IEndPointWrWsCb;
-  gPortA.epOBlkIsRxEmpty = USBD_CDC_IEndPointIsTxEmpty;
+  gPortA.epIBlkIsTxEmpty = USBD_CDC_IEndPointIsTxEmpty;
   /* Initialize FIFOs */
   FIFO_Init(&gPortA.rxFifo, gPortA.rxBuffer, sizeof(gPortA.rxBuffer));
   FIFO_Init(&gPortA.txFifo, gPortA.txBuffer, sizeof(gPortA.txBuffer));
@@ -1375,9 +1375,9 @@ void CDC_Init(void)
   gPortB.rxComplete = FW_FALSE;
   /* Initialize Endpoints */
   gPortB.epOBlkRd        = USBD_CDD_OEndPointRdWsCb;
-  gPortA.epOBlkIsRxEmpty = USBD_CDD_OEndPointIsRxEmpty;
+  gPortB.epOBlkIsRxEmpty = USBD_CDD_OEndPointIsRxEmpty;
   gPortB.epIBlkWr        = USBD_CDD_IEndPointWrWsCb;
-  gPortA.epIBlkIsTxEmpty = USBD_CDC_IEndPointIsTxEmpty;
+  gPortB.epIBlkIsTxEmpty = USBD_CDD_IEndPointIsTxEmpty;
   /* Initialize FIFOs */
   FIFO_Init(&gPortB.rxFifo, gPortB.rxBuffer, sizeof(gPortB.rxBuffer));
   FIFO_Init(&gPortB.txFifo, gPortB.txBuffer, sizeof(gPortB.txBuffer));

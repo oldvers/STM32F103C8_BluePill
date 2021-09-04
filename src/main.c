@@ -27,12 +27,12 @@ void vLEDTask(void * pvParameters)
   while(1)
   {
     GPIO_Lo(GPIOC, 13);
-    DBG_SetTextColorGreen();
-    printf("LED On\r\n");
+    //DBG_SetTextColorGreen();
+    //printf("LED On\r\n");
     vTaskDelay(500);
     GPIO_Hi(GPIOC, 13);
-    DBG_SetTextColorRed();
-    printf("LED Off\r\n");
+    //DBG_SetTextColorRed();
+    //printf("LED Off\r\n");
     vTaskDelay(500);
   }
   //vTaskDelete(NULL);
