@@ -73,8 +73,6 @@ extern void on_error(S32 parameter);
 
 void IRQ_SetPriorityGrouping(void)
 {
-  NVIC_SetPriorityGrouping(IRQ_PRIORITY_GROUPS_CONFIG);
-
   U32 grouping = 0, priority = 0;
 
   NVIC_SetPriorityGrouping(IRQ_PRIORITY_GROUPS_CONFIG);
