@@ -494,7 +494,7 @@ const USBD_INTERFACE_CALLBACKS_DESCRIPTOR
     .CbInit      = CDC_Init,
     .CbCtrlSetup = CDC_CtrlSetupReq,
     .CbCtrlOut   = CDC_CtrlOutReq,
-    .CbSOF       = CDC_SOF,
+    .CbSOF       = CDC_UART_SOF,
     .CbEndPointI = CDC_UART_InterruptIn,
     .CbEndPointO = NULL,
     .EndPointI   = USB_ENDPOINT_I(USB_ENDPOINT_IDX_CDC_UART_IRQ),

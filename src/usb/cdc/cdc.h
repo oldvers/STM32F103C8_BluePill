@@ -23,13 +23,15 @@ USB_CTRL_STAGE CDC_CtrlOutReq
   U8 **pData,
   U16 *pSize
 );
-void CDC_SOF(void);
+void CDC_UART_SOF(void);
 void CDC_UART_InterruptIn(U32 aEvent);
 void CDC_UART_BulkIn(U32 aEvent);
 void CDC_UART_BulkOut(U32 aEvent);
+void CDC_I2C_SOF(void);
 void CDC_I2C_InterruptIn(U32 aEvent);
 void CDC_I2C_BulkIn(U32 aEvent);
 void CDC_I2C_BulkOut(U32 aEvent);
+void CDC_SPI_SOF(void);
 void CDC_SPI_InterruptIn(U32 aEvent);
 void CDC_SPI_BulkIn(U32 aEvent);
 void CDC_SPI_BulkOut(U32 aEvent);
