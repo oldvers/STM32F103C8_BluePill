@@ -31,7 +31,7 @@
 #define USB_POWER                 (0)
 
 /* Max Control Endpoint Packet Size (8, 16, 32 or 64 Bytes) */
-#define USB_CTRL_PACKET_SIZE      (64)
+#define USB_CTRL_PACKET_SIZE      (32)
 
 /* Max Count Of Interfaces */
 #define USB_INTERFACE_MAX_CNT     (8)

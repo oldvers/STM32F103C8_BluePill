@@ -8,7 +8,7 @@
 /* CDC Interrupt Endpoint Polling Interval (ms) */
 #define USB_CDC_IRQ_INTERVAL       (16)
 /* CDC Bulk Endpoint Max Packet Size */
-#define USB_CDC_PACKET_SIZE        (64)
+#define USB_CDC_PACKET_SIZE        (32)
 
 void CDC_Init(void);
 USB_CTRL_STAGE CDC_CtrlSetupReq
