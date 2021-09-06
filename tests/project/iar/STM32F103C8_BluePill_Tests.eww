@@ -4,6 +4,9 @@
         <path>$WS_DIR$\..\..\exceptions\project\iar\STM32F103C8_BluePill_Test_Exceptions.ewp</path>
     </project>
     <project>
+        <path>$WS_DIR$\..\..\i2c\project\iar\STM32F103C8_BluePill_Test_I2C.ewp</path>
+    </project>
+    <project>
         <path>$WS_DIR$\..\..\real_hw_template\project\iar\STM32F103C8_BluePill_Test_RealHwTemplate.ewp</path>
     </project>
     <project>
