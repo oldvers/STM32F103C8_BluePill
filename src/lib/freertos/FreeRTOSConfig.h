@@ -130,7 +130,7 @@ extern unsigned int CPUClock;
 #define configMAX_CO_ROUTINE_PRIORITIES          ( 2 )
 
 /* Software timer related definitions. */
-#define configUSE_TIMERS                         0
+#define configUSE_TIMERS                         1
 #define configTIMER_TASK_PRIORITY                3
 #define configTIMER_QUEUE_LENGTH                 10
 #define configTIMER_TASK_STACK_DEPTH             configMINIMAL_STACK_SIZE
@@ -154,7 +154,7 @@ to exclude the API function. */
 #define INCLUDE_pcTaskGetTaskName                0
 #define INCLUDE_eTaskGetState                    0
 #define INCLUDE_xEventGroupSetBitFromISR         0
-#define INCLUDE_xTimerPendFunctionCall           0
+#define INCLUDE_xTimerPendFunctionCall           1
 
 /* This is the raw value as per the Cortex-M3 NVIC.  Values can be 255
 (lowest) to 0 (1?) (highest). */

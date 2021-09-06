@@ -27,7 +27,7 @@
 //  I2CS_COUNT
 //} IIC_t;
 
-typedef struct I2CTransAction_s
+typedef struct I2C_Context_s
 {
   I2C_TypeDef      * HW;
   U8                 Address;
@@ -138,7 +138,7 @@ static void i2c_Init(I2C_TypeDef * pI2cInstance)
   pI2cInstance->CR2 = temp;
 
   /* I2C SCL Duty -> 100 kHz */
-  pI2cInstance->CCR = temp * 10;
+  pI2cInstance->CCR = temp * 5;
 
   /* Rise Time -> 1000 ns */
   pI2cInstance->TRISE = temp;
@@ -240,32 +240,47 @@ static void i2c_Err(I2C_Context_t * pContext)
 
 //-----------------------------------------------------------------------------
 
-void I2C1_Init(I2C_CbComplete_t pCbComplete)
+void I2C_Init(I2C_t aI2C, I2C_CbComplete_t pCbComplete)
 {
-  /* Enable I2C peripheral clock */
-  RCC->APB1ENR |= RCC_APB1ENR_I2C1EN;
+  if (I2C_1 == aI2C)
+  {
+    /* Enable I2C peripheral clock */
+    RCC->APB1ENR |= RCC_APB1ENR_I2C1EN;
 
-  /* Reset I2C peripheral */
-  RCC->APB1RSTR |= RCC_APB1RSTR_I2C1RST;
-  RCC->APB1RSTR &= (~RCC_APB1RSTR_I2C1RST);
+    /* Reset I2C peripheral */
+    RCC->APB1RSTR |= RCC_APB1RSTR_I2C1RST;
+    RCC->APB1RSTR &= (~RCC_APB1RSTR_I2C1RST);
+
+    /* Enable I2C Interrupts */
+    IRQ_I2C1_Enable();
+  }
+  else
+  {
+    /* Enable I2C peripheral clock */
+    RCC->APB1ENR |= RCC_APB1ENR_I2C2EN;
+
+    /* Reset I2C peripheral */
+    RCC->APB1RSTR |= RCC_APB1RSTR_I2C2RST;
+    RCC->APB1RSTR &= (~RCC_APB1RSTR_I2C2RST);
+
+    /* Enable I2C Interrupts */
+    IRQ_I2C2_Enable();
+  }
 
   /* Enable I2C Debug Mode */
   DBGMCU->CR |= ( DBGMCU_CR_DBG_I2C1_SMBUS_TIMEOUT |
                   DBGMCU_CR_DBG_I2C2_SMBUS_TIMEOUT );
 
-  /* Enable I2C Interrupts */
-  IRQ_I2C1_Enable();
-
   /* Setup the callback */
-  gI2CCtx[I2C_1].CbComplete = pCbComplete;
+  gI2CCtx[aI2C].CbComplete = pCbComplete;
 
   /* Init the peripheral */
-  i2c_Init(gI2CCtx[I2C_1].HW);
+  i2c_Init(gI2CCtx[aI2C].HW);
 }
 
 //-----------------------------------------------------------------------------
 
-void I2C1_MWr(U8 aAdr, U8 * pTx, U8 txSize)
+void I2C_MWr(I2C_t aI2C, U8 aAdr, U8 * pTx, U8 txSize)
 {
   I2C_Context_p pCtx = &gI2CCtx[I2C_1];
 
@@ -297,7 +312,7 @@ void I2C_IrqError(I2C_t aI2C)
 
 //-----------------------------------------------------------------------------
 
-void I2C1_MRd(U8 aAdr, U8 * pRx, U8 rxSize)
+void I2C_MRd(I2C_t aI2C, U8 aAdr, U8 * pRx, U8 rxSize)
 {
   I2C_Context_p pCtx = &gI2CCtx[I2C_1];
 
