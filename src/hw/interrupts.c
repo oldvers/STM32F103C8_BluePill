@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include "types.h"
 #include "interrupts.h"
+#include "usb.h"
+#include "uart.h"
+#include "debug.h"
 
 /* --- Logging -------------------------------------------------------------- */
 
@@ -48,7 +51,11 @@
 
 /* The preemption priority */
 #define IRQ_PRIORITY_FAULT              ( 0)
+#define IRQ_PRIORITY_UART1              ( 3)
+#define IRQ_PRIORITY_UART2              ( 3)
+#define IRQ_PRIORITY_UART3              ( 3)
 /*      IRQ_PRIORITY_MAX_SYSCALL        (11) */
+#define IRQ_PRIORITY_USB                (15)
 /*      IRQ_PRIORITY_SYSTICK            (15) */
 /*      IRQ_PRIORITY_PENDSV             (15) */
 
@@ -157,6 +164,135 @@ void IRQ_Exception_Handler(U32 pStackFrame[], U32 LRValue)
   IRQ_LOG("  PSR      = 0x%08X\r\n", pStackFrame[PSR]);
 
   on_error(FaultID);
+}
+
+/* --- USB ------------------------------------------------------------------ */
+
+void IRQ_USB_Enable(void)
+{
+  U32 priority = NVIC_EncodePriority
+                 (
+                   IRQ_PRIORITY_GROUPS_CONFIG,
+                   IRQ_PRIORITY_USB,
+                   IRQ_SUB_PRIORITY
+                 );
+  IRQ_LOG("IRQ: USB Priority = 0x%02X\r\n", priority);
+
+  NVIC_ClearPendingIRQ(USB_LP_CAN1_RX0_IRQn);
+  NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, priority);
+  NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_USB_Disable(void)
+{
+  NVIC_DisableIRQ(USB_LP_CAN1_RX0_IRQn);
+  NVIC_ClearPendingIRQ(USB_LP_CAN1_RX0_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USB_LP_CAN1_RX0_IRQHandler(void)
+{
+  USB_IRQHandler();
+}
+
+
+/* --- USART ---------------------------------------------------------------- */
+
+void IRQ_USART1_Enable(void)
+{
+  U32 priority = NVIC_EncodePriority
+                 (
+                   IRQ_PRIORITY_GROUPS_CONFIG,
+                   IRQ_PRIORITY_UART1,
+                   IRQ_SUB_PRIORITY
+                 );
+  IRQ_LOG("IRQ: USART1 Priority = 0x%02X\r\n", priority);
+
+  NVIC_ClearPendingIRQ(USART1_IRQn);
+  NVIC_SetPriority(USART1_IRQn, priority);
+  NVIC_EnableIRQ(USART1_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_USART1_Disable(void)
+{
+  NVIC_DisableIRQ(USART1_IRQn);
+  NVIC_ClearPendingIRQ(USART1_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USART1_IRQHandler(void)
+{
+  UART_IRQHandler(UART1);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_USART2_Enable(void)
+{
+  U32 priority = NVIC_EncodePriority
+                 (
+                   IRQ_PRIORITY_GROUPS_CONFIG,
+                   IRQ_PRIORITY_UART2,
+                   IRQ_SUB_PRIORITY
+                 );
+  IRQ_LOG("IRQ: USART2 Priority = 0x%02X\r\n", priority);
+
+  NVIC_ClearPendingIRQ(USART2_IRQn);
+  NVIC_SetPriority(USART2_IRQn, priority);
+  NVIC_EnableIRQ(USART2_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_USART2_Disable(void)
+{
+  NVIC_DisableIRQ(USART2_IRQn);
+  NVIC_ClearPendingIRQ(USART2_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USART2_IRQHandler(void)
+{
+  UART_IRQHandler(UART2);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_USART3_Enable(void)
+{
+  U32 priority = NVIC_EncodePriority
+                 (
+                   IRQ_PRIORITY_GROUPS_CONFIG,
+                   IRQ_PRIORITY_UART3,
+                   IRQ_SUB_PRIORITY
+                 );
+  IRQ_LOG("IRQ: USART3 Priority = 0x%02X\r\n", priority);
+
+  NVIC_ClearPendingIRQ(USART3_IRQn);
+  NVIC_SetPriority(USART3_IRQn, priority);
+  NVIC_EnableIRQ(USART3_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_USART3_Disable(void)
+{
+  NVIC_DisableIRQ(USART3_IRQn);
+  NVIC_ClearPendingIRQ(USART3_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void USART3_IRQHandler(void)
+{
+  UART_IRQHandler(UART3);
 }
 
 /* -------------------------------------------------------------------------- */
