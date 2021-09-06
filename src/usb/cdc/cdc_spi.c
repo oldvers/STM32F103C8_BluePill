@@ -13,6 +13,18 @@ STATIC CDC_SERIAL_STATE  gNotification = { 0 };
 STATIC CDC_PORT          gPort         = { 0 };
 
 //-----------------------------------------------------------------------------
+
+static void spi_Open(void)
+{
+  //
+}
+
+static void spi_SetControlLine(U16 aValue)
+{
+  //
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Initializes CDC SPI
  *  @param None
  *  @return None
@@ -43,12 +55,16 @@ void CDC_SPI_Init(void)
   gPort.ready = FW_FALSE;
 
 //  gPortSPI.rxComplete = FW_FALSE;
-//  /* Initialize Endpoints */
+
+  /* Initialize Endpoints */
 //  gPortSPI.epOBlkRd        = USBD_CDC_SPI_OEndPointRdWsCb;
 //  gPortSPI.epOBlkIsRxEmpty = USBD_CDC_SPI_OEndPointIsRxEmpty;
 //  gPortSPI.epIBlkWr        = USBD_CDC_SPI_IEndPointWrWsCb;
 //  gPortSPI.epIBlkIsTxEmpty = USBD_CDC_SPI_IEndPointIsTxEmpty;
-//  gPortSPI.epIIrqWr        = USBD_CDC_SPI_IrqEndPointWr;
+  gPort.fpEpIIrqWr        = USBD_CDC_SPI_IrqEndPointWr;
+  gPort.fpOpen            = spi_Open;
+  gPort.fpSetCtrlLine     = spi_SetControlLine;
+
 //  /* Initialize FIFOs */
 //  FIFO_Init(&gPortSPI.rxFifo, gPortSPI.rxBuffer, sizeof(gPortSPI.rxBuffer));
 //  FIFO_Init(&gPortSPI.txFifo, gPortSPI.txBuffer, sizeof(gPortSPI.txBuffer));

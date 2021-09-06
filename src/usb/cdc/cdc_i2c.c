@@ -57,6 +57,16 @@ STATIC CDC_PORT          gPort         = { 0 };
 //}
 //
 
+static void i2c_Open(void)
+{
+  //
+}
+
+static void i2c_SetControlLine(U16 aValue)
+{
+  //
+}
+
 //-----------------------------------------------------------------------------
 /** @brief Initializes CDC I2C
  *  @param None
@@ -86,25 +96,23 @@ void CDC_I2C_Init(void)
   /* Port is not ready yet */
   gPort.ready = FW_FALSE;
 
-//  gPortI2C.rxComplete = FW_FALSE;
-//  /* Initialize Endpoints */
-//  gPortI2C.epOBlkRd        = USBD_CDC_I2C_OEndPointRdWsCb;
-//  gPortI2C.epOBlkIsRxEmpty = USBD_CDC_I2C_OEndPointIsRxEmpty;
-//  gPortI2C.epIBlkWr        = USBD_CDC_I2C_IEndPointWrWsCb;
-//  gPortI2C.epIBlkIsTxEmpty = USBD_CDC_I2C_IEndPointIsTxEmpty;
-//  gPortI2C.epIIrqWr        = USBD_CDC_I2C_IrqEndPointWr;
-//  /* Initialize FIFOs */
-//  FIFO_Init(&gPortI2C.rxFifo, gPortI2C.rxBuffer, sizeof(gPortI2C.rxBuffer));
-//  FIFO_Init(&gPortI2C.txFifo, gPortI2C.txBuffer, sizeof(gPortI2C.txBuffer));
-//  gPortI2C.rxFifoPutCb = cdc_RxFifoPutB;
-//  gPortI2C.txFifoGetCb = cdc_TxFifoGetB;
+  /* Initialize Endpoints */
+  //gPortI2C.epOBlkRd        = USBD_CDC_I2C_OEndPointRdWsCb;
+  //gPortI2C.epOBlkIsRxEmpty = USBD_CDC_I2C_OEndPointIsRxEmpty;
+  //gPortI2C.epIBlkWr        = USBD_CDC_I2C_IEndPointWrWsCb;
+  //gPortI2C.epIBlkIsTxEmpty = USBD_CDC_I2C_IEndPointIsTxEmpty;
+  gPort.fpEpIIrqWr        = USBD_CDC_I2C_IrqEndPointWr;
+  gPort.fpOpen            = i2c_Open;
+  gPort.fpSetCtrlLine     = i2c_SetControlLine;
+  /* Initialize FIFOs */
+  //FIFO_Init(&gPortI2C.rxFifo, gPortI2C.rxBuffer, sizeof(gPortI2C.rxBuffer));
+  //FIFO_Init(&gPortI2C.txFifo, gPortI2C.txBuffer, sizeof(gPortI2C.txBuffer));
+  //gPortI2C.rxFifoPutCb = cdc_RxFifoPutB;
+  //gPortI2C.txFifoGetCb = cdc_TxFifoGetB;
 
   /* Initialize pointers */
   gPort.lineCoding = &gLineCoding;
   gPort.notification = &gNotification;
-
-//  /* Initialize UART Number */
-//  gPortI2C.uart = UART2;
 }
 
 //-----------------------------------------------------------------------------

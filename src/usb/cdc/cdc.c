@@ -12,15 +12,9 @@
 
 #include "FreeRTOS.h"
 #include "semphr.h"
-#include "fifo.h"
 
 #include "debug.h"
 #include "string.h"
-
-#include "gpio.h"
-#include "uart.h"
-#include "board.h"
-#include "interrupts.h"
 
 //-----------------------------------------------------------------------------
 /* Private definitions */
@@ -195,11 +189,6 @@ USB_CTRL_STAGE CDC_CtrlOutReq
   return result;
 }
 
-
-
-
-
-
 //-----------------------------------------------------------------------------
 /** @brief Called on each USB Start Of Frame (every 1 ms)
  *  @param None
@@ -208,9 +197,7 @@ USB_CTRL_STAGE CDC_CtrlOutReq
 
 void CDC_UART_SOF(void)
 {
-//  cdc_ProcessCollectedData(&gPortUART);
-//  cdc_ProcessCollectedData(&gPortI2C);
-//  cdc_ProcessCollectedData(&gPortSPI);
+  CDC_UART_ProcessCollectedData();
 }
 
 //-----------------------------------------------------------------------------
@@ -221,7 +208,7 @@ void CDC_UART_SOF(void)
 
 void CDC_UART_InterruptIn(U32 aEvent)
 {
-//  cdc_IrqInStage(&gPortUART);
+  cdc_IrqInStage(CDC_UART_GetPort());
 }
 
 //-----------------------------------------------------------------------------
@@ -232,7 +219,7 @@ void CDC_UART_InterruptIn(U32 aEvent)
 
 void CDC_UART_BulkIn(U32 aEvent)
 {
-//  cdc_InStage(&gPortUART);
+  CDC_UART_InStage();
 }
 
 //-----------------------------------------------------------------------------
@@ -243,7 +230,7 @@ void CDC_UART_BulkIn(U32 aEvent)
 
 void CDC_UART_BulkOut(U32 aEvent)
 {
-//  cdc_OutStage(&gPortUART);
+  CDC_UART_OutStage();
 }
 
 

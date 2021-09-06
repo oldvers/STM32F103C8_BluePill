@@ -35,6 +35,12 @@
 #define UART2_RX_PORT        GPIOA
 #define UART2_RX_PIN         3
 
+/* UART3: PB10 - Tx, PB11 - Rx */
+#define UART3_TX_PORT        GPIOB
+#define UART3_TX_PIN         10
+#define UART3_RX_PORT        GPIOB
+#define UART3_RX_PIN         11
+
 /* WiFi: PB7 - En */
 #define WIFI_EN_PORT         GPIOB
 #define WIFI_EN_PIN          7
