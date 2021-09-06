@@ -22,5 +22,9 @@ void IRQ_USART2_Enable(void);
 void IRQ_USART2_Disable(void);
 void IRQ_USART3_Enable(void);
 void IRQ_USART3_Disable(void);
+void IRQ_I2C1_Enable(void);
+void IRQ_I2C1_Disable(void);
+void IRQ_I2C2_Enable(void);
+void IRQ_I2C2_Disable(void);
 
 #endif /* __INTERRUPTS_H__ */

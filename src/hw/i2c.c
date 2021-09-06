@@ -285,14 +285,14 @@ void I2C1_MWr(U8 aAdr, U8 * pTx, U8 txSize)
 
 //-----------------------------------------------------------------------------
 
-void I2C1_IrqHdl(void)
+void I2C_IrqHandler(I2C_t aI2C)
 {
-  i2c_Irq(&gI2CCtx[I2C_1]);
+  i2c_Irq(&gI2CCtx[aI2C]);
 }
 
-void I2C1_IrqErr(void)
+void I2C_IrqError(I2C_t aI2C)
 {
-  i2c_Err(&gI2CCtx[I2C_1]);
+  i2c_Err(&gI2CCtx[aI2C]);
 }
 
 //-----------------------------------------------------------------------------

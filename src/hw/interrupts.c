@@ -4,6 +4,7 @@
 #include "usb.h"
 #include "uart.h"
 #include "debug.h"
+#include "i2c.h"
 
 /* --- Logging -------------------------------------------------------------- */
 
@@ -51,6 +52,9 @@
 
 /* The preemption priority */
 #define IRQ_PRIORITY_FAULT              ( 0)
+#define IRQ_PRIORITY_I2C1               ( 1)
+#define IRQ_PRIORITY_I2C2               ( 1)
+#define IRQ_PRIORITY_I2C3               ( 1)
 #define IRQ_PRIORITY_UART1              ( 3)
 #define IRQ_PRIORITY_UART2              ( 3)
 #define IRQ_PRIORITY_UART3              ( 3)
@@ -293,6 +297,92 @@ void IRQ_USART3_Disable(void)
 void USART3_IRQHandler(void)
 {
   UART_IRQHandler(UART3);
+}
+
+/* --- I2C1 ----------------------------------------------------------------- */
+
+void IRQ_I2C1_Enable(void)
+{
+  U32 priority = NVIC_EncodePriority
+                 (
+                   IRQ_PRIORITY_GROUPS_CONFIG,
+                   IRQ_PRIORITY_I2C1,
+                   IRQ_SUB_PRIORITY
+                 );
+  IRQ_LOG("IRQ: I2C1 Priority = 0x%02X\r\n", priority);
+
+  NVIC_ClearPendingIRQ(I2C1_EV_IRQn);
+  NVIC_ClearPendingIRQ(I2C1_ER_IRQn);
+  NVIC_SetPriority(I2C1_EV_IRQn, priority);
+  NVIC_SetPriority(I2C1_ER_IRQn, priority);
+  NVIC_EnableIRQ(I2C1_EV_IRQn);
+  NVIC_EnableIRQ(I2C1_ER_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_I2C1_Disable(void)
+{
+  NVIC_DisableIRQ(I2C1_EV_IRQn);
+  NVIC_DisableIRQ(I2C1_ER_IRQn);
+  NVIC_ClearPendingIRQ(I2C1_EV_IRQn);
+  NVIC_ClearPendingIRQ(I2C1_ER_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void I2C1_EV_IRQHandler(void)
+{
+  I2C_IrqHandler(I2C_1);
+}
+/* -------------------------------------------------------------------------- */
+
+void I2C1_ER_IRQHandler(void)
+{
+  I2C_IrqError(I2C_1);
+}
+
+/* --- I2C2 ----------------------------------------------------------------- */
+
+void IRQ_I2C2_Enable(void)
+{
+  U32 priority = NVIC_EncodePriority
+                 (
+                   IRQ_PRIORITY_GROUPS_CONFIG,
+                   IRQ_PRIORITY_I2C2,
+                   IRQ_SUB_PRIORITY
+                 );
+  IRQ_LOG("IRQ: I2C2 Priority = 0x%02X\r\n", priority);
+
+  NVIC_ClearPendingIRQ(I2C2_EV_IRQn);
+  NVIC_ClearPendingIRQ(I2C2_ER_IRQn);
+  NVIC_SetPriority(I2C2_EV_IRQn, priority);
+  NVIC_SetPriority(I2C2_ER_IRQn, priority);
+  NVIC_EnableIRQ(I2C2_EV_IRQn);
+  NVIC_EnableIRQ(I2C2_ER_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_I2C2_Disable(void)
+{
+  NVIC_DisableIRQ(I2C2_EV_IRQn);
+  NVIC_DisableIRQ(I2C2_ER_IRQn);
+  NVIC_ClearPendingIRQ(I2C2_EV_IRQn);
+  NVIC_ClearPendingIRQ(I2C2_ER_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void I2C2_EV_IRQHandler(void)
+{
+  I2C_IrqHandler(I2C_2);
+}
+/* -------------------------------------------------------------------------- */
+
+void I2C2_ER_IRQHandler(void)
+{
+  I2C_IrqError(I2C_2);
 }
 
 /* -------------------------------------------------------------------------- */
