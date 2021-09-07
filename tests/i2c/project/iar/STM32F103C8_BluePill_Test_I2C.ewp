@@ -1054,7 +1054,7 @@
     <group>
         <name>Hardware</name>
         <file>
-            <name>$PROJ_DIR$\..\..\..\..\src\hw\board.h</name>
+            <name>$PROJ_DIR$\..\..\src\hw\config\board.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\..\..\src\hw\debug.c</name>
