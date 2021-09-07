@@ -349,6 +349,7 @@
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\include</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\hw</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\hw\config</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\rtt</state>
                     <state>$PROJ_DIR$\..\..\src\lib\rtt\config</state>
@@ -1053,7 +1054,7 @@
     <group>
         <name>Hardware</name>
         <file>
-            <name>$PROJ_DIR$\..\..\..\..\src\hw\board.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\hw\config\board.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\..\..\src\hw\debug.c</name>
