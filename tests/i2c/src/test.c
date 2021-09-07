@@ -18,6 +18,7 @@ typedef FW_BOOLEAN (* TestFunction_t)(void);
 #define BH1750_BUFFER_SIZE   (32)
 #define BH1750_ADDRESS       (0x23)
 #define BH1750_CMD_POWER_ON  (0x01)
+#define BH1750_CMD_HRES2     (0x21)
 
 #define EVT_I2C_COMPLETE     (1 << 0)
 
@@ -54,6 +55,42 @@ static FW_BOOLEAN i2c_Complete(FW_RESULT aResult)
 
 /* -------------------------------------------------------------------------- */
 
+static FW_BOOLEAN i2c_WaitForComplete(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  EventBits_t uxBits = 0;
+
+  DBG(" - Wait for completion\r\n");
+  uxBits = xEventGroupWaitBits
+           (
+             gEventGroup,
+             EVT_I2C_COMPLETE,
+             pdTRUE, //EVT_I2C_COMPLETE should be cleared before returning
+             pdFALSE, //Don't wait for both bits, either bit will do
+             100
+           );
+
+  if (EVT_I2C_COMPLETE == (uxBits & EVT_I2C_COMPLETE))
+  {
+    if (FW_COMPLETE == gResult)
+    {
+      DBG("   - SUCCESS\r\n");
+    }
+    else
+    {
+      DBG("   - ERROR: Communication fails!\r\n");
+      result = FW_FALSE;
+    }
+  }
+  else
+  {
+    DBG("   - ERROR: Timeout!\r\n");
+    result = FW_FALSE;
+  }
+
+  return result;
+}
+
 /* -------------------------------------------------------------------------- */
 
 static FW_BOOLEAN Test_I2C_Init(void)
@@ -82,7 +119,6 @@ static FW_BOOLEAN Test_I2C_Init(void)
 static FW_BOOLEAN Test_BH1750_Init(void)
 {
   FW_BOOLEAN result = FW_TRUE;
-  EventBits_t uxBits;
 
   DBG("-----------------------------------------------------------\r\n");
 
@@ -93,32 +129,60 @@ static FW_BOOLEAN Test_BH1750_Init(void)
   gTxBuffer[0] = BH1750_CMD_POWER_ON;
   I2C_MWr(I2C_1, BH1750_ADDRESS, gTxBuffer, 1);
 
-  DBG(" - Wait for completion\r\n");
-  uxBits = xEventGroupWaitBits
-           (
-             gEventGroup,
-             EVT_I2C_COMPLETE,
-             pdTRUE, //EVT_I2C_COMPLETE should be cleared before returning
-             pdFALSE, //Don't wait for both bits, either bit will do
-             100
-           );
+  result = i2c_WaitForComplete();
 
-  if (EVT_I2C_COMPLETE == (uxBits & EVT_I2C_COMPLETE))
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_BH1750_Read(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U32 i = 0;
+  float value = 0.0;
+
+  for (i = 0; i < 5; i++)
   {
-    if (FW_COMPLETE == gResult)
-    {
-      DBG("   - SUCCESS\r\n");
-    }
-    else
-    {
-      DBG("   - ERROR: Communication fails!\r\n");
-      result = FW_FALSE;
-    }
-  }
-  else
-  {
-    DBG("   - ERROR: Timeout!\r\n");
-    result = FW_FALSE;
+    DBG("-----------------------------------------------------------\r\n");
+
+    DBG(" - Clear all the events\r\n");
+    xEventGroupClearBits(gEventGroup,	EVT_I2C_COMPLETE);
+
+    DBG(" - Send BH1750 Power On command\r\n");
+    gTxBuffer[0] = BH1750_CMD_POWER_ON;
+    I2C_MWr(I2C_1, BH1750_ADDRESS, gTxBuffer, 1);
+
+    result &= i2c_WaitForComplete();
+    if (FW_FALSE == result) break;
+
+    DBG(" - Clear all the events\r\n");
+    xEventGroupClearBits(gEventGroup,	EVT_I2C_COMPLETE);
+
+    DBG(" - Send BH1750 High Resolution Mode 2 command\r\n");
+    gTxBuffer[0] = BH1750_CMD_HRES2;
+    I2C_MWr(I2C_1, BH1750_ADDRESS, gTxBuffer, 1);
+
+    result &= i2c_WaitForComplete();
+    if (FW_FALSE == result) break;
+
+    vTaskDelay(200);
+
+    DBG(" - Clear all the events\r\n");
+    xEventGroupClearBits(gEventGroup,	EVT_I2C_COMPLETE);
+
+    DBG(" - Read BH1750 value\r\n");
+    gRxBuffer[0] = 0;
+    gRxBuffer[1] = 0;
+    I2C_MRd(I2C_1, BH1750_ADDRESS, gRxBuffer, 2);
+
+    result &= i2c_WaitForComplete();
+    if (FW_FALSE == result) break;
+
+    value = (U16)(*((U16 *)gRxBuffer)) / 1.2;
+    DBG_SetTextColorYellow();
+    DBG(" - BH1750 value = %5.2f\r\n", value);
+    DBG_SetDefaultColors();
   }
 
   return result;
@@ -173,6 +237,7 @@ const TestFunction_t gTests[] =
 {
     Test_I2C_Init,
     Test_BH1750_Init,
+    Test_BH1750_Read,
 };
 
 U32 uiTestsGetCount(void)
