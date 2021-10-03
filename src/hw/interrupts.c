@@ -160,3 +160,11 @@ void IRQ_Exception_Handler(U32 pStackFrame[], U32 LRValue)
 }
 
 /* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN IRQ_IsInExceptionMode(void)
+{
+  U32 ipsr = __get_IPSR();
+  return (FW_BOOLEAN)(0 != ipsr);
+}
+
+/* -------------------------------------------------------------------------- */
