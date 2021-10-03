@@ -1072,6 +1072,12 @@
             <name>$PROJ_DIR$\..\..\src\hw\gpio.h</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\src\hw\i2c.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\i2c.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\hw\interrupts.c</name>
         </file>
         <file>
