@@ -161,6 +161,14 @@ void IRQ_Exception_Handler(U32 pStackFrame[], U32 LRValue)
   on_error(FaultID);
 }
 
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN IRQ_IsInExceptionMode(void)
+{
+  U32 ipsr = __get_IPSR();
+  return (FW_BOOLEAN)(0 != ipsr);
+}
+
 /* --- USB ------------------------------------------------------------------ */
 
 void IRQ_USB_Enable(void)
