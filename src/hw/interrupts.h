@@ -13,14 +13,15 @@
                            }
 
 /* --- Public Functions ----------------------------------------------------- */
-void IRQ_SetPriorityGrouping(void);
-void IRQ_USB_Enable(void);
-void IRQ_USB_Disable(void);
-void IRQ_USART1_Enable(void);
-void IRQ_USART1_Disable(void);
-void IRQ_USART2_Enable(void);
-void IRQ_USART2_Disable(void);
-void IRQ_USART3_Enable(void);
-void IRQ_USART3_Disable(void);
+void       IRQ_SetPriorityGrouping (void);
+FW_BOOLEAN IRQ_IsInExceptionMode   (void);
+void       IRQ_USB_Enable          (void);
+void       IRQ_USB_Disable         (void);
+void       IRQ_USART1_Enable       (void);
+void       IRQ_USART1_Disable      (void);
+void       IRQ_USART2_Enable       (void);
+void       IRQ_USART2_Disable      (void);
+void       IRQ_USART3_Enable       (void);
+void       IRQ_USART3_Disable      (void);
 
 #endif /* __INTERRUPTS_H__ */
