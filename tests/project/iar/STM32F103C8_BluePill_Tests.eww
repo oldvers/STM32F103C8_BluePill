@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workspace>
     <project>
+        <path>$WS_DIR$\..\..\east_block\project\iar\STM32F103C8_BluePill_Test_EastBlock.ewp</path>
+    </project>
+    <project>
         <path>$WS_DIR$\..\..\exceptions\project\iar\STM32F103C8_BluePill_Test_Exceptions.ewp</path>
     </project>
     <project>
@@ -14,6 +17,15 @@
     </project>
     <project>
         <path>$WS_DIR$\..\..\usb_library\project\iar\STM32F103C8_BluePill_Test_UsbLibrary.ewp</path>
+    </project>
+    <project>
+        <path>$WS_DIR$\..\..\fifo\project\iar\STM32F103C8_BluePill_Test_FIFO.ewp</path>
+    </project>
+    <project>
+        <path>$WS_DIR$\..\..\block_queue\project\iar\STM32F103C8_BluePill_Test_BlockQueue.ewp</path>
+    </project>
+    <project>
+        <path>$WS_DIR$\..\..\east_message\project\iar\STM32F103C8_BluePill_Test_EastMessage.ewp</path>
     </project>
     <batchBuild>
         <batchDefinition>
@@ -36,6 +48,22 @@
             </member>
             <member>
                 <project>STM32F103C8_BluePill_Test_I2C</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_FIFO</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_BlockQueue</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_EastMessage</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_EastBlock</project>
                 <configuration>Test</configuration>
             </member>
         </batchDefinition>

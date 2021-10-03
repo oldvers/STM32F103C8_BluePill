@@ -30,12 +30,12 @@ typedef struct _CDC_UART_PORT
   CDC_EP_FUNCTION      fpEpIBlkIsTxEmpty;
   UART_t               uart;
   FW_BOOLEAN           rxComplete;
-  FIFO_t               rxFifo;
-  FIFO_t               txFifo;
+  FIFO_p               rxFifo;
+  FIFO_p               txFifo;
   USB_CbByte           fpRxFifoPut;
   USB_CbByte           fpTxFifoGet;
-  U8                   rxBuffer[USB_CDC_PACKET_SIZE * 4 + 1];
-  U8                   txBuffer[USB_CDC_PACKET_SIZE * 4 + 1];
+  U8                   rxBuffer[USB_CDC_PACKET_SIZE * 5 + 1];
+  U8                   txBuffer[USB_CDC_PACKET_SIZE * 5 + 1];
 } CDC_UART_PORT;
 
 //-----------------------------------------------------------------------------
@@ -103,7 +103,7 @@ static void uart_DTR_RTS_Set(U16 aValue)
 
 static void cdc_RxFifoPut(U8 * pByte)
 {
-  (void)FIFO_Put(&gPort.rxFifo, pByte);
+  (void)FIFO_Put(gPort.rxFifo, pByte);
 }
 
 //-----------------------------------------------------------------------------
@@ -114,7 +114,7 @@ static void cdc_RxFifoPut(U8 * pByte)
 
 static void cdc_TxFifoGet(U8 * pByte)
 {
-  (void)FIFO_Get(&gPort.txFifo, pByte);
+  (void)FIFO_Get(gPort.txFifo, pByte);
 }
 
 //-----------------------------------------------------------------------------
@@ -125,7 +125,7 @@ static void cdc_TxFifoGet(U8 * pByte)
 
 static FW_BOOLEAN uart_FifoPut(U8 * pByte)
 {
-  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPort.txFifo, pByte));
+  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(gPort.txFifo, pByte));
 }
 
 //-----------------------------------------------------------------------------
@@ -148,7 +148,7 @@ static FW_BOOLEAN uart_RxComplete(U8 * pByte)
 
 static FW_BOOLEAN uart_FifoGet(U8 * pByte)
 {
-  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPort.rxFifo, pByte));
+  return (FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(gPort.rxFifo, pByte));
 }
 
 //-----------------------------------------------------------------------------
@@ -171,10 +171,10 @@ static FW_BOOLEAN uart_TxComplete(U8 * pByte)
 void CDC_UART_OutStage(void)
 {
   /* Read from OUT EP */
-  (void)gPort.fpEpOBlkRd(gPort.fpRxFifoPut, FIFO_Free(&gPort.rxFifo));
+  (void)gPort.fpEpOBlkRd(gPort.fpRxFifoPut, FIFO_Free(gPort.rxFifo));
 
   /* Write to UART */
-  if (0 < FIFO_Count(&gPort.rxFifo))
+  if (0 < FIFO_Count(gPort.rxFifo))
   {
     UART_TxStart(UART3);
   }
@@ -189,10 +189,10 @@ void CDC_UART_OutStage(void)
 void CDC_UART_InStage(void)
 {
   /* If there are some data in FIFO */
-  if (0 < FIFO_Count(&gPort.txFifo))
+  if (0 < FIFO_Count(gPort.txFifo))
   {
     /* Write to IN EP */
-    (void)gPort.fpEpIBlkWr(gPort.fpTxFifoGet, FIFO_Count(&gPort.txFifo));
+    (void)gPort.fpEpIBlkWr(gPort.fpTxFifoGet, FIFO_Count(gPort.txFifo));
   }
   else
   {
@@ -217,7 +217,7 @@ void CDC_UART_ProcessCollectedData(void)
     }
 
     if (((FW_TRUE == gPort.rxComplete) ||
-        (USB_CDC_PACKET_SIZE < FIFO_Count(&gPort.txFifo))) &&
+        (USB_CDC_PACKET_SIZE < FIFO_Count(gPort.txFifo))) &&
         (FW_TRUE == gPort.fpEpIBlkIsTxEmpty()))
     {
       CDC_UART_InStage();
@@ -266,8 +266,8 @@ void CDC_UART_Init(void)
   gPort.cdc.fpSetCtrlLine = uart_DTR_RTS_Set;
 
   /* Initialize FIFOs */
-  FIFO_Init(&gPort.rxFifo, gPort.rxBuffer, sizeof(gPort.rxBuffer));
-  FIFO_Init(&gPort.txFifo, gPort.txBuffer, sizeof(gPort.txBuffer));
+  gPort.rxFifo = FIFO_Init(gPort.rxBuffer, sizeof(gPort.rxBuffer));
+  gPort.txFifo = FIFO_Init(gPort.txBuffer, sizeof(gPort.txBuffer));
   gPort.fpRxFifoPut = cdc_RxFifoPut;
   gPort.fpTxFifoGet = cdc_TxFifoGet;
 
