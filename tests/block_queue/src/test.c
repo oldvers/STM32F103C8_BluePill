@@ -7,7 +7,7 @@
 #include "task.h"
 #include "queue.h"
 
-#include "blockqueue.h"
+#include "block_queue.h"
 
 /* -------------------------------------------------------------------------- */
 

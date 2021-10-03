@@ -16,7 +16,7 @@
 
 //-----------------------------------------------------------------------------
 
-#define EAST_DEBUG
+//#define EAST_DEBUG
 
 #ifdef EAST_DEBUG
 #  define EAST_LOG    DBG
@@ -29,6 +29,7 @@
 
 #define EAST_PACKET_CHECK_LENGTH(a,m)     ((FW_BOOLEAN)((0 < a) && (a <= m)))
 #define EAST_PACKET_POSITION(b,i)         (b[(i) - 3])
+#define EAST_PACKET_IS_COMPLETE(i,a)      ((FW_BOOLEAN)((0 == i) && (0 < a)))
 
 #define EAST_PACKET_STAGE_START(i)        (0 == i)
 #define EAST_PACKET_STAGE_LENGTHL(i)      (1 == i)
@@ -312,4 +313,22 @@ FW_RESULT EAST_GetByte(EAST_p pEAST, U8 * pValue)
     }
 
     return result;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets the size of the currently collected packet
+ *  @param[in] pEAST - Pointer to the EAST
+ *  @return Packet size
+ */
+
+U16 EAST_GetMessageSize(EAST_p pEAST)
+{
+  if EAST_PACKET_IS_COMPLETE(pEAST->Index, pEAST->ActSize)
+  {
+    return pEAST->ActSize;
+  }
+  else
+  {
+    return 0;
+  }
 }
