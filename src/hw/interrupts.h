@@ -14,6 +14,7 @@
 
 /* --- Public Functions ----------------------------------------------------- */
 
-void IRQ_SetPriorityGrouping(void);
+void       IRQ_SetPriorityGrouping (void);
+FW_BOOLEAN IRQ_IsInExceptionMode   (void);
 
 #endif /* __INTERRUPTS_H__ */
