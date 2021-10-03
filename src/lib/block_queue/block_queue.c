@@ -2,8 +2,10 @@
 
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "task.h"
 
 #include "debug.h"
+#include "interrupts.h"
 
 /* Very simple queue
  * These are FIFO queues which discard the new data when full.
@@ -116,7 +118,33 @@ static FW_BOOLEAN osal_QueuePut(BlockQueue_p pQueue, U8* pBlock, U32 aBlockSize)
     item.Size = aBlockSize;
 
     /* Put the item to the queue */
-    status = xQueueSendToBack(pQueue->osQueue, (void *)&item, (TickType_t)0);
+    if (FW_TRUE == IRQ_IsInExceptionMode())
+    {
+        /* We have not woken a task at the start of the ISR */
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+        status = xQueueSendToBackFromISR
+                 (
+                     pQueue->osQueue,
+                     (void *)&item,
+                     &xHigherPriorityTaskWoken
+                 );
+
+        /* Now we can request to switch context if necessary */
+        if( xHigherPriorityTaskWoken )
+        {
+            taskYIELD();
+        }
+    }
+    else
+    {
+        status = xQueueSendToBack
+                 (
+                     pQueue->osQueue,
+                     (void *)&item,
+                     (TickType_t)0
+                 );
+    }
 
     QUEUE_LOG_AVAILABLE(pQueue->osQueue);
 
