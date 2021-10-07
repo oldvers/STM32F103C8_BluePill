@@ -356,6 +356,8 @@
                     <state>$PROJ_DIR$\..\..\src\usb</state>
                     <state>$PROJ_DIR$\..\..\src\usb\cdc</state>
                     <state>$PROJ_DIR$\..\..\src\lib\fifo</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\block_queue</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\east</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1260,6 +1262,18 @@
     </group>
     <group>
         <name>Utils</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\block_queue\block_queue.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\block_queue\block_queue.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\east\east_message.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\east\east_message.h</name>
+        </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\fifo\fifo.c</name>
         </file>

@@ -198,6 +198,7 @@ USB_CTRL_STAGE CDC_CtrlOutReq
 void CDC_UART_SOF(void)
 {
   CDC_UART_ProcessCollectedData();
+  CDC_I2C_ProcessCollectedData();
 }
 
 //-----------------------------------------------------------------------------
@@ -250,7 +251,7 @@ void CDC_UART_BulkOut(U32 aEvent)
 
 void CDC_I2C_InterruptIn(U32 aEvent)
 {
-//  cdc_IrqInStage(&gPortI2C);
+  cdc_IrqInStage(CDC_I2C_GetPort());
 }
 
 //-----------------------------------------------------------------------------
@@ -261,7 +262,7 @@ void CDC_I2C_InterruptIn(U32 aEvent)
 
 void CDC_I2C_BulkIn(U32 aEvent)
 {
-//  cdc_InStage(&gPortI2C);
+  CDC_I2C_InStage();
 }
 
 //-----------------------------------------------------------------------------
@@ -272,7 +273,7 @@ void CDC_I2C_BulkIn(U32 aEvent)
 
 void CDC_I2C_BulkOut(U32 aEvent)
 {
-//  cdc_OutStage(&gPortI2C);
+  CDC_I2C_OutStage();
 }
 
 
@@ -289,7 +290,7 @@ void CDC_I2C_BulkOut(U32 aEvent)
 
 void CDC_SPI_InterruptIn(U32 aEvent)
 {
-//  cdc_IrqInStage(&gPortSPI);
+  cdc_IrqInStage(CDC_SPI_GetPort());
 }
 
 //-----------------------------------------------------------------------------

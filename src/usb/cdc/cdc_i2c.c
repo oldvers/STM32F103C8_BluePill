@@ -5,24 +5,92 @@
 #include "usb_descriptor.h"
 #include "cdc_private.h"
 
+#include "board.h"
+//#include "gpio.h"
+//#include "uart.h"
+//#include "interrupts.h"
+#include "usb.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
+
+#include "east_message.h"
+#include "block_queue.h"
+
+//-----------------------------------------------------------------------------
+/* Private Types definitions */
+
+#define EAST_MAX_DATA_LENGTH   (32)
+#define EAST_HEADER_LENGTH     (6)
+#define EAST_MAX_PACKET_LENGTH (EAST_HEADER_LENGTH + EAST_MAX_DATA_LENGTH)
+
+
+typedef FW_BOOLEAN (*CDC_EP_FUNCTION)(void);
+typedef U32 (*CDC_EP_DATA_FUNCTION)(USBD_CbByte pPutByteCb, U32 aSize);
+
+/* CDC Port Context */
+typedef struct _CDC_I2C_PORT
+{
+  CDC_PORT             cdc;
+  CDC_EP_DATA_FUNCTION fpEpOBlkRd;
+  CDC_EP_FUNCTION      fpEpOBlkIsRxEmpty;
+  CDC_EP_DATA_FUNCTION fpEpIBlkWr;
+  CDC_EP_FUNCTION      fpEpIBlkIsTxEmpty;
+  //UART_t               uart;
+  //FW_BOOLEAN           rxComplete;
+  //FIFO_p               rxFifo;
+  //FIFO_p               txFifo;
+  USB_CbByte           fpInEastPut;
+  //USB_CbByte           fpTxFifoGet;
+  //U8                   rxBuffer[USB_CDC_PACKET_SIZE * 5 + 1];
+  //U8                   txBuffer[USB_CDC_PACKET_SIZE * 5 + 1];
+  EAST_p               pInEAST;
+  U8                   eastContainer[16];
+  BlockQueue_p         pInQueue;
+  U8                   inBuffer[EAST_MAX_DATA_LENGTH * 8];
+} CDC_I2C_PORT;
+
 //-----------------------------------------------------------------------------
 /* Global Variables */
 
 STATIC CDC_LINE_CODING   gLineCoding   = { 0 };
 STATIC CDC_SERIAL_STATE  gNotification = { 0 };
-STATIC CDC_PORT          gPort         = { 0 };
+STATIC CDC_I2C_PORT      gPort         = { 0 };
 
 ////-----------------------------------------------------------------------------
 ///** @brief Puts received Byte from USB EP buffer to the Rx FIFO
 // *  @param pByte - Pointer to the container for Byte
 // *  @return None
 // */
-//
-//static void cdc_RxFifoPutB(U8 * pByte)
-//{
-//  //(void)FIFO_Put(&gPortB.rxFifo, pByte);
-//}
-//
+
+static void cdc_InEastPut(U8 * pByte)
+{
+  FW_RESULT r = FW_ERROR;
+  U8 * buffer = NULL;
+  U32 size = 0;
+  //(void)FIFO_Put(&gPortB.rxFifo, pByte);
+
+  /* Fill the EAST packet */
+  r = EAST_PutByte(gPort.pInEAST, *pByte);
+  if (FW_COMPLETE == r)
+  {
+    if (0 == BlockQueue_GetCountOfFree(gPort.pInQueue))
+    {
+      return;
+    }
+
+    r = BlockQueue_Enqueue(gPort.pInQueue, EAST_GetMessageSize(gPort.pInEAST));
+    if (FW_SUCCESS == r)
+    {
+      r = BlockQueue_Allocate(gPort.pInQueue, &buffer, &size);
+      if (FW_SUCCESS == r)
+      {
+        (void)EAST_SetBuffer(gPort.pInEAST, buffer, size);
+      }
+    }
+  }
+}
+
 ////-----------------------------------------------------------------------------
 ///** @brief Gets Byte that need to be transmitted from the Tx FIFO
 // *  @param pByte - Pointer to the container for Byte
@@ -45,6 +113,36 @@ STATIC CDC_PORT          gPort         = { 0 };
 //  return FW_FALSE; //(FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPortB.txFifo, pByte));
 //}
 //
+
+
+static void vI2CTask(void * pvParameters)
+{
+  U8 * buffer = NULL;
+  U32 size = 0;
+
+  while(1)
+  {
+    //GPIO_Lo(GPIOC, 13);
+    //DBG_SetTextColorGreen();
+    //printf("LED On\r\n");
+    //vTaskDelay(500);
+    //GPIO_Hi(GPIOC, 13);
+    //DBG_SetTextColorRed();
+    //printf("LED Off\r\n");
+
+    /* Dequeue the block */
+    (void)BlockQueue_Dequeue(gPort.pInQueue, &buffer, &size);
+
+    /* Process the block */
+    vTaskDelay(80);
+
+    /* Release the block */
+    (void)BlockQueue_Release(gPort.pInQueue);
+  }
+  //vTaskDelete(NULL);
+}
+
+
 ////-----------------------------------------------------------------------------
 ///** @brief Gets Byte that need to be transmitted from the Rx FIFO
 // *  @param pByte - Pointer to the container for Byte
@@ -75,6 +173,9 @@ static void i2c_SetControlLine(U16 aValue)
 
 void CDC_I2C_Init(void)
 {
+  U8 * buffer = NULL;
+  U32 size = 0;
+
   /* Init Line Coding */
   gLineCoding.dwBaudRate  = 115200;
   gLineCoding.bCharFormat = 0;
@@ -94,25 +195,91 @@ void CDC_I2C_Init(void)
   /* Clear Port context */
   memset(&gPort, 0, sizeof(gPort));
   /* Port is not ready yet */
-  gPort.ready = FW_FALSE;
+  gPort.cdc.ready = FW_FALSE;
 
   /* Initialize Endpoints */
-  //gPortI2C.epOBlkRd        = USBD_CDC_I2C_OEndPointRdWsCb;
-  //gPortI2C.epOBlkIsRxEmpty = USBD_CDC_I2C_OEndPointIsRxEmpty;
-  //gPortI2C.epIBlkWr        = USBD_CDC_I2C_IEndPointWrWsCb;
-  //gPortI2C.epIBlkIsTxEmpty = USBD_CDC_I2C_IEndPointIsTxEmpty;
-  gPort.fpEpIIrqWr        = USBD_CDC_I2C_IrqEndPointWr;
-  gPort.fpOpen            = i2c_Open;
-  gPort.fpSetCtrlLine     = i2c_SetControlLine;
+  gPort.fpEpOBlkRd          = USBD_CDC_I2C_OEndPointRdWsCb;
+  gPort.fpEpOBlkIsRxEmpty   = USBD_CDC_I2C_OEndPointIsRxEmpty;
+  gPort.fpEpIBlkWr          = USBD_CDC_I2C_IEndPointWrWsCb;
+  gPort.fpEpIBlkIsTxEmpty   = USBD_CDC_I2C_IEndPointIsTxEmpty;
+  gPort.cdc.fpEpIIrqWr      = USBD_CDC_I2C_IrqEndPointWr;
+  gPort.cdc.fpOpen          = i2c_Open;
+  gPort.cdc.fpSetCtrlLine   = i2c_SetControlLine;
   /* Initialize FIFOs */
   //FIFO_Init(&gPortI2C.rxFifo, gPortI2C.rxBuffer, sizeof(gPortI2C.rxBuffer));
   //FIFO_Init(&gPortI2C.txFifo, gPortI2C.txBuffer, sizeof(gPortI2C.txBuffer));
-  //gPortI2C.rxFifoPutCb = cdc_RxFifoPutB;
+  gPort.fpInEastPut = cdc_InEastPut;
   //gPortI2C.txFifoGetCb = cdc_TxFifoGetB;
 
+
+
+
+
+  //FW_BOOLEAN result = FW_FALSE;
+  //FW_RESULT status = FW_ERROR;
+
+  gPort.pInEAST = EAST_Init
+                  (
+                      gPort.eastContainer,
+                      sizeof(gPort.eastContainer),
+                      NULL,
+                      0
+                  );
+  //result = (FW_BOOLEAN)(NULL != pEAST);
+  //if (FW_FALSE == result) return result;
+
+  //(void)EAST_SetBuffer(gPort.pInEAST, eastBuffer, sizeof(eastBuffer));
+  //result = (FW_BOOLEAN)(FW_SUCCESS == status);
+
+
+  gPort.pInQueue = BlockQueue_Init
+           (
+             gPort.inBuffer,
+             sizeof(gPort.inBuffer),
+             EAST_MAX_DATA_LENGTH
+           );
+  //result = (FW_BOOLEAN)(NULL != pQueue);
+
+  //FW_BOOLEAN result = FW_FALSE;
+  //FW_RESULT status = FW_ERROR;
+
+
+  //  DBG("*** EAST Block Success Fill Queue Test ***\r\n");
+
+  //  DBG(" - Allocate the Block from Queue\r\n");
+  (void)BlockQueue_Allocate(gPort.pInQueue, &buffer, &size);
+  //  result = (FW_BOOLEAN)(FW_SUCCESS == status);
+  //  result &= (FW_BOOLEAN)(NULL != buffer);
+  //  result &= (FW_BOOLEAN)(0 != size);
+  //  if (FW_FALSE == result) break;
+
+  /* Setup/Reset the EAST packet */
+  (void)EAST_SetBuffer(gPort.pInEAST, buffer, size);
+  //  result &= (FW_BOOLEAN)(FW_SUCCESS == status);
+  //  if (FW_FALSE == result) break;
+
+
+
+
+
+
+
   /* Initialize pointers */
-  gPort.lineCoding = &gLineCoding;
-  gPort.notification = &gNotification;
+  gPort.cdc.lineCoding = &gLineCoding;
+  gPort.cdc.notification = &gNotification;
+
+
+
+
+  xTaskCreate
+  (
+    vI2CTask,
+    "I2C",
+    configMINIMAL_STACK_SIZE,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  );
 }
 
 //-----------------------------------------------------------------------------
@@ -123,5 +290,56 @@ void CDC_I2C_Init(void)
 
 CDC_PORT * CDC_I2C_GetPort(void)
 {
-  return &gPort;
+  return &gPort.cdc;
+}
+
+//-----------------------------------------------------------------------------
+
+void CDC_I2C_OutStage(void)
+{
+  /* Read from OUT EP */
+  (void)gPort.fpEpOBlkRd(gPort.fpInEastPut, EAST_MAX_PACKET_LENGTH);
+
+//  /* Write to UART */
+//  if (0 < FIFO_Count(gPort.rxFifo))
+//  {
+//    UART_TxStart(UART3);
+//  }
+}
+
+//-----------------------------------------------------------------------------
+
+void CDC_I2C_InStage(void)
+{
+//  /* If there are some data in FIFO */
+//  if (0 < FIFO_Count(gPort.txFifo))
+//  {
+//    /* Write to IN EP */
+//    (void)gPort.fpEpIBlkWr(gPort.fpTxFifoGet, FIFO_Count(gPort.txFifo));
+//  }
+//  else
+//  {
+//    gPort.rxComplete = FW_FALSE;
+//  }
+}
+
+//-----------------------------------------------------------------------------
+
+void CDC_I2C_ProcessCollectedData(void)
+{
+//  /* Check if there are some unprocessed data */
+//  if (FW_TRUE == gPort.cdc.ready)
+//  {
+//    if (FW_FALSE == gPort.fpEpOBlkIsRxEmpty())
+//    {
+//      CDC_UART_OutStage();
+//    }
+//
+//    if (((FW_TRUE == gPort.rxComplete) ||
+//        (USB_CDC_PACKET_SIZE < FIFO_Count(gPort.txFifo))) &&
+//        (FW_TRUE == gPort.fpEpIBlkIsTxEmpty()))
+//    {
+//      CDC_UART_InStage();
+//    }
+//  }
 }
