@@ -57,31 +57,35 @@ STATIC CDC_LINE_CODING   gLineCoding   = { 0 };
 STATIC CDC_SERIAL_STATE  gNotification = { 0 };
 STATIC CDC_I2C_PORT      gPort         = { 0 };
 
-////-----------------------------------------------------------------------------
-///** @brief Puts received Byte from USB EP buffer to the Rx FIFO
-// *  @param pByte - Pointer to the container for Byte
-// *  @return None
-// */
+//-----------------------------------------------------------------------------
+/** @brief Puts received Byte from USB EP buffer to the EAST block. When the
+ *         block is parsed correctly - puts it into the queue.
+ *  @param pByte - Pointer to the container for Byte
+ *  @return None
+ *  @note If the queue is full - all the further received bytes are ignored.
+ */
 
 static void cdc_InEastPut(U8 * pByte)
 {
   FW_RESULT r = FW_ERROR;
   U8 * buffer = NULL;
   U32 size = 0;
-  //(void)FIFO_Put(&gPortB.rxFifo, pByte);
 
-  /* Fill the EAST packet */
+  /* Fill the EAST block */
   r = EAST_PutByte(gPort.pInEAST, *pByte);
   if (FW_COMPLETE == r)
   {
+    /* If the block queue is full - ignore */
     if (0 == BlockQueue_GetCountOfFree(gPort.pInQueue))
     {
       return;
     }
 
+    /* Put the block into the queue */
     r = BlockQueue_Enqueue(gPort.pInQueue, EAST_GetMessageSize(gPort.pInEAST));
     if (FW_SUCCESS == r)
     {
+      /* Allocate the memory for the next block */
       r = BlockQueue_Allocate(gPort.pInQueue, &buffer, &size);
       if (FW_SUCCESS == r)
       {
@@ -294,20 +298,22 @@ CDC_PORT * CDC_I2C_GetPort(void)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief CDC Bulk Out Callback
+ *  @param None
+ *  @return None
+ */
 
 void CDC_I2C_OutStage(void)
 {
   /* Read from OUT EP */
   (void)gPort.fpEpOBlkRd(gPort.fpInEastPut, EAST_MAX_PACKET_LENGTH);
-
-//  /* Write to UART */
-//  if (0 < FIFO_Count(gPort.rxFifo))
-//  {
-//    UART_TxStart(UART3);
-//  }
 }
 
 //-----------------------------------------------------------------------------
+/** @brief CDC Bulk In Callback
+ *  @param None
+ *  @return None
+ */
 
 void CDC_I2C_InStage(void)
 {
@@ -324,6 +330,10 @@ void CDC_I2C_InStage(void)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief CDC SOF Callback
+ *  @param None
+ *  @return None
+ */
 
 void CDC_I2C_ProcessCollectedData(void)
 {
