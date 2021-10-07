@@ -67,7 +67,7 @@ static FW_BOOLEAN Test_PutSuccess(void)
 {
     FW_BOOLEAN result = FW_FALSE;
     FW_RESULT status = FW_ERROR;
-    U32 byte = 0, test = 0, size = 0;
+    U32 byte = 0, test = 0, size = 0, check = 0;
     U8 * testPacket = NULL;
 
     DBG("*** EAST Success Put Byte Test ***\r\n");
@@ -106,6 +106,12 @@ static FW_BOOLEAN Test_PutSuccess(void)
         result &= (FW_BOOLEAN)(eastBuffer[0] == testPacket[3]);
         result &= (FW_BOOLEAN)(eastBuffer[2] == testPacket[5]);
         result &= (FW_BOOLEAN)(eastBuffer[4] == testPacket[7]);
+        if (FW_FALSE == result) break;
+
+        check = EAST_GetDataSize(pEAST);
+        result &= (FW_BOOLEAN)((size - 6) == check);
+        check = EAST_GetPacketSize(pEAST);
+        result &= (FW_BOOLEAN)(size == check);
         if (FW_FALSE == result) break;
     }
 
@@ -216,7 +222,7 @@ static FW_BOOLEAN Test_GetSuccess(void)
 {
     FW_BOOLEAN result = FW_FALSE;
     FW_RESULT status = FW_ERROR;
-    U32 byte = 0, size = 0;
+    U32 byte = 0, size = 0, check = 0;
     U8 * testPacket = NULL;
     U8 value = 0;
 
@@ -238,15 +244,18 @@ static FW_BOOLEAN Test_GetSuccess(void)
 
     /* Setup/Reset the EAST packet */
     status = EAST_SetBuffer(pEAST, eastBuffer, (size - 6));
-    result = (FW_BOOLEAN)(FW_SUCCESS == status);
+    result &= (FW_BOOLEAN)(FW_SUCCESS == status);
     if (FW_FALSE == result) return result;
 
-    size = EAST_GetMessageSize(pEAST);
-    result = (FW_BOOLEAN)((sizeof(gTestEastPacketSuccess) - 6) == size);
+    check = EAST_GetDataSize(pEAST);
+    result &= (FW_BOOLEAN)((size - 6) == check);
+    if (FW_FALSE == result) return result;
+
+    check = EAST_GetPacketSize(pEAST);
+    result &= (FW_BOOLEAN)(size == check);
     if (FW_FALSE == result) return result;
 
     /* Get the EAST packet */
-    size = sizeof(gTestEastPacketSuccess);
     for (byte = 0; byte < size; byte++)
     {
         status = EAST_GetByte(pEAST, &value);
@@ -262,6 +271,13 @@ static FW_BOOLEAN Test_GetSuccess(void)
 
         result &= (FW_BOOLEAN)(value == testPacket[byte]);
         if (FW_FALSE == result) break;
+
+        if (3 == byte)
+        {
+             check = EAST_GetPacketSize(pEAST);
+             result &= (FW_BOOLEAN)(7 == check);
+             if (FW_FALSE == result) break;
+        }
     }
 
     return result;
