@@ -22,7 +22,7 @@
 //-----------------------------------------------------------------------------
 /* Private Types definitions */
 
-#define EAST_MAX_DATA_LENGTH   (32)
+#define EAST_MAX_DATA_LENGTH   (47)
 #define EAST_HEADER_LENGTH     (6)
 #define EAST_MAX_PACKET_LENGTH (EAST_HEADER_LENGTH + EAST_MAX_DATA_LENGTH)
 
@@ -193,13 +193,8 @@ static void vI2CTask(void * pvParameters)
     (void)BlockQueue_Dequeue(gPort.iQueue, &buffer, &size);
 
     /* Process the block */
-    gPort.oBuffer[0] = 0x33;
-    gPort.oBuffer[1] = 0x33;
-    gPort.oBuffer[2] = 0x33;
-    gPort.oBuffer[3] = 0x33;
-    gPort.oBuffer[4] = 0x33;
-    gPort.oBuffer[5] = 0x33;
-    EAST_SetBuffer(gPort.oEAST, gPort.oBuffer, 6);
+    memset(gPort.oBuffer, 0x44, sizeof(gPort.oBuffer));
+    EAST_SetBuffer(gPort.oEAST, gPort.oBuffer, sizeof(gPort.oBuffer));
     vTaskDelay(80);
 
     /* Transmit the block */
