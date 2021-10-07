@@ -4,11 +4,12 @@
 #include "usb_cdc_definitions.h"
 #include "usb_descriptor.h"
 #include "cdc_private.h"
+#include "cdc_i2c.h"
 
 #include "board.h"
 //#include "gpio.h"
 //#include "uart.h"
-//#include "interrupts.h"
+#include "interrupts.h"
 #include "usb.h"
 
 #include "FreeRTOS.h"
@@ -44,8 +45,8 @@ typedef struct _CDC_I2C_PORT
   //FW_BOOLEAN           rxComplete;
   //FIFO_p               rxFifo;
   //FIFO_p               txFifo;
-  USB_CbByte           fpInEastPut;
-  //USB_CbByte           fpTxFifoGet;
+  //USB_CbByte           fpIEastPut;
+  //USB_CbByte           fpOEastGet;
   //U8                   rxBuffer[USB_CDC_PACKET_SIZE * 5 + 1];
   //U8                   txBuffer[USB_CDC_PACKET_SIZE * 5 + 1];
   EventGroupHandle_t   events;
@@ -66,14 +67,14 @@ STATIC CDC_SERIAL_STATE  gNotification = { 0 };
 STATIC CDC_I2C_PORT      gPort         = { 0 };
 
 //-----------------------------------------------------------------------------
-/** @brief Puts received Byte from USB EP buffer to the EAST block. When the
- *         block is parsed correctly - puts it into the queue.
+/** @brief Puts received Byte from USB EP buffer to the EAST packet. When the
+ *         packet is parsed correctly - puts it into the queue.
  *  @param pByte - Pointer to the container for Byte
  *  @return None
  *  @note If the queue is full - all the further received bytes are ignored.
  */
 
-static void cdc_InEastPut(U8 * pByte)
+static void cdc_IEastPut(U8 * pByte)
 {
   FW_RESULT r = FW_ERROR;
   U8 * buffer = NULL;
@@ -90,7 +91,7 @@ static void cdc_InEastPut(U8 * pByte)
     }
 
     /* Put the block into the queue */
-    r = BlockQueue_Enqueue(gPort.iQueue, EAST_GetMessageSize(gPort.iEAST));
+    r = BlockQueue_Enqueue(gPort.iQueue, EAST_GetDataSize(gPort.iEAST));
     if (FW_SUCCESS == r)
     {
       /* Allocate the memory for the next block */
@@ -98,6 +99,46 @@ static void cdc_InEastPut(U8 * pByte)
       if (FW_SUCCESS == r)
       {
         (void)EAST_SetBuffer(gPort.iEAST, buffer, size);
+      }
+    }
+  }
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets the Byte from the EAST packet. When the packet is complete -
+ *         sets the corresponding synchronization event.
+ *  @param pByte - Pointer to the container for Byte
+ *  @return None
+ */
+
+static void cdc_OEastGet(U8 * pByte)
+{
+  FW_RESULT r = FW_ERROR;
+
+  /* Empty the EAST block */
+  r = EAST_GetByte(gPort.oEAST, pByte);
+  if (FW_COMPLETE == r)
+  {
+    if (FW_TRUE == IRQ_IsInExceptionMode())
+    {
+      (void)xEventGroupSetBits(gPort.events, EVT_EAST_TX_COMPLETE);
+    }
+    else
+    {
+      /* We have not woken a task at the start of the ISR */
+      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+      (void)xEventGroupSetBitsFromISR
+            (
+              gPort.events,
+              EVT_EAST_TX_COMPLETE,
+              &xHigherPriorityTaskWoken
+            );
+
+      /* Now we can request to switch context if necessary */
+      if( xHigherPriorityTaskWoken )
+      {
+        taskYIELD();
       }
     }
   }
@@ -131,6 +172,7 @@ static void vI2CTask(void * pvParameters)
 {
   U8 * buffer = NULL;
   U32 size = 0;
+  EventBits_t events = 0;
 
   while(1)
   {
@@ -146,7 +188,31 @@ static void vI2CTask(void * pvParameters)
     (void)BlockQueue_Dequeue(gPort.iQueue, &buffer, &size);
 
     /* Process the block */
+    gPort.oBuffer[0] = 0x33;
+    gPort.oBuffer[1] = 0x33;
+    gPort.oBuffer[2] = 0x33;
+    gPort.oBuffer[3] = 0x33;
+    gPort.oBuffer[4] = 0x33;
+    gPort.oBuffer[5] = 0x33;
+    EAST_SetBuffer(gPort.oEAST, gPort.oBuffer, 6);
     vTaskDelay(80);
+
+    /* Transmit the block */
+    CDC_I2C_InStage();
+
+    /* Wait for transmitting complete */
+    events = xEventGroupWaitBits
+             (
+               gPort.events,
+               EVT_EAST_TX_COMPLETE,
+               pdTRUE,
+               pdFALSE,
+					     portMAX_DELAY
+             );
+    if (EVT_EAST_TX_COMPLETE == (events & EVT_EAST_TX_COMPLETE))
+    {
+      //
+    }
 
     /* Release the block */
     (void)BlockQueue_Release(gPort.iQueue);
@@ -220,7 +286,7 @@ void CDC_I2C_Init(void)
   /* Initialize FIFOs */
   //FIFO_Init(&gPortI2C.rxFifo, gPortI2C.rxBuffer, sizeof(gPortI2C.rxBuffer));
   //FIFO_Init(&gPortI2C.txFifo, gPortI2C.txBuffer, sizeof(gPortI2C.txBuffer));
-  gPort.fpInEastPut = cdc_InEastPut;
+  //gPort.fpIEastPut = cdc_IEastPut;
   //gPortI2C.txFifoGetCb = cdc_TxFifoGetB;
 
 
@@ -329,7 +395,7 @@ CDC_PORT * CDC_I2C_GetPort(void)
 void CDC_I2C_OutStage(void)
 {
   /* Read from OUT EP */
-  (void)gPort.fpEpOBlkRd(gPort.fpInEastPut, EAST_MAX_PACKET_LENGTH);
+  (void)gPort.fpEpOBlkRd(cdc_IEastPut, EAST_MAX_PACKET_LENGTH);
 }
 
 //-----------------------------------------------------------------------------
@@ -343,8 +409,8 @@ void CDC_I2C_InStage(void)
 //  /* If there are some data in FIFO */
 //  if (0 < FIFO_Count(gPort.txFifo))
 //  {
-//    /* Write to IN EP */
-//    (void)gPort.fpEpIBlkWr(gPort.fpTxFifoGet, FIFO_Count(gPort.txFifo));
+  /* Write to IN EP */
+  (void)gPort.fpEpIBlkWr(cdc_OEastGet, EAST_GetPacketSize(gPort.oEAST));
 //  }
 //  else
 //  {
