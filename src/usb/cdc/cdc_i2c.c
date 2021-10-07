@@ -29,6 +29,11 @@
 #define EVT_EAST_TX_COMPLETE   (1 << 0)
 #define EVT_I2C_EXCH_COMPLETE  (1 << 1)
 
+#define I2C_OPCODE_READ        (0x00)
+#define I2C_OPCODE_WRITE       (0x01)
+#define I2C_STATUS_SUCCESS     (0x00)
+#define I2C_STATUS_ERROR       (0xFF)
+
 
 typedef FW_BOOLEAN (*CDC_EP_FUNCTION)(void);
 typedef U32 (*CDC_EP_DATA_FUNCTION)(USBD_CbByte pPutByteCb, U32 aSize);
@@ -58,6 +63,14 @@ typedef struct _CDC_I2C_PORT
   U8                   iBuffer[EAST_MAX_DATA_LENGTH * 8];
   U8                   oBuffer[EAST_MAX_DATA_LENGTH];
 } CDC_I2C_PORT;
+
+typedef struct _I2C_PACKET
+{
+  U8 opcode;
+  U8 status;
+  U8 address;
+  U8 data[EAST_MAX_DATA_LENGTH - 3];
+} I2C_PACKET;
 
 //-----------------------------------------------------------------------------
 /* Global Variables */
@@ -144,23 +157,91 @@ static void cdc_OEastGet(U8 * pByte)
   }
 }
 
-////-----------------------------------------------------------------------------
-///** @brief Gets Byte that need to be transmitted from the Tx FIFO
-// *  @param pByte - Pointer to the container for Byte
-// *  @return None
-// */
-//
+//-----------------------------------------------------------------------------
+/** @brief Prepares the error response
+ *  @param pReq - Pointer to the request container
+ *  @param pRsp - Pointer to the response container
+ *  @param pSize - Pointer to the size container
+ *  @return None
+ */
+
+void cdc_I2cError(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
+{
+  pRsp->opcode = pReq->opcode;
+  pRsp->status = I2C_STATUS_ERROR;
+  pRsp->address = pReq->address;
+  *pSize = 3;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Performs the I2C read transaction
+ *  @param pReq - Pointer to the request container
+ *  @param pRsp - Pointer to the response container
+ *  @param pSize - Pointer to the size container
+ *  @return None
+ */
+
+void cdc_I2cRead(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
+{
+  cdc_I2cError(pReq, pRsp, pSize);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Performs the I2C write transaction
+ *  @param pReq - Pointer to the request container
+ *  @param pRsp - Pointer to the response container
+ *  @param pSize - Pointer to the size container
+ *  @return None
+ */
+
+void cdc_I2cWrite(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
+{
+  cdc_I2cError(pReq, pRsp, pSize);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Sends the response via CDC port
+ *  @param pReq - Pointer to the request container
+ *  @param size - Size of the response
+ *  @return None
+ */
+
+void cdc_SendResponse(I2C_PACKET * pRsp, U16 size)
+{
+  EventBits_t events = 0;
+
+  /* Reset the EAST */
+  EAST_SetBuffer(gPort.oEAST, (U8 *)pRsp, size);
+
+  /* Send the response */
+  CDC_I2C_InStage();
+
+  /* Wait for transmitting complete */
+  events = xEventGroupWaitBits
+           (
+             gPort.events,
+             EVT_EAST_TX_COMPLETE,
+             pdTRUE,
+             pdFALSE,
+			     portMAX_DELAY
+           );
+  if (EVT_EAST_TX_COMPLETE == (events & EVT_EAST_TX_COMPLETE))
+  {
+    /* Check for errors */
+  }
+}
+
 //static void cdc_TxFifoGetB(U8 * pByte)
 //{
 //  //(void)FIFO_Get(&gPortB.txFifo, pByte);
 //}
-//
+
 ////-----------------------------------------------------------------------------
 ///** @brief Puts received Byte from UART to the Tx FIFO
 // *  @param pByte - Pointer to the container for Byte
 // *  @return TRUE if byte has been put successfully
 // */
-//
+
 //static FW_BOOLEAN uart_FifoPutB(U8 * pByte)
 //{
 //  return FW_FALSE; //(FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPortB.txFifo, pByte));
@@ -175,44 +256,30 @@ static void cdc_OEastGet(U8 * pByte)
 
 static void vI2CTask(void * pvParameters)
 {
-  U8 * buffer = NULL;
+  I2C_PACKET * req = NULL, * rsp = (I2C_PACKET *)gPort.oBuffer;
   U32 size = 0;
-  EventBits_t events = 0;
 
   while(1)
   {
-    //GPIO_Lo(GPIOC, 13);
-    //DBG_SetTextColorGreen();
-    //printf("LED On\r\n");
-    //vTaskDelay(500);
-    //GPIO_Hi(GPIOC, 13);
-    //DBG_SetTextColorRed();
-    //printf("LED Off\r\n");
+    /* Dequeue the request */
+    (void)BlockQueue_Dequeue(gPort.iQueue, (U8 **)&req, &size);
 
-    /* Dequeue the block */
-    (void)BlockQueue_Dequeue(gPort.iQueue, &buffer, &size);
-
-    /* Process the block */
-    memset(gPort.oBuffer, 0x44, sizeof(gPort.oBuffer));
-    EAST_SetBuffer(gPort.oEAST, gPort.oBuffer, sizeof(gPort.oBuffer));
-    vTaskDelay(80);
-
-    /* Transmit the block */
-    CDC_I2C_InStage();
-
-    /* Wait for transmitting complete */
-    events = xEventGroupWaitBits
-             (
-               gPort.events,
-               EVT_EAST_TX_COMPLETE,
-               pdTRUE,
-               pdFALSE,
-					     portMAX_DELAY
-             );
-    if (EVT_EAST_TX_COMPLETE == (events & EVT_EAST_TX_COMPLETE))
+    /* Process the request */
+    switch (req->opcode)
     {
-      //
+      case I2C_OPCODE_READ:
+        cdc_I2cRead(req, rsp, &size);
+        break;
+      case I2C_OPCODE_WRITE:
+        cdc_I2cWrite(req, rsp, &size);
+        break;
+      default:
+        cdc_I2cError(req, rsp, &size);
+        break;
     }
+
+    /* Send the response */
+    cdc_SendResponse(rsp, size);
 
     /* Release the block */
     (void)BlockQueue_Release(gPort.iQueue);
