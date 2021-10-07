@@ -16,7 +16,7 @@
 #include "task.h"
 #include "event_groups.h"
 
-#include "east_message.h"
+#include "east_packet.h"
 #include "block_queue.h"
 
 //-----------------------------------------------------------------------------
@@ -167,6 +167,11 @@ static void cdc_OEastGet(U8 * pByte)
 //}
 //
 
+//-----------------------------------------------------------------------------
+/** @brief Thread function
+ *  @param pvParameters - Pointer to the parameters
+ *  @return None
+ */
 
 static void vI2CTask(void * pvParameters)
 {
@@ -289,13 +294,7 @@ void CDC_I2C_Init(void)
   //gPort.fpIEastPut = cdc_IEastPut;
   //gPortI2C.txFifoGetCb = cdc_TxFifoGetB;
 
-
-
-
-
-  //FW_BOOLEAN result = FW_FALSE;
-  //FW_RESULT status = FW_ERROR;
-
+  /* Initialize EAST packet containers */
   gPort.iEAST = EAST_Init
                 (
                   gPort.iEastCtnr,
@@ -310,51 +309,24 @@ void CDC_I2C_Init(void)
                   NULL,
                   0
                 );
-  //result = (FW_BOOLEAN)(NULL != pEAST);
-  //if (FW_FALSE == result) return result;
 
-  //(void)EAST_SetBuffer(gPort.pInEAST, eastBuffer, sizeof(eastBuffer));
-  //result = (FW_BOOLEAN)(FW_SUCCESS == status);
-
-
+  /* Initialize the EAST packet queue */
   gPort.iQueue = BlockQueue_Init
                  (
                    gPort.iBuffer,
                    sizeof(gPort.iBuffer),
                    EAST_MAX_DATA_LENGTH
                  );
-  //result = (FW_BOOLEAN)(NULL != pQueue);
-
-  //FW_BOOLEAN result = FW_FALSE;
-  //FW_RESULT status = FW_ERROR;
-
-
-  //  DBG("*** EAST Block Success Fill Queue Test ***\r\n");
-
-  //  DBG(" - Allocate the Block from Queue\r\n");
+  /* Allocate the memory for the first input EAST packet */
   (void)BlockQueue_Allocate(gPort.iQueue, &buffer, &size);
-  //  result = (FW_BOOLEAN)(FW_SUCCESS == status);
-  //  result &= (FW_BOOLEAN)(NULL != buffer);
-  //  result &= (FW_BOOLEAN)(0 != size);
-  //  if (FW_FALSE == result) break;
-
-  /* Setup/Reset the EAST packet */
+  /* Setup/Reset the input EAST packet */
   (void)EAST_SetBuffer(gPort.iEAST, buffer, size);
-  //  result &= (FW_BOOLEAN)(FW_SUCCESS == status);
-  //  if (FW_FALSE == result) break;
-
-
-
-
-
-
 
   /* Initialize pointers */
   gPort.cdc.lineCoding = &gLineCoding;
   gPort.cdc.notification = &gNotification;
 
-
-	/* Create the event group */
+	/* Create the event group for synchronization */
 	gPort.events = xEventGroupCreate();
   (void)xEventGroupClearBits
         (
@@ -362,8 +334,7 @@ void CDC_I2C_Init(void)
           EVT_EAST_TX_COMPLETE | EVT_I2C_EXCH_COMPLETE
         );
 
-	// Was the event group created successfully?
-
+	/* Create the I2C task */
   xTaskCreate
   (
     vI2CTask,
@@ -406,16 +377,12 @@ void CDC_I2C_OutStage(void)
 
 void CDC_I2C_InStage(void)
 {
-//  /* If there are some data in FIFO */
-//  if (0 < FIFO_Count(gPort.txFifo))
-//  {
-  /* Write to IN EP */
-  (void)gPort.fpEpIBlkWr(cdc_OEastGet, EAST_GetPacketSize(gPort.oEAST));
-//  }
-//  else
-//  {
-//    gPort.rxComplete = FW_FALSE;
-//  }
+  /* If there are some data in EAST packet */
+  if (0 < EAST_GetPacketSize(gPort.oEAST))
+  {
+    /* Write to IN EP */
+    (void)gPort.fpEpIBlkWr(cdc_OEastGet, EAST_GetPacketSize(gPort.oEAST));
+  }
 }
 
 //-----------------------------------------------------------------------------
