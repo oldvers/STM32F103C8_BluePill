@@ -241,7 +241,12 @@ static FW_BOOLEAN Test_GetSuccess(void)
     result = (FW_BOOLEAN)(FW_SUCCESS == status);
     if (FW_FALSE == result) return result;
 
+    size = EAST_GetMessageSize(pEAST);
+    result = (FW_BOOLEAN)((sizeof(gTestEastPacketSuccess) - 6) == size);
+    if (FW_FALSE == result) return result;
+
     /* Get the EAST packet */
+    size = sizeof(gTestEastPacketSuccess);
     for (byte = 0; byte < size; byte++)
     {
         status = EAST_GetByte(pEAST, &value);
