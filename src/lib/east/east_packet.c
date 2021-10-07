@@ -1,5 +1,5 @@
 #include <string.h>
-#include "east_message.h"
+#include "east_packet.h"
 #include "debug.h"
 
 /* EAST data packet format is as follows:

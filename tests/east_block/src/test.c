@@ -8,7 +8,7 @@
 #include "queue.h"
 
 #include "block_queue.h"
-#include "east_message.h"
+#include "east_packet.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -129,7 +129,7 @@ static FW_BOOLEAN Test_FillTheQueue(void)
         }
 
         DBG(" - Enqueue the block\r\n");
-        status = BlockQueue_Enqueue(pQueue, EAST_GetMessageSize(pEAST));
+        status = BlockQueue_Enqueue(pQueue, EAST_GetDataSize(pEAST));
 
         if (FW_SUCCESS == status)
         {
@@ -208,7 +208,7 @@ static FW_BOOLEAN Test_ProcessTheQueue(void)
       DBG(" - EAST Message Collected Successfuly\r\n");
 
       DBG(" - Enqueue the block\r\n");
-      status = BlockQueue_Enqueue(pQueue, EAST_GetMessageSize(pEAST));
+      status = BlockQueue_Enqueue(pQueue, EAST_GetDataSize(pEAST));
 
       if (FW_SUCCESS == status)
       {

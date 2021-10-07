@@ -7,7 +7,7 @@
 #include "task.h"
 #include "queue.h"
 
-#include "east_message.h"
+#include "east_packet.h"
 
 /* -------------------------------------------------------------------------- */
 
