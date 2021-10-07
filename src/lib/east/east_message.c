@@ -130,7 +130,7 @@ FW_RESULT EAST_SetBuffer(EAST_p pEAST, U8 * pBuffer, U32 aSize)
     }
 
     /* Reset the state */
-    pEAST->ActSize = 0;
+    pEAST->ActSize = aSize;
     pEAST->Index = 0;
     pEAST->FCS = 0;
     pEAST->RCS = 0;
@@ -268,7 +268,6 @@ FW_RESULT EAST_GetByte(EAST_p pEAST, U8 * pValue)
     else if EAST_PACKET_STAGE_START(pEAST->Index)
     {
         *pValue = EAST_PACKET_START_TOKEN;
-        pEAST->ActSize = pEAST->MaxSize;
     }
     /* Packet Size Stage */
     else if EAST_PACKET_STAGE_LENGTHL(pEAST->Index)
