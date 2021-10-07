@@ -13,6 +13,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "event_groups.h"
 
 #include "east_message.h"
 #include "block_queue.h"
@@ -23,6 +24,9 @@
 #define EAST_MAX_DATA_LENGTH   (32)
 #define EAST_HEADER_LENGTH     (6)
 #define EAST_MAX_PACKET_LENGTH (EAST_HEADER_LENGTH + EAST_MAX_DATA_LENGTH)
+
+#define EVT_EAST_TX_COMPLETE   (1 << 0)
+#define EVT_I2C_EXCH_COMPLETE  (1 << 1)
 
 
 typedef FW_BOOLEAN (*CDC_EP_FUNCTION)(void);
@@ -44,10 +48,14 @@ typedef struct _CDC_I2C_PORT
   //USB_CbByte           fpTxFifoGet;
   //U8                   rxBuffer[USB_CDC_PACKET_SIZE * 5 + 1];
   //U8                   txBuffer[USB_CDC_PACKET_SIZE * 5 + 1];
-  EAST_p               pInEAST;
-  U8                   eastContainer[16];
-  BlockQueue_p         pInQueue;
-  U8                   inBuffer[EAST_MAX_DATA_LENGTH * 8];
+  EventGroupHandle_t   events;
+  EAST_p               iEAST;
+  EAST_p               oEAST;
+  U8                   iEastCtnr[16];
+  U8                   oEastCtnr[16];
+  BlockQueue_p         iQueue;
+  U8                   iBuffer[EAST_MAX_DATA_LENGTH * 8];
+  U8                   oBuffer[EAST_MAX_DATA_LENGTH];
 } CDC_I2C_PORT;
 
 //-----------------------------------------------------------------------------
@@ -72,24 +80,24 @@ static void cdc_InEastPut(U8 * pByte)
   U32 size = 0;
 
   /* Fill the EAST block */
-  r = EAST_PutByte(gPort.pInEAST, *pByte);
+  r = EAST_PutByte(gPort.iEAST, *pByte);
   if (FW_COMPLETE == r)
   {
     /* If the block queue is full - ignore */
-    if (0 == BlockQueue_GetCountOfFree(gPort.pInQueue))
+    if (0 == BlockQueue_GetCountOfFree(gPort.iQueue))
     {
       return;
     }
 
     /* Put the block into the queue */
-    r = BlockQueue_Enqueue(gPort.pInQueue, EAST_GetMessageSize(gPort.pInEAST));
+    r = BlockQueue_Enqueue(gPort.iQueue, EAST_GetMessageSize(gPort.iEAST));
     if (FW_SUCCESS == r)
     {
       /* Allocate the memory for the next block */
-      r = BlockQueue_Allocate(gPort.pInQueue, &buffer, &size);
+      r = BlockQueue_Allocate(gPort.iQueue, &buffer, &size);
       if (FW_SUCCESS == r)
       {
-        (void)EAST_SetBuffer(gPort.pInEAST, buffer, size);
+        (void)EAST_SetBuffer(gPort.iEAST, buffer, size);
       }
     }
   }
@@ -135,13 +143,13 @@ static void vI2CTask(void * pvParameters)
     //printf("LED Off\r\n");
 
     /* Dequeue the block */
-    (void)BlockQueue_Dequeue(gPort.pInQueue, &buffer, &size);
+    (void)BlockQueue_Dequeue(gPort.iQueue, &buffer, &size);
 
     /* Process the block */
     vTaskDelay(80);
 
     /* Release the block */
-    (void)BlockQueue_Release(gPort.pInQueue);
+    (void)BlockQueue_Release(gPort.iQueue);
   }
   //vTaskDelete(NULL);
 }
@@ -222,13 +230,20 @@ void CDC_I2C_Init(void)
   //FW_BOOLEAN result = FW_FALSE;
   //FW_RESULT status = FW_ERROR;
 
-  gPort.pInEAST = EAST_Init
-                  (
-                      gPort.eastContainer,
-                      sizeof(gPort.eastContainer),
-                      NULL,
-                      0
-                  );
+  gPort.iEAST = EAST_Init
+                (
+                  gPort.iEastCtnr,
+                  sizeof(gPort.iEastCtnr),
+                  NULL,
+                  0
+                );
+  gPort.oEAST = EAST_Init
+                (
+                  gPort.oEastCtnr,
+                  sizeof(gPort.oEastCtnr),
+                  NULL,
+                  0
+                );
   //result = (FW_BOOLEAN)(NULL != pEAST);
   //if (FW_FALSE == result) return result;
 
@@ -236,12 +251,12 @@ void CDC_I2C_Init(void)
   //result = (FW_BOOLEAN)(FW_SUCCESS == status);
 
 
-  gPort.pInQueue = BlockQueue_Init
-           (
-             gPort.inBuffer,
-             sizeof(gPort.inBuffer),
-             EAST_MAX_DATA_LENGTH
-           );
+  gPort.iQueue = BlockQueue_Init
+                 (
+                   gPort.iBuffer,
+                   sizeof(gPort.iBuffer),
+                   EAST_MAX_DATA_LENGTH
+                 );
   //result = (FW_BOOLEAN)(NULL != pQueue);
 
   //FW_BOOLEAN result = FW_FALSE;
@@ -251,14 +266,14 @@ void CDC_I2C_Init(void)
   //  DBG("*** EAST Block Success Fill Queue Test ***\r\n");
 
   //  DBG(" - Allocate the Block from Queue\r\n");
-  (void)BlockQueue_Allocate(gPort.pInQueue, &buffer, &size);
+  (void)BlockQueue_Allocate(gPort.iQueue, &buffer, &size);
   //  result = (FW_BOOLEAN)(FW_SUCCESS == status);
   //  result &= (FW_BOOLEAN)(NULL != buffer);
   //  result &= (FW_BOOLEAN)(0 != size);
   //  if (FW_FALSE == result) break;
 
   /* Setup/Reset the EAST packet */
-  (void)EAST_SetBuffer(gPort.pInEAST, buffer, size);
+  (void)EAST_SetBuffer(gPort.iEAST, buffer, size);
   //  result &= (FW_BOOLEAN)(FW_SUCCESS == status);
   //  if (FW_FALSE == result) break;
 
@@ -273,7 +288,15 @@ void CDC_I2C_Init(void)
   gPort.cdc.notification = &gNotification;
 
 
+	/* Create the event group */
+	gPort.events = xEventGroupCreate();
+  (void)xEventGroupClearBits
+        (
+          gPort.events,
+          EVT_EAST_TX_COMPLETE | EVT_I2C_EXCH_COMPLETE
+        );
 
+	// Was the event group created successfully?
 
   xTaskCreate
   (
