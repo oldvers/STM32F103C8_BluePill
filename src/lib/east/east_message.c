@@ -1,3 +1,4 @@
+#include <string.h>
 #include "east_message.h"
 #include "debug.h"
 
@@ -27,6 +28,8 @@
 #define EAST_PACKET_START_TOKEN           ( 0x24 )
 #define EAST_PACKET_STOP_TOKEN            ( 0x42 )
 #define EAST_PACKET_WRAPPER_SIZE          ( 6 )
+#define EAST_PACKET_MODE_INPUT            ( 0 )
+#define EAST_PACKET_MODE_OUTPUT           ( 1 )
 
 #define EAST_PACKET_CHECK_LENGTH(a,m)     ((FW_BOOLEAN)((0 < a) && (a <= m)))
 #define EAST_PACKET_POSITION(b,i)         (b[(i) - 3])
@@ -45,13 +48,18 @@
 
 typedef struct EAST_s
 {
-    U16             MaxSize; /* Maximum size of the data */
-    U16             ActSize; /* Size of the currently collected data */
-    U16             Index;   /* Current position in the packet */
-    U16             FCS;     /* Factual control sum */
-    U16             RCS;     /* Running control sum */
-    FW_BOOLEAN      OK;      /* Packet correctness */
-    U8            * Buffer;  /* Pointer to the data buffer */
+    U16             MaxSize;      /* Maximum size of the data */
+    U16             ActSize;      /* Size of the currently collected data */
+    U16             Index;        /* Current position in the packet */
+    U16             FCS;          /* Factual control sum */
+    U16             RCS;          /* Running control sum */
+    struct
+    {
+      U16           OK : 1;       /* Packet correctness */
+      U16           Mode : 1;     /* Packet mode: in/out */
+      U16           Complete : 1; /* Packet completeness */
+    };
+    U8            * Buffer;       /* Pointer to the data buffer */
 } EAST_t;
 
 //-----------------------------------------------------------------------------
@@ -85,21 +93,13 @@ EAST_p EAST_Init(U8 * pContainer, U32 aSize, U8 * pBuffer, U32 aBufferSize)
 
     /* Initialization */
     result = (EAST_p)pContainer;
-    result->ActSize = 0;
-    result->Index = 0;
-    result->FCS = 0;
-    result->RCS = 0;
-    result->OK = FW_FALSE;
+    memset(result, 0, sizeof(EAST_t));
 
-    if ((NULL == pBuffer) || (0 == aBufferSize))
-    {
-        result->Buffer = NULL;
-        result->MaxSize = 0;
-    }
-    else
+    if ((NULL != pBuffer) && (0 != aBufferSize))
     {
         result->Buffer = pBuffer;
         result->MaxSize = aBufferSize;
+        result->Mode = EAST_PACKET_MODE_OUTPUT;
     }
 
     EAST_LOG("  EAST Address   = %08X\r\n", result);
@@ -131,15 +131,12 @@ FW_RESULT EAST_SetBuffer(EAST_p pEAST, U8 * pBuffer, U32 aSize)
     }
 
     /* Reset the state */
-    pEAST->ActSize = aSize;
-    pEAST->Index = 0;
-    pEAST->FCS = 0;
-    pEAST->RCS = 0;
-    pEAST->OK = FW_FALSE;
+    memset(pEAST, 0, sizeof(EAST_t));
 
     /* Set the buffer */
     pEAST->Buffer = pBuffer;
     pEAST->MaxSize = aSize;
+    pEAST->Mode = EAST_PACKET_MODE_OUTPUT;
 
     EAST_LOG("  EAST Buffer    = %08X\r\n", pBuffer);
     EAST_LOG("  EAST Buff Size = %d\r\n", aSize);
@@ -173,6 +170,9 @@ FW_RESULT EAST_PutByte(EAST_p pEAST, U8 aValue)
         EAST_LOG("  Input parameters error!\r\n");
         return FW_ERROR;
     }
+
+    pEAST->Mode = EAST_PACKET_MODE_INPUT;
+    pEAST->Complete = FW_FALSE;
 
     /* Data Stage */
     if EAST_PACKET_STAGE_DATA(pEAST->Index, pEAST->ActSize)
@@ -234,6 +234,7 @@ FW_RESULT EAST_PutByte(EAST_p pEAST, U8 aValue)
     if EAST_PACKET_STAGE_COMPLETE(pEAST->Index, pEAST->ActSize)
     {
         /* Indicate packet completion */
+        pEAST->Complete = FW_TRUE;
         result = FW_COMPLETE;
         /* Reset the packet position */
         pEAST->Index = 0;
@@ -259,6 +260,9 @@ FW_RESULT EAST_GetByte(EAST_p pEAST, U8 * pValue)
     FW_RESULT result = FW_INPROGRESS;
     pEAST->OK = FW_TRUE;
 
+    pEAST->Mode = EAST_PACKET_MODE_OUTPUT;
+    pEAST->Complete = FW_FALSE;
+
     /* Data Stage */
     if EAST_PACKET_STAGE_DATA(pEAST->Index, pEAST->ActSize)
     {
@@ -269,6 +273,7 @@ FW_RESULT EAST_GetByte(EAST_p pEAST, U8 * pValue)
     else if EAST_PACKET_STAGE_START(pEAST->Index)
     {
         *pValue = EAST_PACKET_START_TOKEN;
+        pEAST->ActSize = pEAST->MaxSize;
     }
     /* Packet Size Stage */
     else if EAST_PACKET_STAGE_LENGTHL(pEAST->Index)
@@ -305,6 +310,7 @@ FW_RESULT EAST_GetByte(EAST_p pEAST, U8 * pValue)
     if EAST_PACKET_STAGE_COMPLETE(pEAST->Index, pEAST->ActSize)
     {
         /* Indicate packet completion */
+        pEAST->Complete = FW_TRUE;
         result = FW_COMPLETE;
         /* Reset the packet position */
         pEAST->Index = 0;
@@ -323,14 +329,21 @@ FW_RESULT EAST_GetByte(EAST_p pEAST, U8 * pValue)
 
 U16 EAST_GetDataSize(EAST_p pEAST)
 {
-  if EAST_PACKET_IS_COMPLETE(pEAST->Index, pEAST->ActSize)
-  {
-    return pEAST->ActSize;
-  }
-  else
-  {
-    return 0;
-  }
+    U16 result = 0;
+
+    if (EAST_PACKET_MODE_INPUT == pEAST->Mode)
+    {
+        if (FW_TRUE == pEAST->Complete)
+        {
+            result = pEAST->ActSize;
+        }
+    }
+    else
+    {
+        result = pEAST->MaxSize;
+    }
+
+    return result;
 }
 
 //-----------------------------------------------------------------------------
@@ -341,12 +354,22 @@ U16 EAST_GetDataSize(EAST_p pEAST)
 
 U16 EAST_GetPacketSize(EAST_p pEAST)
 {
-  if EAST_PACKET_IS_COMPLETE(pEAST->Index, pEAST->ActSize)
-  {
-    return (EAST_PACKET_WRAPPER_SIZE + pEAST->ActSize);
-  }
-  else
-  {
-    return (EAST_PACKET_WRAPPER_SIZE + pEAST->ActSize - pEAST->Index);
-  }
+    U16 result = 0;
+
+    if (EAST_PACKET_MODE_INPUT == pEAST->Mode)
+    {
+        if (FW_TRUE == pEAST->Complete)
+        {
+            result = (EAST_PACKET_WRAPPER_SIZE + pEAST->ActSize);
+        }
+    }
+    else
+    {
+        if (FW_FALSE == pEAST->Complete)
+        {
+            result = (EAST_PACKET_WRAPPER_SIZE + pEAST->MaxSize - pEAST->Index);
+        }
+    }
+
+    return result;
 }

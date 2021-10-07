@@ -256,28 +256,25 @@ static FW_BOOLEAN Test_GetSuccess(void)
     if (FW_FALSE == result) return result;
 
     /* Get the EAST packet */
-    for (byte = 0; byte < size; byte++)
+    for (byte = 0; byte < (2 * size); byte++)
     {
         status = EAST_GetByte(pEAST, &value);
-        if ( (size - 1) == byte )
+        if ( (size - 1) == (byte % size) )
         {
             result &= (FW_BOOLEAN)(FW_COMPLETE == status);
+            check = EAST_GetPacketSize(pEAST);
+            result &= (FW_BOOLEAN)(0 == check);
         }
         else
         {
             result &= (FW_BOOLEAN)(FW_INPROGRESS == status);
+            check = EAST_GetPacketSize(pEAST);
+            result &= (FW_BOOLEAN)((11 - (byte % size) - 1) == check);
         }
         if (FW_FALSE == result) break;
 
-        result &= (FW_BOOLEAN)(value == testPacket[byte]);
+        result &= (FW_BOOLEAN)(value == testPacket[(byte % size)]);
         if (FW_FALSE == result) break;
-
-        if (3 == byte)
-        {
-             check = EAST_GetPacketSize(pEAST);
-             result &= (FW_BOOLEAN)(7 == check);
-             if (FW_FALSE == result) break;
-        }
     }
 
     return result;
