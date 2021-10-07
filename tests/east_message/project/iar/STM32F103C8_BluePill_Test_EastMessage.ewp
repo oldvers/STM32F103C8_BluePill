@@ -1055,10 +1055,10 @@
     <group>
         <name>EAST</name>
         <file>
-            <name>$PROJ_DIR$\..\..\..\..\src\lib\east\east_message.c</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\east\east_packet.c</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\..\..\src\lib\east\east_message.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\east\east_packet.h</name>
         </file>
     </group>
     <group>
