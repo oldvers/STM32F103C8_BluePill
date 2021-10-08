@@ -7,8 +7,8 @@
 #include "cdc_i2c.h"
 
 #include "board.h"
-//#include "gpio.h"
-//#include "uart.h"
+#include "gpio.h"
+#include "i2c.h"
 #include "interrupts.h"
 #include "usb.h"
 
@@ -28,6 +28,7 @@
 
 #define EVT_EAST_TX_COMPLETE   (1 << 0)
 #define EVT_I2C_EXCH_COMPLETE  (1 << 1)
+#define EVT_I2C_EXCH_TIMEOUT   (100)
 
 #define I2C_OPCODE_READ        (0x00)
 #define I2C_OPCODE_WRITE       (0x01)
@@ -46,14 +47,7 @@ typedef struct _CDC_I2C_PORT
   CDC_EP_FUNCTION      fpEpOBlkIsRxEmpty;
   CDC_EP_DATA_FUNCTION fpEpIBlkWr;
   CDC_EP_FUNCTION      fpEpIBlkIsTxEmpty;
-  //UART_t               uart;
-  //FW_BOOLEAN           rxComplete;
-  //FIFO_p               rxFifo;
-  //FIFO_p               txFifo;
-  //USB_CbByte           fpIEastPut;
-  //USB_CbByte           fpOEastGet;
-  //U8                   rxBuffer[USB_CDC_PACKET_SIZE * 5 + 1];
-  //U8                   txBuffer[USB_CDC_PACKET_SIZE * 5 + 1];
+  FW_RESULT            result;
   EventGroupHandle_t   events;
   EAST_p               iEAST;
   EAST_p               oEAST;
@@ -69,7 +63,8 @@ typedef struct _I2C_PACKET
   U8 opcode;
   U8 status;
   U8 address;
-  U8 data[EAST_MAX_DATA_LENGTH - 3];
+  U8 size;
+  U8 data[EAST_MAX_DATA_LENGTH - 4];
 } I2C_PACKET;
 
 //-----------------------------------------------------------------------------
@@ -149,12 +144,80 @@ static void cdc_OEastGet(U8 * pByte)
             );
 
       /* Now we can request to switch context if necessary */
-      if( xHigherPriorityTaskWoken )
+      if (xHigherPriorityTaskWoken)
       {
         taskYIELD();
       }
     }
   }
+}
+
+//-----------------------------------------------------------------------------
+/** @brief I2C callback function
+ *  @param aResult - I2C transaction result
+ *  @return None
+ */
+
+static FW_BOOLEAN i2c_Complete(FW_RESULT aResult)
+{
+  BaseType_t xHigherPriorityTaskWoken;
+
+  xHigherPriorityTaskWoken = pdFALSE;
+
+  (void)xEventGroupSetBitsFromISR
+        (
+          gPort.events,
+          EVT_I2C_EXCH_COMPLETE,
+          &xHigherPriorityTaskWoken
+        );
+  gPort.result = aResult;
+
+  if (xHigherPriorityTaskWoken)
+  {
+    taskYIELD();
+  }
+
+  return FW_TRUE;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Waits for I2C transaction completion
+ *  @param None
+ *  @return None
+ */
+
+static FW_BOOLEAN i2c_WaitForComplete(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  EventBits_t events = 0;
+
+  events = xEventGroupWaitBits
+           (
+             gPort.events,
+             EVT_I2C_EXCH_COMPLETE,
+             pdTRUE,
+             pdFALSE,
+             EVT_I2C_EXCH_TIMEOUT
+           );
+
+  if (EVT_I2C_EXCH_COMPLETE == (events & EVT_I2C_EXCH_COMPLETE))
+  {
+    if (FW_COMPLETE == gPort.result)
+    {
+      /* Success */
+    }
+    else
+    {
+      result = FW_FALSE;
+    }
+  }
+  else
+  {
+    /* Timeout */
+    result = FW_FALSE;
+  }
+
+  return result;
 }
 
 //-----------------------------------------------------------------------------
@@ -167,10 +230,9 @@ static void cdc_OEastGet(U8 * pByte)
 
 void cdc_I2cError(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
 {
-  pRsp->opcode = pReq->opcode;
   pRsp->status = I2C_STATUS_ERROR;
-  pRsp->address = pReq->address;
-  *pSize = 3;
+  pRsp->size = 0;
+  *pSize = 4;
 }
 
 //-----------------------------------------------------------------------------
@@ -183,7 +245,18 @@ void cdc_I2cError(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
 
 void cdc_I2cRead(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
 {
-  cdc_I2cError(pReq, pRsp, pSize);
+  I2C_MRd(I2C_1, pReq->address, pReq->data, pReq->size);
+
+  if (FW_TRUE == i2c_WaitForComplete())
+  {
+    pRsp->status = I2C_STATUS_SUCCESS;
+    pRsp->size = pReq->size;
+    *pSize = (pReq->size + 4);
+  }
+  else
+  {
+    cdc_I2cError(pReq, pRsp, pSize);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -196,7 +269,18 @@ void cdc_I2cRead(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
 
 void cdc_I2cWrite(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
 {
-  cdc_I2cError(pReq, pRsp, pSize);
+  I2C_MWr(I2C_1, pReq->address, pReq->data, pReq->size);
+
+  if (FW_TRUE == i2c_WaitForComplete())
+  {
+    pRsp->status = I2C_STATUS_SUCCESS;
+    pRsp->size = pReq->size;
+    *pSize = 4;
+  }
+  else
+  {
+    cdc_I2cError(pReq, pRsp, pSize);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -223,30 +307,13 @@ void cdc_SendResponse(I2C_PACKET * pRsp, U16 size)
              EVT_EAST_TX_COMPLETE,
              pdTRUE,
              pdFALSE,
-			     portMAX_DELAY
+             portMAX_DELAY
            );
   if (EVT_EAST_TX_COMPLETE == (events & EVT_EAST_TX_COMPLETE))
   {
     /* Check for errors */
   }
 }
-
-//static void cdc_TxFifoGetB(U8 * pByte)
-//{
-//  //(void)FIFO_Get(&gPortB.txFifo, pByte);
-//}
-
-////-----------------------------------------------------------------------------
-///** @brief Puts received Byte from UART to the Tx FIFO
-// *  @param pByte - Pointer to the container for Byte
-// *  @return TRUE if byte has been put successfully
-// */
-
-//static FW_BOOLEAN uart_FifoPutB(U8 * pByte)
-//{
-//  return FW_FALSE; //(FW_BOOLEAN)(FW_SUCCESS == FIFO_Put(&gPortB.txFifo, pByte));
-//}
-//
 
 //-----------------------------------------------------------------------------
 /** @brief Thread function
@@ -264,18 +331,22 @@ static void vI2CTask(void * pvParameters)
     /* Dequeue the request */
     (void)BlockQueue_Dequeue(gPort.iQueue, (U8 **)&req, &size);
 
+    /* Prepare the response */
+    rsp->opcode = req->opcode;
+    rsp->address = req->address;
+
     /* Process the request */
-    switch (req->opcode)
+    if ((I2C_OPCODE_READ == req->opcode) && (4 == size))
     {
-      case I2C_OPCODE_READ:
-        cdc_I2cRead(req, rsp, &size);
-        break;
-      case I2C_OPCODE_WRITE:
-        cdc_I2cWrite(req, rsp, &size);
-        break;
-      default:
-        cdc_I2cError(req, rsp, &size);
-        break;
+      cdc_I2cRead(req, rsp, &size);
+    }
+    else if ((I2C_OPCODE_WRITE == req->opcode) && (4 < size))
+    {
+      cdc_I2cWrite(req, rsp, &size);
+    }
+    else
+    {
+      cdc_I2cError(req, rsp, &size);
     }
 
     /* Send the response */
@@ -287,23 +358,27 @@ static void vI2CTask(void * pvParameters)
   //vTaskDelete(NULL);
 }
 
-
-////-----------------------------------------------------------------------------
-///** @brief Gets Byte that need to be transmitted from the Rx FIFO
-// *  @param pByte - Pointer to the container for Byte
-// *  @return None
-// */
-//
-//static FW_BOOLEAN uart_FifoGetB(U8 * pByte)
-//{
-//  return FW_FALSE; //(FW_BOOLEAN)(FW_SUCCESS == FIFO_Get(&gPortB.rxFifo, pByte));
-//}
-//
+//-----------------------------------------------------------------------------
+/** @brief Initializes the I2C peripheral
+ *  @param None
+ *  @return None
+ */
 
 static void i2c_Open(void)
 {
-  //
+  I2C_Init(I2C_1, i2c_Complete);
+
+  GPIO_Init(I2C1_SCL_PORT, I2C1_SCL_PIN, GPIO_TYPE_ALT_OD_10MHZ, 1);
+  GPIO_Init(I2C1_SDA_PORT, I2C1_SDA_PIN, GPIO_TYPE_ALT_OD_10MHZ, 1);
+
+  xEventGroupClearBits(gPort.events,	EVT_I2C_EXCH_COMPLETE);
 }
+
+//-----------------------------------------------------------------------------
+/** @brief Sets CDC handshake signals
+ *  @param None
+ *  @return None
+ */
 
 static void i2c_SetControlLine(U16 aValue)
 {
@@ -350,11 +425,6 @@ void CDC_I2C_Init(void)
   gPort.cdc.fpEpIIrqWr      = USBD_CDC_I2C_IrqEndPointWr;
   gPort.cdc.fpOpen          = i2c_Open;
   gPort.cdc.fpSetCtrlLine   = i2c_SetControlLine;
-  /* Initialize FIFOs */
-  //FIFO_Init(&gPortI2C.rxFifo, gPortI2C.rxBuffer, sizeof(gPortI2C.rxBuffer));
-  //FIFO_Init(&gPortI2C.txFifo, gPortI2C.txBuffer, sizeof(gPortI2C.txBuffer));
-  //gPort.fpIEastPut = cdc_IEastPut;
-  //gPortI2C.txFifoGetCb = cdc_TxFifoGetB;
 
   /* Initialize EAST packet containers */
   gPort.iEAST = EAST_Init
@@ -455,19 +525,5 @@ void CDC_I2C_InStage(void)
 
 void CDC_I2C_ProcessCollectedData(void)
 {
-//  /* Check if there are some unprocessed data */
-//  if (FW_TRUE == gPort.cdc.ready)
-//  {
-//    if (FW_FALSE == gPort.fpEpOBlkIsRxEmpty())
-//    {
-//      CDC_UART_OutStage();
-//    }
-//
-//    if (((FW_TRUE == gPort.rxComplete) ||
-//        (USB_CDC_PACKET_SIZE < FIFO_Count(gPort.txFifo))) &&
-//        (FW_TRUE == gPort.fpEpIBlkIsTxEmpty()))
-//    {
-//      CDC_UART_InStage();
-//    }
-//  }
+  //
 }
