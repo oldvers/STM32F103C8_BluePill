@@ -19,7 +19,7 @@ void I2C_IrqError   (I2C_t aI2C);
 void I2C_Init       (I2C_t aI2C, I2C_CbComplete_t pCbComplete);
 void I2C_MWr        (I2C_t aI2C, U8 aAdr, U8 * pTx, U8 txSize);
 void I2C_MRd        (I2C_t aI2C, U8 aAdr, U8 * pRx, U8 rxSize);
-void I2C_MEx        (I2C_t aI2C, U8 aAdr, U8 * pTx, U8 txSize, U8 * pRx, U8 rxSize);
-void I2C_DeInit     (void);
+void I2C_MEx   (I2C_t aI2C, U8 aAdr, U8 * pTx, U8 txSize, U8 * pRx, U8 rxSize);
+void I2C_DeInit     (I2C_t aI2C);
 
 #endif /* __I2C_H__ */
