@@ -15,19 +15,20 @@ typedef FW_BOOLEAN (* TestFunction_t)(void);
 
 /* -------------------------------------------------------------------------- */
 
-#define BH1750_BUFFER_SIZE   (32)
+#define I2C_BUFFER_SIZE      (32)
 #define BH1750_ADDRESS       (0x23)
 #define BH1750_CMD_POWER_ON  (0x01)
 #define BH1750_CMD_HRES2     (0x21)
+#define LPH8616_ADDRESS      (0x3C)
 
 #define EVT_I2C_COMPLETE     (1 << 0)
 
 /* -------------------------------------------------------------------------- */
 
-static EventGroupHandle_t gEventGroup                   = NULL;
-static U8                 gTxBuffer[BH1750_BUFFER_SIZE] = {0};
-static U8                 gRxBuffer[BH1750_BUFFER_SIZE] = {0};
-static FW_RESULT          gResult                       = FW_FAIL;
+static EventGroupHandle_t gEventGroup                = NULL;
+static U8                 gTxBuffer[I2C_BUFFER_SIZE] = {0};
+static U8                 gRxBuffer[I2C_BUFFER_SIZE] = {0};
+static FW_RESULT          gResult                    = FW_FAIL;
 
 /* -------------------------------------------------------------------------- */
 
