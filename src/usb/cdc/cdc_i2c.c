@@ -245,7 +245,7 @@ void cdc_I2cError(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
 
 void cdc_I2cRead(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
 {
-  I2C_MRd(I2C_1, pReq->address, pReq->data, pReq->size);
+  I2C_MRd(I2C_1, pReq->address, pRsp->data, pReq->size);
 
   if (FW_TRUE == i2c_WaitForComplete())
   {
