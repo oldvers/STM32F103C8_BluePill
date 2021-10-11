@@ -22,7 +22,7 @@
 //-----------------------------------------------------------------------------
 /* Private Types definitions */
 
-#define EAST_MAX_DATA_LENGTH   (47)
+#define EAST_MAX_DATA_LENGTH   (128)
 #define EAST_HEADER_LENGTH     (6)
 #define EAST_MAX_PACKET_LENGTH (EAST_HEADER_LENGTH + EAST_MAX_DATA_LENGTH)
 
