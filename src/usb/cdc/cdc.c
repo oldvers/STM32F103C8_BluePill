@@ -199,6 +199,7 @@ void CDC_UART_SOF(void)
 {
   CDC_UART_ProcessCollectedData();
   CDC_I2C_ProcessCollectedData();
+  CDC_SPI_ProcessCollectedData();
 }
 
 //-----------------------------------------------------------------------------
@@ -234,15 +235,6 @@ void CDC_UART_BulkOut(U32 aEvent)
   CDC_UART_OutStage();
 }
 
-
-
-
-
-
-
-
-
-
 //-----------------------------------------------------------------------------
 /** @brief CDC Interrupt In Callback
  *  @param aEvent - Event
@@ -276,12 +268,6 @@ void CDC_I2C_BulkOut(U32 aEvent)
   CDC_I2C_OutStage();
 }
 
-
-
-
-
-
-
 //-----------------------------------------------------------------------------
 /** @brief CDC Interrupt In Callback
  *  @param aEvent - Event
@@ -301,7 +287,7 @@ void CDC_SPI_InterruptIn(U32 aEvent)
 
 void CDC_SPI_BulkIn(U32 aEvent)
 {
-//  cdc_InStage(&gPortSPI);
+  CDC_SPI_InStage();
 }
 
 //-----------------------------------------------------------------------------
@@ -312,14 +298,8 @@ void CDC_SPI_BulkIn(U32 aEvent)
 
 void CDC_SPI_BulkOut(U32 aEvent)
 {
-//  cdc_OutStage(&gPortSPI);
+  CDC_SPI_OutStage();
 }
-
-
-
-
-
-
 
 //-----------------------------------------------------------------------------
 /** @brief Initializes CDC

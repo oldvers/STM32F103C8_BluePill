@@ -45,10 +45,14 @@
 #define WIFI_EN_PORT         GPIOB
 #define WIFI_EN_PIN          7
 
-/* I2C1: PB6 - SCL, PB7 - SDA */
+/* I2C1: PB6 - SCL, PB7 - SDA, DTR - PB4, RTS - PB5 */
 #define I2C1_SCL_PORT        GPIOB
 #define I2C1_SCL_PIN         6
 #define I2C1_SDA_PORT        GPIOB
 #define I2C1_SDA_PIN         7
+#define I2C1_DTR_PORT        GPIOB
+#define I2C1_DTR_PIN         4
+#define I2C1_RTS_PORT        GPIOB
+#define I2C1_RTS_PIN         5
 
 #endif  /* __BOARD_H__ */

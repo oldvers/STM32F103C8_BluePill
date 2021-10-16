@@ -22,18 +22,21 @@
 //-----------------------------------------------------------------------------
 /* Private Types definitions */
 
-#define EAST_MAX_DATA_LENGTH   (128)
-#define EAST_HEADER_LENGTH     (6)
-#define EAST_MAX_PACKET_LENGTH (EAST_HEADER_LENGTH + EAST_MAX_DATA_LENGTH)
+#define EAST_MAX_DATA_LENGTH      (128)
+#define EAST_HEADER_LENGTH        (6)
+#define EAST_MAX_PACKET_LENGTH    (EAST_HEADER_LENGTH + EAST_MAX_DATA_LENGTH)
 
-#define EVT_EAST_TX_COMPLETE   (1 << 0)
-#define EVT_I2C_EXCH_COMPLETE  (1 << 1)
-#define EVT_I2C_EXCH_TIMEOUT   (100)
+#define EVT_EAST_TX_COMPLETE      (1 << 0)
+#define EVT_I2C_EXCH_COMPLETE     (1 << 1)
+#define EVT_I2C_EXCH_TIMEOUT      (100)
 
-#define I2C_OPCODE_READ        (0x00)
-#define I2C_OPCODE_WRITE       (0x01)
-#define I2C_STATUS_SUCCESS     (0x00)
-#define I2C_STATUS_ERROR       (0xFF)
+#define I2C_OPCODE_READ           (0x00)
+#define I2C_OPCODE_WRITE          (0x01)
+#define I2C_STATUS_SUCCESS        (0x00)
+#define I2C_STATUS_ERROR          (0xFF)
+
+#define CDC_CTRL_LINE_STATE_DTR   (0)
+#define CDC_CTRL_LINE_STATE_RTS   (1)
 
 
 typedef FW_BOOLEAN (*CDC_EP_FUNCTION)(void);
@@ -127,7 +130,7 @@ static void cdc_OEastGet(U8 * pByte)
   r = EAST_GetByte(gPort.oEAST, pByte);
   if (FW_COMPLETE == r)
   {
-    if (FW_TRUE == IRQ_IsInExceptionMode())
+    if (FW_FALSE == IRQ_IsInExceptionMode())
     {
       (void)xEventGroupSetBits(gPort.events, EVT_EAST_TX_COMPLETE);
     }
@@ -228,7 +231,7 @@ static FW_BOOLEAN i2c_WaitForComplete(void)
  *  @return None
  */
 
-void cdc_I2cError(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
+static void cdc_I2cError(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
 {
   pRsp->status = I2C_STATUS_ERROR;
   pRsp->size = 0;
@@ -243,7 +246,7 @@ void cdc_I2cError(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
  *  @return None
  */
 
-void cdc_I2cRead(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
+static void cdc_I2cRead(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
 {
   I2C_MRd(I2C_1, pReq->address, pRsp->data, pReq->size);
 
@@ -267,7 +270,7 @@ void cdc_I2cRead(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
  *  @return None
  */
 
-void cdc_I2cWrite(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
+static void cdc_I2cWrite(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
 {
   I2C_MWr(I2C_1, pReq->address, pReq->data, pReq->size);
 
@@ -290,7 +293,7 @@ void cdc_I2cWrite(I2C_PACKET * pReq, I2C_PACKET * pRsp, U32 * pSize)
  *  @return None
  */
 
-void cdc_SendResponse(I2C_PACKET * pRsp, U16 size)
+static void cdc_SendResponse(I2C_PACKET * pRsp, U16 size)
 {
   EventBits_t events = 0;
 
@@ -326,7 +329,7 @@ static void vI2CTask(void * pvParameters)
   I2C_PACKET * req = NULL, * rsp = (I2C_PACKET *)gPort.oBuffer;
   U32 size = 0;
 
-  while(1)
+  while (FW_TRUE)
   {
     /* Dequeue the request */
     (void)BlockQueue_Dequeue(gPort.iQueue, (U8 **)&req, &size);
@@ -370,8 +373,10 @@ static void i2c_Open(void)
 
   GPIO_Init(I2C1_SCL_PORT, I2C1_SCL_PIN, GPIO_TYPE_ALT_OD_10MHZ, 1);
   GPIO_Init(I2C1_SDA_PORT, I2C1_SDA_PIN, GPIO_TYPE_ALT_OD_10MHZ, 1);
+  GPIO_Init(I2C1_DTR_PORT, I2C1_DTR_PIN, GPIO_TYPE_OUT_PP_10MHZ, 1);
+  GPIO_Init(I2C1_RTS_PORT, I2C1_RTS_PIN, GPIO_TYPE_OUT_PP_10MHZ, 1);
 
-  xEventGroupClearBits(gPort.events,	EVT_I2C_EXCH_COMPLETE);
+  xEventGroupClearBits(gPort.events, EVT_I2C_EXCH_COMPLETE);
 }
 
 //-----------------------------------------------------------------------------
@@ -382,7 +387,25 @@ static void i2c_Open(void)
 
 static void i2c_SetControlLine(U16 aValue)
 {
-  //
+  /* DTR signal */
+  if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_DTR)) )
+  {
+    GPIO_Hi(I2C1_DTR_PORT, I2C1_DTR_PIN);
+  }
+  else
+  {
+    GPIO_Lo(I2C1_DTR_PORT, I2C1_DTR_PIN);
+  }
+
+  /* RTS signal */
+  if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_RTS)) )
+  {
+    GPIO_Hi(I2C1_RTS_PORT, I2C1_RTS_PIN);
+  }
+  else
+  {
+    GPIO_Lo(I2C1_RTS_PORT, I2C1_RTS_PIN);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -458,15 +481,15 @@ void CDC_I2C_Init(void)
   gPort.cdc.lineCoding = &gLineCoding;
   gPort.cdc.notification = &gNotification;
 
-	/* Create the event group for synchronization */
-	gPort.events = xEventGroupCreate();
+  /* Create the event group for synchronization */
+  gPort.events = xEventGroupCreate();
   (void)xEventGroupClearBits
         (
           gPort.events,
           EVT_EAST_TX_COMPLETE | EVT_I2C_EXCH_COMPLETE
         );
 
-	/* Create the I2C task */
+  /* Create the I2C task */
   xTaskCreate
   (
     vI2CTask,
@@ -527,3 +550,5 @@ void CDC_I2C_ProcessCollectedData(void)
 {
   //
 }
+
+//-----------------------------------------------------------------------------
