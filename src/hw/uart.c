@@ -31,7 +31,7 @@ typedef struct UART_Context_s
 
 //-----------------------------------------------------------------------------
 
-UART_Context_t gUARTCtx[UARTS_COUNT] =
+static UART_Context_t gUARTCtx[UARTS_COUNT] =
 {
   {
     .HW = USART1,
@@ -229,7 +229,7 @@ void UART_DeInit(UART_t aUART)
  *  @return None
  */
 
-void UART_IRQHandler(UART_t aUART)
+void UART_IrqHandler(UART_t aUART)
 {
   U32 sr     = gUARTCtx[aUART].HW->SR;
   U32 cr1    = gUARTCtx[aUART].HW->CR1;

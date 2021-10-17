@@ -12,6 +12,9 @@
     <project>
         <path>$WS_DIR$\..\..\simulator_template\project\iar\STM32F103C8_BluePill_Test_SimulatorTemplate.ewp</path>
     </project>
+    <project>
+        <path>$WS_DIR$\..\..\spi\project\iar\STM32F103C8_BluePill_Test_SPI.ewp</path>
+    </project>
     <batchBuild>
         <batchDefinition>
             <name>All_Projects</name>
@@ -29,6 +32,10 @@
             </member>
             <member>
                 <project>STM32F103C8_BluePill_Test_I2C</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_SPI</project>
                 <configuration>Test</configuration>
             </member>
         </batchDefinition>
