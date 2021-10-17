@@ -8,7 +8,7 @@
 
 #include "board.h"
 #include "gpio.h"
-//#include "spi.h"
+#include "spi.h"
 #include "interrupts.h"
 #include "usb.h"
 
@@ -161,27 +161,27 @@ static void cdc_OEastGet(U8 * pByte)
  *  @return None
  */
 
-//static FW_BOOLEAN spi_Complete(FW_RESULT aResult)
-//{
-//  BaseType_t xHigherPriorityTaskWoken;
-//
-//  xHigherPriorityTaskWoken = pdFALSE;
-//
-//  (void)xEventGroupSetBitsFromISR
-//        (
-//          gPort.events,
-//          EVT_SPI_EXCH_COMPLETE,
-//          &xHigherPriorityTaskWoken
-//        );
-//  gPort.result = aResult;
-//
-//  if (xHigherPriorityTaskWoken)
-//  {
-//    taskYIELD();
-//  }
-//
-//  return FW_TRUE;
-//}
+static FW_BOOLEAN spi_Complete(FW_RESULT aResult)
+{
+  BaseType_t xHigherPriorityTaskWoken;
+
+  xHigherPriorityTaskWoken = pdFALSE;
+
+  (void)xEventGroupSetBitsFromISR
+        (
+          gPort.events,
+          EVT_SPI_EXCH_COMPLETE,
+          &xHigherPriorityTaskWoken
+        );
+  gPort.result = aResult;
+
+  if (xHigherPriorityTaskWoken)
+  {
+    taskYIELD();
+  }
+
+  return FW_TRUE;
+}
 
 //-----------------------------------------------------------------------------
 /** @brief Waits for SPI transaction completion
@@ -248,7 +248,8 @@ static void cdc_SpiError(SPI_PACKET * pReq, SPI_PACKET * pRsp, U32 * pSize)
 
 static void cdc_SpiRead(SPI_PACKET * pReq, SPI_PACKET * pRsp, U32 * pSize)
 {
-  //I2C_MRd(I2C_1, pReq->address, pRsp->data, pReq->size);
+  GPIO_Lo(SPI1_CS_PORT, SPI1_CS_PIN);
+  SPI_MExchange(SPI_1, NULL, pRsp->data, pReq->size);
 
   if (FW_TRUE == spi_WaitForComplete())
   {
@@ -258,8 +259,9 @@ static void cdc_SpiRead(SPI_PACKET * pReq, SPI_PACKET * pRsp, U32 * pSize)
   }
   else
   {
-  //  cdc_SpiError(pReq, pRsp, pSize);
+    cdc_SpiError(pReq, pRsp, pSize);
   }
+  GPIO_Hi(SPI1_CS_PORT, SPI1_CS_PIN);
 }
 
 //-----------------------------------------------------------------------------
@@ -272,7 +274,8 @@ static void cdc_SpiRead(SPI_PACKET * pReq, SPI_PACKET * pRsp, U32 * pSize)
 
 static void cdc_SpiWrite(SPI_PACKET * pReq, SPI_PACKET * pRsp, U32 * pSize)
 {
-  //I2C_MWr(I2C_1, pReq->address, pReq->data, pReq->size);
+  GPIO_Lo(SPI1_CS_PORT, SPI1_CS_PIN);
+  SPI_MExchange(SPI_1, pReq->data, NULL, pReq->size);
 
   if (FW_TRUE == spi_WaitForComplete())
   {
@@ -282,8 +285,9 @@ static void cdc_SpiWrite(SPI_PACKET * pReq, SPI_PACKET * pRsp, U32 * pSize)
   }
   else
   {
-  //  cdc_SpiError(pReq, pRsp, pSize);
+    cdc_SpiError(pReq, pRsp, pSize);
   }
+  GPIO_Hi(SPI1_CS_PORT, SPI1_CS_PIN);
 }
 
 //-----------------------------------------------------------------------------
@@ -339,18 +343,18 @@ static void vSPITask(void * pvParameters)
     rsp->address = req->address;
 
     /* Process the request */
-    //if ((I2C_OPCODE_READ == req->opcode) && (4 == size))
-    //{
-    //  cdc_I2cRead(req, rsp, &size);
-    //}
-    //else if ((I2C_OPCODE_WRITE == req->opcode) && (4 < size))
-    //{
-    //  cdc_I2cWrite(req, rsp, &size);
-    //}
-    //else
-    //{
+    if ((SPI_OPCODE_READ == req->opcode) && (4 == size))
+    {
+      cdc_SpiRead(req, rsp, &size);
+    }
+    else if ((SPI_OPCODE_WRITE == req->opcode) && (4 < size))
+    {
+      cdc_SpiWrite(req, rsp, &size);
+    }
+    else
+    {
       cdc_SpiError(req, rsp, &size);
-    //}
+    }
 
     /* Send the response */
     cdc_SendResponse(rsp, size);
@@ -369,16 +373,14 @@ static void vSPITask(void * pvParameters)
 
 static void spi_Open(void)
 {
-  //I2C_Init(I2C_1, i2c_Complete);
+  SPI_Init(SPI_1, spi_Complete);
 
-  //GPIO_Init(I2C1_SCL_PORT, I2C1_SCL_PIN, GPIO_TYPE_ALT_OD_10MHZ, 1);
-  //GPIO_Init(I2C1_SDA_PORT, I2C1_SDA_PIN, GPIO_TYPE_ALT_OD_10MHZ, 1);
-
-  ///* UART1: PA9 - Tx, PA10 - Rx, DTR - PB8, RTS - PB6 */
-  //GPIO_Init(UART1_TX_PORT,  UART1_TX_PIN,  GPIO_TYPE_ALT_PP_10MHZ, 1);
-  //GPIO_Init(UART1_RX_PORT,  UART1_RX_PIN,  GPIO_TYPE_IN_PUP_PDN,   1);
-  //GPIO_Init(UART1_DTR_PORT, UART1_DTR_PIN, GPIO_TYPE_OUT_OD_10MHZ, 1);
-  //GPIO_Init(UART1_RTS_PORT, UART1_RTS_PIN, GPIO_TYPE_OUT_PP_10MHZ, 1);
+  GPIO_Init(SPI1_CS_PORT,   SPI1_CS_PIN,   GPIO_TYPE_OUT_PP_2MHZ,  1);
+  GPIO_Init(SPI1_SCK_PORT,  SPI1_SCK_PIN,  GPIO_TYPE_ALT_PP_50MHZ, 0);
+  GPIO_Init(SPI1_MOSI_PORT, SPI1_MOSI_PIN, GPIO_TYPE_ALT_PP_50MHZ, 0);
+  GPIO_Init(SPI1_MISO_PORT, SPI1_MISO_PIN, GPIO_TYPE_ALT_PP_50MHZ, 0);
+  GPIO_Init(SPI1_DTR_PORT,  SPI1_DTR_PIN,  GPIO_TYPE_OUT_PP_10MHZ, 1);
+  GPIO_Init(SPI1_RTS_PORT,  SPI1_RTS_PIN,  GPIO_TYPE_OUT_PP_10MHZ, 1);
 
   xEventGroupClearBits(gPort.events, EVT_SPI_EXCH_COMPLETE);
 }
@@ -391,28 +393,25 @@ static void spi_Open(void)
 
 static void spi_SetControlLine(U16 aValue)
 {
-//  if (UART1 == aUART)
-//  {
-//    /* DTR signal */
-//    if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_DTR)) )
-//    {
-//      GPIO_Hi(UART1_DTR_PORT, UART1_DTR_PIN);
-//    }
-//    else
-//    {
-//      GPIO_Lo(UART1_DTR_PORT, UART1_DTR_PIN);
-//    }
-//
-//    /* RTS signal */
-//    if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_RTS)) )
-//    {
-//      GPIO_Hi(UART1_RTS_PORT, UART1_RTS_PIN);
-//    }
-//    else
-//    {
-//      GPIO_Lo(UART1_RTS_PORT, UART1_RTS_PIN);
-//    }
-//  }
+  /* DTR signal */
+  if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_DTR)) )
+  {
+    GPIO_Hi(SPI1_DTR_PORT, SPI1_DTR_PIN);
+  }
+  else
+  {
+    GPIO_Lo(SPI1_DTR_PORT, SPI1_DTR_PIN);
+  }
+
+  /* RTS signal */
+  if ( 0 == (aValue & (1 << CDC_CTRL_LINE_STATE_RTS)) )
+  {
+    GPIO_Hi(SPI1_RTS_PORT, SPI1_RTS_PIN);
+  }
+  else
+  {
+    GPIO_Lo(SPI1_RTS_PORT, SPI1_RTS_PIN);
+  }
 }
 
 //-----------------------------------------------------------------------------

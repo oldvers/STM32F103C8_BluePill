@@ -47,7 +47,7 @@ static CDC_PORT * cdc_GetPort(U16 aInterface)
   }
   else
   {
-    result = CDC_I2C_GetPort();
+    result = CDC_SPI_GetPort();
   }
 
   return (result);
