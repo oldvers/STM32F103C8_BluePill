@@ -27,6 +27,9 @@
     <project>
         <path>$WS_DIR$\..\..\east_message\project\iar\STM32F103C8_BluePill_Test_EastMessage.ewp</path>
     </project>
+    <project>
+        <path>$WS_DIR$\..\..\spi\project\iar\STM32F103C8_BluePill_Test_SPI.ewp</path>
+    </project>
     <batchBuild>
         <batchDefinition>
             <name>All_Projects</name>
@@ -64,6 +67,10 @@
             </member>
             <member>
                 <project>STM32F103C8_BluePill_Test_EastBlock</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_SPI</project>
                 <configuration>Test</configuration>
             </member>
         </batchDefinition>

@@ -1086,6 +1086,12 @@
             <name>$PROJ_DIR$\..\..\src\hw\interrupts.h</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\src\hw\spi.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\spi.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\hw\system.c</name>
         </file>
         <file>

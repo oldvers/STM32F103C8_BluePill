@@ -27,7 +27,7 @@ typedef struct I2C_Context_s
 
 //-----------------------------------------------------------------------------
 
-I2C_Context_t gI2CCtx[I2CS_COUNT] =
+static I2C_Context_t gI2CCtx[I2CS_COUNT] =
 {
   {
     .HW         = I2C1,

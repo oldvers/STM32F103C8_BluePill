@@ -5,6 +5,7 @@
 #include "uart.h"
 #include "debug.h"
 #include "i2c.h"
+#include "spi.h"
 
 /* --- Logging -------------------------------------------------------------- */
 
@@ -58,6 +59,8 @@
 #define IRQ_PRIORITY_UART1              ( 3)
 #define IRQ_PRIORITY_UART2              ( 3)
 #define IRQ_PRIORITY_UART3              ( 3)
+#define IRQ_PRIORITY_SPI1               ( 4)
+#define IRQ_PRIORITY_SPI2               ( 4)
 /*      IRQ_PRIORITY_MAX_SYSCALL        (11) */
 #define IRQ_PRIORITY_USB                (15)
 /*      IRQ_PRIORITY_SYSTICK            (15) */
@@ -239,7 +242,7 @@ void IRQ_USART1_Disable(void)
 
 void USART1_IRQHandler(void)
 {
-  UART_IRQHandler(UART1);
+  UART_IrqHandler(UART1);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -271,7 +274,7 @@ void IRQ_USART2_Disable(void)
 
 void USART2_IRQHandler(void)
 {
-  UART_IRQHandler(UART2);
+  UART_IrqHandler(UART2);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -303,7 +306,7 @@ void IRQ_USART3_Disable(void)
 
 void USART3_IRQHandler(void)
 {
-  UART_IRQHandler(UART3);
+  UART_IrqHandler(UART3);
 }
 
 /* --- I2C1 ----------------------------------------------------------------- */
@@ -390,6 +393,70 @@ void I2C2_EV_IRQHandler(void)
 void I2C2_ER_IRQHandler(void)
 {
   I2C_IrqError(I2C_2);
+}
+
+/* --- SPI1 ----------------------------------------------------------------- */
+
+void IRQ_SPI1_Enable(void)
+{
+  U32 priority = NVIC_EncodePriority
+                 (
+                   IRQ_PRIORITY_GROUPS_CONFIG,
+                   IRQ_PRIORITY_SPI1,
+                   IRQ_SUB_PRIORITY
+                 );
+  IRQ_LOG("IRQ: SPI1 Priority = 0x%02X\r\n", priority);
+
+  NVIC_ClearPendingIRQ(DMA1_Channel2_IRQn);
+  NVIC_SetPriority(DMA1_Channel2_IRQn, priority);
+  NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_SPI1_Disable(void)
+{
+  NVIC_DisableIRQ(DMA1_Channel2_IRQn);
+  NVIC_ClearPendingIRQ(DMA1_Channel2_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DMA1_Channel2_IRQHandler(void)
+{
+  SPI_IrqHandler(SPI_1);
+}
+
+/* --- SPI2 ----------------------------------------------------------------- */
+
+void IRQ_SPI2_Enable(void)
+{
+  U32 priority = NVIC_EncodePriority
+                 (
+                   IRQ_PRIORITY_GROUPS_CONFIG,
+                   IRQ_PRIORITY_SPI2,
+                   IRQ_SUB_PRIORITY
+                 );
+  IRQ_LOG("IRQ: SPI2 Priority = 0x%02X\r\n", priority);
+
+  NVIC_ClearPendingIRQ(DMA1_Channel4_IRQn);
+  NVIC_SetPriority(DMA1_Channel4_IRQn, priority);
+  NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_SPI2_Disable(void)
+{
+  NVIC_DisableIRQ(DMA1_Channel4_IRQn);
+  NVIC_ClearPendingIRQ(DMA1_Channel4_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DMA1_Channel4_IRQHandler(void)
+{
+  SPI_IrqHandler(SPI_2);
 }
 
 /* -------------------------------------------------------------------------- */
