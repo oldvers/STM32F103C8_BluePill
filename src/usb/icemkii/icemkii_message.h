@@ -3,24 +3,7 @@
 
 #include "types.h"
 
-//#define ICEMKII_MESSAGE_HOLDER_SIZE    (24)
-
-//typedef struct EAST_s * EAST_p;
 typedef struct ICEMKII_MSG_s * ICEMKII_MSG_p;
-
-
-//typedef struct ICEMKII_MESSAGE_STRUCT
-//{
-//  U32             MaxSize;
-//  U32             ActSize;
-//  U16             Index;
-//  U16             RCRC;
-//  U16             CCRC;
-//  U16             SeqNumber;
-//  U16             LastError;
-//  FW_BOOLEAN      OK;
-//  U8            * Buffer;
-//} ICEMKII_MESSAGE;
 
 ICEMKII_MSG_p ICEMKII_MSG_Init
               (
@@ -35,7 +18,10 @@ FW_RESULT ICEMKII_MSG_SetBuffer
               U8 * pBuffer,
               U32 aSize
           );
-FW_RESULT ICEMKII_MSG_PutByte(ICEMKII_MSG_p pMsg, U8   aValue);
-FW_RESULT ICEMKII_MSG_GetByte(ICEMKII_MSG_p pMsg, U8 * pValue);
+FW_RESULT ICEMKII_MSG_PutByte          (ICEMKII_MSG_p pMsg, U8   aValue);
+FW_RESULT ICEMKII_MSG_GetByte          (ICEMKII_MSG_p pMsg, U8 * pValue);
+void      ICEMKII_MSG_SetSequenceNumber(ICEMKII_MSG_p pMsg, U16 aValue);
+U16       ICEMKII_MSG_GetDataSize      (ICEMKII_MSG_p pMsg);
+U16       ICEMKII_MSG_GetPacketSize    (ICEMKII_MSG_p pMsg);
 
 #endif /* __ICEMKII_MESSAGE_H__ */

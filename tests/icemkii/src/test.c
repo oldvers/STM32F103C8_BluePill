@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "types.h"
 #include "debug.h"
@@ -100,12 +101,152 @@ static FW_BOOLEAN Test_InitSuccess(void)
 
 /* -------------------------------------------------------------------------- */
 
-static FW_BOOLEAN Test_RxIsReady(void)
+static FW_BOOLEAN Test_PutSuccess(void)
 {
-  EventBits_t uxReturned;
-  FW_BOOLEAN result = FW_FALSE;
-  U8 data = 0;
+    FW_BOOLEAN result = FW_FALSE;
+    FW_RESULT status = FW_ERROR;
+    U32 byte = 0, test = 0, size = 0;
+    U8 * testPacket = NULL;
 
+    DBG("*** ICEMKII Success Put Byte Test *************************\r\n");
+
+    testPacket = &msgs[14];
+    size = 14;
+
+    /* Init the ICEMKII message */
+    pIceMkIiMsg = ICEMKII_MSG_Init
+                  (
+                      gIceMkIiMsg,
+                      sizeof(gIceMkIiMsg),
+                      gIceMkIiBuf,
+                      sizeof(gIceMkIiBuf)
+                  );
+    result = (FW_BOOLEAN)(NULL != pIceMkIiMsg);
+    if (FW_FALSE == result) return result;
+
+    for (test = 0; test < 1; test++)
+    {
+        /* Setup/Reset the ICEMKII message */
+        status = ICEMKII_MSG_SetBuffer
+                 (
+                     pIceMkIiMsg,
+                     gIceMkIiBuf,
+                     sizeof(gIceMkIiBuf)
+                 );
+        result = (FW_BOOLEAN)(FW_SUCCESS == status);
+        if (FW_FALSE == result) break;
+
+        /* Fill the ICEMKII packet */
+        for (byte = 0; byte < 14; byte++)
+        {
+            status = ICEMKII_MSG_PutByte(pIceMkIiMsg, testPacket[byte]);
+            if ( (size - 1) == byte )
+            {
+                result &= (FW_BOOLEAN)(FW_COMPLETE == status);
+            }
+            else
+            {
+                result &= (FW_BOOLEAN)(FW_INPROGRESS == status);
+            }
+            if (FW_FALSE == result) break;
+        }
+        if (FW_FALSE == result) break;
+
+        result &= (FW_BOOLEAN)(gIceMkIiBuf[0] == testPacket[8]);
+        result &= (FW_BOOLEAN)(gIceMkIiBuf[1] == testPacket[9]);
+        result &= (FW_BOOLEAN)(gIceMkIiBuf[3] == testPacket[11]);
+
+        size = ICEMKII_MSG_GetDataSize(pIceMkIiMsg);
+        result &= (FW_BOOLEAN)(4 == size);
+        size = ICEMKII_MSG_GetPacketSize(pIceMkIiMsg);
+        result &= (FW_BOOLEAN)(14 == size);
+
+        if (FW_FALSE == result) break;
+    }
+
+    return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_GetSuccess(void)
+{
+    FW_BOOLEAN result = FW_FALSE;
+    FW_RESULT status = FW_ERROR;
+    U32 byte = 0, size = 0;
+    U8 testPacket[14] = {0};
+    U8 testMessage[4] = {0};
+    U8 value = 0;
+
+    DBG("*** ICEMKII Success Get Byte Test *************************\r\n");
+
+    //testPacket = gTestEastPacketSuccess;
+    size = sizeof(testPacket);
+
+    /* Init the ICEMKII message */
+    pIceMkIiMsg = ICEMKII_MSG_Init
+                  (
+                      gIceMkIiMsg,
+                      sizeof(gIceMkIiMsg),
+                      gIceMkIiBuf,
+                      sizeof(gIceMkIiBuf)
+                  );
+    result = (FW_BOOLEAN)(NULL != pIceMkIiMsg);
+    if (FW_FALSE == result) return result;
+
+    /* Fill the packet buffer */
+    for (byte = 0; byte < 4; byte++)
+    {
+        testMessage[byte] = msgs[14 + 8 + byte];
+    }
+    memset(testPacket, 0, 14);
+    ICEMKII_MSG_SetSequenceNumber(pIceMkIiMsg, 5);
+
+    /* Setup/Reset the ICEMKII message */
+    status = ICEMKII_MSG_SetBuffer
+             (
+                 pIceMkIiMsg,
+                 testMessage,
+                 sizeof(testMessage)
+             );
+    result = (FW_BOOLEAN)(FW_SUCCESS == status);
+    if (FW_FALSE == result) return result;
+
+    /* Get the EAST packet */
+    for (byte = 0; byte < size; byte++)
+    {
+        status = ICEMKII_MSG_GetByte(pIceMkIiMsg, &value);
+        if ( (size - 1) == byte )
+        {
+            result &= (FW_BOOLEAN)(FW_COMPLETE == status);
+        }
+        else
+        {
+            result &= (FW_BOOLEAN)(FW_INPROGRESS == status);
+        }
+        if (FW_FALSE == result) break;
+
+        result &= (FW_BOOLEAN)(value == msgs[14 + byte]);
+
+        size = ICEMKII_MSG_GetDataSize(pIceMkIiMsg);
+        result &= (FW_BOOLEAN)(4 == size);
+        size = ICEMKII_MSG_GetPacketSize(pIceMkIiMsg);
+        result &= (FW_BOOLEAN)((14 - 1 - byte) == size);
+
+        if (FW_FALSE == result) break;
+    }
+
+    return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+//static FW_BOOLEAN Test_RxIsReady(void)
+//{
+//  EventBits_t uxReturned;
+//  FW_BOOLEAN result = FW_FALSE;
+//  U8 data = 0;
+//
 //  DBG("*** ICEMKII Test USB Rx Is Ready **************************\r\n");
 //
 //  DBG(" - Put one bunch of data from USB EP to FIFO\r\n");
@@ -133,19 +274,19 @@ static FW_BOOLEAN Test_RxIsReady(void)
 //
 //    (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
 //  }
-
-  return result;
-}
+//
+//  return result;
+//}
 
 /* -------------------------------------------------------------------------- */
 
-static FW_BOOLEAN Test_NoSpace(void)
-{
-  EventBits_t uxReturned;
-  FW_BOOLEAN result = FW_FALSE;
-  U32 bunch = 0, bunchExpctd, space, spaceExpctd;
-  U8 data = 0;
-
+//static FW_BOOLEAN Test_NoSpace(void)
+//{
+//  EventBits_t uxReturned;
+//  FW_BOOLEAN result = FW_FALSE;
+//  U32 bunch = 0, bunchExpctd, space, spaceExpctd;
+//  U8 data = 0;
+//
 //  DBG("*** ICEMKII Test USB No Space *****************************\r\n");
 //
 //  bunchExpctd = FIFO_Size(gRxFifo) / sizeof(msgs);
@@ -189,9 +330,9 @@ static FW_BOOLEAN Test_NoSpace(void)
 //
 //    bunch++;
 //  }
-
-  return result;
-}
+//
+//  return result;
+//}
 
 /* --- Test Start Up Function (mandatory, called before RTOS starts) -------- */
 
@@ -229,8 +370,10 @@ void vTestHelpTaskFunction(void * pvParameters)
 const TestFunction_t gTests[] =
 {
     Test_InitSuccess,
-    Test_RxIsReady,
-    Test_NoSpace,
+    Test_PutSuccess,
+    Test_GetSuccess,
+//    Test_RxIsReady,
+//    Test_NoSpace,
 };
 
 U32 uiTestsGetCount(void)

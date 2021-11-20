@@ -1,3 +1,4 @@
+#include <string.h>
 #include "icemkii_message.h"
 #include "debug.h"
 
@@ -12,6 +13,12 @@
 #define ICEMKII_MSG_START                   ( 0x1B )
 #define ICEMKII_MSG_TOKEN                   ( 0x0E )
 #define ICEMKII_MSG_HEADER_SIZE             ( 8 )
+#define ICEMKII_MSG_WRAPPER_SIZE            ( ICEMKII_MSG_HEADER_SIZE + 2 )
+#define ICEMKII_MSG_MODE_INPUT              ( 0 )
+#define ICEMKII_MSG_MODE_OUTPUT             ( 1 )
+
+#define ICEMKII_MSG_CHECK_LENGTH(a,m)       ((FW_BOOLEAN)((0 < a) && (a <= m)))
+#define ICEMKII_MSG_POSITION(b,i)           (b[(i) - ICEMKII_MSG_HEADER_SIZE])
 
 #define ICEMKII_MSG_STAGE_START(i)          (0 == i)
 #define ICEMKII_MSG_STAGE_SEQNUML(i)        (1 == i)
@@ -36,13 +43,16 @@ typedef struct ICEMKII_MSG_s
   U32             ActSize;
   U16             Index;
   U16             RCRC;
-  U16             CCRC;
+  U16             FCRC;
   U16             SeqNumber;
   U16             LastError;
-  FW_BOOLEAN      OK;
+  struct
+  {
+      U16         OK : 1;       /* Message correctness */
+      U16         Mode : 1;     /* Message mode: in/out */
+      U16         Complete : 1; /* Message completeness */
+  };
 } ICEMKII_MSG_t;
-
-//const int ICEMKII_MSG_SIZE = sizeof(ICEMKII_MSG_t);
 
 static const U16 CRC16_Table[256] =
 {
@@ -92,9 +102,12 @@ static U16 CRC16_Get(U8 * pMsg, U32 size, U16 crc)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Inits JTAG ICE mkII message
- *  @param None
- *  @return None
+/** @brief Inits the JTAG ICE mkII message
+ *  @param[in] pHolder - Pointer to the holder for the instance
+ *  @param[in] aSize - Size of the holder
+ *  @param[in] pBuffer - Pointer to the the JTAG ICE mkII message data buffer
+ *  @param[in] aBufferSize - Size of the buffer
+ *  @return Pointer to the created JTAG ICE mkII component
  */
 
 ICEMKII_MSG_p ICEMKII_MSG_Init
@@ -125,32 +138,13 @@ ICEMKII_MSG_p ICEMKII_MSG_Init
 
     /* Initialization */
     result = (ICEMKII_MSG_p)pHolder;
-    result->MaxSize    = aBufferSize;
-    result->ActSize    = 0;
-    result->Index      = 0;
-    result->RCRC       = CRC16_INIT_VALUE;
-    result->CCRC       = CRC16_INIT_VALUE;
-    result->SeqNumber  = 0;
-    result->LastError  = 0;
-    result->OK         = FW_FALSE;
-    result->Buffer     = pBuffer;
+    memset(result, 0, sizeof(ICEMKII_MSG_t));
 
-    //result = (EAST_p)pContainer;
-    //result->ActSize = 0;
-    //result->Index = 0;
-    //result->FCS = 0;
-    //result->RCS = 0;
-    //result->OK = FW_FALSE;
-
-    if ((NULL == pBuffer) || (0 == aBufferSize))
-    {
-        result->Buffer = NULL;
-        result->MaxSize = 0;
-    }
-    else
+    if ((NULL != pBuffer) && (0 != aBufferSize))
     {
         result->Buffer = pBuffer;
         result->MaxSize = aBufferSize;
+        result->Mode = ICEMKII_MSG_MODE_OUTPUT;
     }
 
     ICEMKII_LOG("  ICEMKII Addr   = %08X\r\n", result);
@@ -167,6 +161,8 @@ FW_RESULT ICEMKII_MSG_SetBuffer
     U32 aSize
 )
 {
+    U16 temp = 0;
+
     ICEMKII_LOG("-*- ICEMKII_SetBuffer() -*-\r\n");
     ICEMKII_LOG("--- Inputs\r\n");
     ICEMKII_LOG("  Buffer Address = %08X\r\n", pBuffer);
@@ -179,26 +175,17 @@ FW_RESULT ICEMKII_MSG_SetBuffer
         return FW_ERROR;
     }
 
-    /* Reset the state */
-    //pEAST->ActSize = 0;
-    //pEAST->Index = 0;
-    //pEAST->FCS = 0;
-    //pEAST->RCS = 0;
-    //pEAST->OK = FW_FALSE;
+    /* Preserve the sequence number */
+    temp = pMsg->SeqNumber;
 
-    //result->MaxSize    = aSize;
-    pMsg->ActSize    = 0;
-    pMsg->Index      = 0;
-    pMsg->RCRC       = CRC16_INIT_VALUE;
-    pMsg->CCRC       = CRC16_INIT_VALUE;
-    pMsg->SeqNumber  = 0;
-    pMsg->LastError  = 0;
-    pMsg->OK         = FW_FALSE;
-    //result->Buffer     = pBuffer;
+    /* Reset the state */
+    memset(pMsg, 0, sizeof(ICEMKII_MSG_t));
 
     /* Set the buffer */
     pMsg->Buffer = pBuffer;
     pMsg->MaxSize = aSize;
+    pMsg->Mode = ICEMKII_MSG_MODE_OUTPUT;
+    pMsg->SeqNumber = temp;
 
     ICEMKII_LOG("  ICEMKII Buffer = %08X\r\n", pBuffer);
     ICEMKII_LOG("  ICEMKII Buf Sz = %d\r\n", aSize);
@@ -209,13 +196,16 @@ FW_RESULT ICEMKII_MSG_SetBuffer
 //-----------------------------------------------------------------------------
 /** @brief Puts Byte into JTAG ICE mkII message
  *  @param pPacket - Pointer to ICE mkII message instance
- *  @param aValue - Value that should be placed into message
- *  @return None
+ *  @param aValue - Value that should be placed into the message
+ *  @return FW_INPROGRESS / FW_COMPLETE / FW_ERROR
+ *  @note On the next call of this function after packet completion,
+ *        collectiong of the new packet is started from the beginning. The
+ *        previously collected packet is lost.
  */
 
 FW_RESULT ICEMKII_MSG_PutByte(ICEMKII_MSG_p pMsg, U8 aValue)
 {
-    FW_RESULT result = FW_SUCCESS;
+    FW_RESULT result = FW_INPROGRESS;
     pMsg->OK = FW_TRUE;
 
     ICEMKII_LOG("-*- ICEMKII_PutByte -*-\r\n");
@@ -230,16 +220,19 @@ FW_RESULT ICEMKII_MSG_PutByte(ICEMKII_MSG_p pMsg, U8 aValue)
         return FW_ERROR;
     }
 
+    pMsg->Mode = ICEMKII_MSG_MODE_INPUT;
+    pMsg->Complete = FW_FALSE;
+
     /* Message Body Stage */
     if ( ICEMKII_MSG_STAGE_BODY(pMsg->Index, pMsg->ActSize) )
     {
-        pMsg->Buffer[pMsg->Index - ICEMKII_MSG_HEADER_SIZE] = aValue;
+        ICEMKII_MSG_POSITION(pMsg->Buffer, pMsg->Index) = aValue;
     }
     /* Message Start Stage */
     else if ( ICEMKII_MSG_STAGE_START(pMsg->Index) )
     {
         pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MSG_START);
-        pMsg->CCRC = CRC16_INIT_VALUE;
+        pMsg->RCRC = CRC16_INIT_VALUE;
     }
     /* Message Sequence Number Stage */
     else if ( ICEMKII_MSG_STAGE_SEQNUML(pMsg->Index) )
@@ -249,6 +242,8 @@ FW_RESULT ICEMKII_MSG_PutByte(ICEMKII_MSG_p pMsg, U8 aValue)
     else if ( ICEMKII_MSG_STAGE_SEQNUMH(pMsg->Index) )
     {
         pMsg->SeqNumber = (pMsg->SeqNumber + (aValue << 8));
+
+        ICEMKII_LOG("  Sequence       = %d\r\n", pMsg->SeqNumber);
     }
     /* Message Size Stage */
     else if ( ICEMKII_MSG_STAGE_SIZE0(pMsg->Index) )
@@ -268,6 +263,8 @@ FW_RESULT ICEMKII_MSG_PutByte(ICEMKII_MSG_p pMsg, U8 aValue)
         pMsg->ActSize += (U32)(aValue << 24);
         pMsg->OK  = (FW_BOOLEAN)(0 < pMsg->ActSize);
         pMsg->OK |= (FW_BOOLEAN)(pMsg->MaxSize >= pMsg->ActSize);
+
+        ICEMKII_LOG("  Length         = %d\r\n", pMsg->ActSize);
     }
     /* Message Token Stage */
     else if ( ICEMKII_MSG_STAGE_TOKEN(pMsg->Index) )
@@ -277,12 +274,15 @@ FW_RESULT ICEMKII_MSG_PutByte(ICEMKII_MSG_p pMsg, U8 aValue)
     /* Message CRC Stage */
     else if ( ICEMKII_MSG_STAGE_CRCL(pMsg->Index, pMsg->ActSize) )
     {
-        pMsg->RCRC = aValue;
+        pMsg->FCRC = aValue;
     }
     else if ( ICEMKII_MSG_STAGE_CRCH(pMsg->Index, pMsg->ActSize) )
     {
-        pMsg->RCRC += (aValue << 8);
-        pMsg->OK = (FW_BOOLEAN)(pMsg->CCRC == pMsg->RCRC);
+        pMsg->FCRC += (aValue << 8);
+        pMsg->OK = (FW_BOOLEAN)(pMsg->FCRC == pMsg->RCRC);
+
+        ICEMKII_LOG("  Factual CRC    = %04X\r\n", pMsg->FCRC);
+        ICEMKII_LOG("  Running CRC    = %04X\r\n", pMsg->RCRC);
     }
 
     /* Packet Index Incrementing Stage */
@@ -290,7 +290,7 @@ FW_RESULT ICEMKII_MSG_PutByte(ICEMKII_MSG_p pMsg, U8 aValue)
     {
         if ( ICEMKII_MSG_STAGE_CALC_CRC(pMsg->Index, pMsg->ActSize) )
         {
-            pMsg->CCRC = CRC16_Get(&aValue, 1, pMsg->CCRC);
+            pMsg->RCRC = CRC16_Get(&aValue, 1, pMsg->RCRC);
         }
         pMsg->Index++;
     }
@@ -307,10 +307,9 @@ FW_RESULT ICEMKII_MSG_PutByte(ICEMKII_MSG_p pMsg, U8 aValue)
     /* Packet Completed Stage */
     if ( ICEMKII_MSG_STAGE_COMPLETE(pMsg->Index, pMsg->ActSize) )
     {
+        /* Indicate Message Completed */
         result = FW_COMPLETE;
-        /* Call Back */
-        //if (NULL != pMsg->OnComplete) pMsg->OnComplete();
-        /* Indicate Packet Completed */
+        pMsg->Complete = FW_TRUE;
         pMsg->Index = 0;
 
         ICEMKII_LOG("  Packet complete!\r\n");
@@ -320,74 +319,196 @@ FW_RESULT ICEMKII_MSG_PutByte(ICEMKII_MSG_p pMsg, U8 aValue)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Gets Byte from EAST packet
- *  @param pState - Pointer to EAST state structure
- *  @param pValue - Pointer to Value that should be gotten from packet
- *  @return TRUE - Value is available, FALSE - No Value available
- *  @note Should be called at least two times. The firts time - for getting
- *        values from packet. The last time - for calling OnComplete callback.
+/** @brief Sets the Sequence Number of the JTAG ICE mkII message
+ *  @param[in] pMsg - Pointer to the ICE mkII message instance
+ *  @param[in] aValue - The Value of the Sequence Number
+ *  @return None
  */
-//U32 EAST_GetByte(EAST_STATE * pState, U8 * pValue)
-//{
-//  pState->OK = TRUE;
-//
-//  /* Data Stage */
-//  if ((2 < pState->Index) && (pState->Index < (pState->ActSize + 3)))
-//  {
-//    *pValue = pState->Buffer[pState->Index - 3];
-//    pState->CS ^= *pValue;
-//  }
-//  /* Packet Start Byte Stage */
-//  else if (0 == pState->Index)
-//  {
-//    *pValue = 0x24;
-//    pState->ActSize = pState->MaxSize;
-//  }
-//  /* Packet Size Stage */
-//  else if (1 == pState->Index)
-//  {
-//    *pValue = (pState->ActSize & 0xFF);
-//  }
-//  else if (2 == pState->Index)
-//  {
-//    *pValue = (pState->ActSize >> 8);
-//    pState->CS = 0;
-//  }
-//  /* Packet Stop Byte Stage */
-//  else if (pState->Index == (pState->ActSize + 3))
-//  {
-//    *pValue = 0x42;
-//  }
-//  /* Packet Control Sum Stage */
-//  else if (pState->Index == (pState->ActSize + 4))
-//  {
-//    *pValue = pState->CS;
-//  }
-//  /* Packet Completed Stage */
-//  else if (pState->Index == (pState->ActSize + 5))
-//  {
-//    /* Increase Index to call OnComplete at next iteration */
-//    pState->Index++;
-//    pState->OK = FALSE;
-//  }
-//  else if (pState->Index == (pState->ActSize + 6))
-//  {
-//    /* Call Back */
-//    if (NULL != pState->OnComplete) pState->OnComplete();
-//    /* Increase Index to avoid multiple call of OnComplete */
-//    pState->Index++;
-//    pState->OK = FALSE;
-//  }
-//  else
-//  {
-//    pState->OK = FALSE;
-//  }
-//
-//  /* Packet Index Incrementing Stage */
-//  if (TRUE == pState->OK)
-//  {
-//    pState->Index++;
-//  }
-//
-//  return pState->OK;
-//}
+
+void ICEMKII_MSG_SetSequenceNumber(ICEMKII_MSG_p pMsg, U16 aValue)
+{
+    if (NULL != pMsg)
+    {
+        pMsg->SeqNumber = aValue;
+    }
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets Byte from the JTAG ICE mkII message
+ *  @param[in] pMsg - Pointer to the ICE mkII message instance
+ *  @param[out] pValue - Pointer to the placeholder for the Value
+ *  @return FW_INPROGRESS / FW_COMPLETE
+ *  @note On the next call of this function after packet completion,
+ *        producing of the new packet is started from the beginning. The
+ *        previously produced packet is left as is.
+ */
+
+FW_RESULT ICEMKII_MSG_GetByte(ICEMKII_MSG_p pMsg, U8 * pValue)
+{
+    FW_RESULT result = FW_INPROGRESS;
+    pMsg->OK = FW_TRUE;
+
+    pMsg->Mode = ICEMKII_MSG_MODE_OUTPUT;
+    pMsg->Complete = FW_FALSE;
+
+    ICEMKII_LOG("-*- ICEMKII_GetByte -*-\r\n");
+    ICEMKII_LOG("--- Inputs\r\n");
+    ICEMKII_LOG("  ICEMKII Addr   = %08X\r\n", pMsg);
+    ICEMKII_LOG("  pValue         = %08X\r\n", pValue);
+    ICEMKII_LOG("--- Internals\r\n");
+
+    if ((NULL == pMsg) || (NULL == pMsg->Buffer))
+    {
+        ICEMKII_LOG("  Input parameters error!\r\n");
+        return FW_ERROR;
+    }
+
+    /* Message Body Stage */
+    if ( ICEMKII_MSG_STAGE_BODY(pMsg->Index, pMsg->ActSize) )
+    {
+        *pValue = ICEMKII_MSG_POSITION(pMsg->Buffer, pMsg->Index);
+    }
+    /* Message Start Stage */
+    else if ( ICEMKII_MSG_STAGE_START(pMsg->Index) )
+    {
+        *pValue = ICEMKII_MSG_START;
+        pMsg->ActSize = pMsg->MaxSize;
+        pMsg->RCRC = CRC16_INIT_VALUE;
+    }
+    /* Message Sequence Number Stage */
+    else if ( ICEMKII_MSG_STAGE_SEQNUML(pMsg->Index) )
+    {
+        *pValue = (pMsg->SeqNumber & 0xFF);
+    }
+    else if ( ICEMKII_MSG_STAGE_SEQNUMH(pMsg->Index) )
+    {
+        *pValue = ((pMsg->SeqNumber >> 8) & 0xFF);
+
+        ICEMKII_LOG("  Sequence       = %d\r\n", pMsg->SeqNumber);
+    }
+    /* Message Size Stage */
+    else if ( ICEMKII_MSG_STAGE_SIZE0(pMsg->Index) )
+    {
+        *pValue = (pMsg->ActSize & 0xFF);
+    }
+    else if ( ICEMKII_MSG_STAGE_SIZE1(pMsg->Index) )
+    {
+        *pValue = ((pMsg->ActSize >> 8) & 0xFF);
+    }
+    else if ( ICEMKII_MSG_STAGE_SIZE2(pMsg->Index) )
+    {
+        *pValue = ((pMsg->ActSize >> 16) & 0xFF);
+    }
+    else if ( ICEMKII_MSG_STAGE_SIZE3(pMsg->Index) )
+    {
+        *pValue = ((pMsg->ActSize >> 24) & 0xFF);
+
+        ICEMKII_LOG("  Length         = %d\r\n", pMsg->ActSize);
+    }
+    /* Message Token Stage */
+    else if ( ICEMKII_MSG_STAGE_TOKEN(pMsg->Index) )
+    {
+        *pValue = ICEMKII_MSG_TOKEN;
+    }
+    /* Message CRC Stage */
+    else if ( ICEMKII_MSG_STAGE_CRCL(pMsg->Index, pMsg->ActSize) )
+    {
+      *pValue = (pMsg->RCRC & 0xFF);
+    }
+    else if ( ICEMKII_MSG_STAGE_CRCH(pMsg->Index, pMsg->ActSize) )
+    {
+        *pValue = ((pMsg->RCRC >> 8) & 0xFF);
+
+        ICEMKII_LOG("  Factual CRC    = %04X\r\n", pMsg->FCRC);
+        ICEMKII_LOG("  Running CRC    = %04X\r\n", pMsg->RCRC);
+    }
+
+    /* Packet Index Incrementing Stage */
+    if (FW_TRUE == pMsg->OK)
+    {
+        if ( ICEMKII_MSG_STAGE_CALC_CRC(pMsg->Index, pMsg->ActSize) )
+        {
+            pMsg->RCRC = CRC16_Get(pValue, 1, pMsg->RCRC);
+        }
+        pMsg->Index++;
+    }
+    else
+    {
+        result = FW_ERROR;
+        pMsg->LastError = pMsg->Index;
+        pMsg->Index = 0;
+        pMsg->ActSize = 0;
+
+        ICEMKII_LOG("  Wrong packet format!\r\n");
+    }
+
+    /* Packet Completed Stage */
+    if ( ICEMKII_MSG_STAGE_COMPLETE(pMsg->Index, pMsg->ActSize) )
+    {
+        /* Indicate Message Completed */
+        pMsg->Complete = FW_TRUE;
+        result = FW_COMPLETE;
+        pMsg->Index = 0;
+
+        ICEMKII_LOG("  Packet complete!\r\n");
+    }
+    else
+    {
+        ICEMKII_LOG("  *pValue        = %02X\r\n", *pValue);
+    }
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets the size of the currently collected data
+ *  @param[in] pMsg - Pointer to the JTAG ICE mkII message instance
+ *  @return Packet size
+ */
+
+U16 ICEMKII_MSG_GetDataSize(ICEMKII_MSG_p pMsg)
+{
+    U16 result = 0;
+
+    if (ICEMKII_MSG_MODE_INPUT == pMsg->Mode)
+    {
+        if (FW_TRUE == pMsg->Complete)
+        {
+            result = pMsg->ActSize;
+        }
+    }
+    else
+    {
+        result = pMsg->MaxSize;
+    }
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets the size of the currently collected data
+ *  @param[in] pMsg - Pointer to the JTAG ICE mkII message instance
+ *  @return Packet size
+ */
+
+U16 ICEMKII_MSG_GetPacketSize(ICEMKII_MSG_p pMsg)
+{
+    U16 result = 0;
+
+    if (ICEMKII_MSG_MODE_INPUT == pMsg->Mode)
+    {
+        if (FW_TRUE == pMsg->Complete)
+        {
+            result = (ICEMKII_MSG_WRAPPER_SIZE + pMsg->ActSize);
+        }
+    }
+    else
+    {
+        if (FW_FALSE == pMsg->Complete)
+        {
+            result = (ICEMKII_MSG_WRAPPER_SIZE + pMsg->MaxSize - pMsg->Index);
+        }
+    }
+
+    return result;
+}
