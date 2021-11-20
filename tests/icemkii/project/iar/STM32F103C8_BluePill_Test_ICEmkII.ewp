@@ -1211,12 +1211,21 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\..\..\src\usb\icemkii\usb_icemkii.c</name>
+                <excluded>
+                    <configuration>Test</configuration>
+                </excluded>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\..\..\src\usb\icemkii\usb_icemkii.h</name>
+                <excluded>
+                    <configuration>Test</configuration>
+                </excluded>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\..\..\src\usb\icemkii\usb_icemkii_definitions.h</name>
+                <excluded>
+                    <configuration>Test</configuration>
+                </excluded>
             </file>
         </group>
         <file>

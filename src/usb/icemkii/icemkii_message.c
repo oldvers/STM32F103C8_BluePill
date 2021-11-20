@@ -1,24 +1,48 @@
 #include "icemkii_message.h"
+#include "debug.h"
 
-#define ICEMKII_MESSAGE_START               ( 0x1B )
-#define ICEMKII_MESSAGE_TOKEN               ( 0x0E )
-#define ICEMKII_MESSAGE_HEADER_SIZE         ( 8 )
+#define ICEMKII_DEBUG
 
-#define ICEMKII_MESSAGE_STAGE_START(i)      (0 == i)
-#define ICEMKII_MESSAGE_STAGE_SEQNUML(i)    (1 == i)
-#define ICEMKII_MESSAGE_STAGE_SEQNUMH(i)    (2 == i)
-#define ICEMKII_MESSAGE_STAGE_SIZE0(i)      (3 == i)
-#define ICEMKII_MESSAGE_STAGE_SIZE1(i)      (4 == i)
-#define ICEMKII_MESSAGE_STAGE_SIZE2(i)      (5 == i)
-#define ICEMKII_MESSAGE_STAGE_SIZE3(i)      (6 == i)
-#define ICEMKII_MESSAGE_STAGE_TOKEN(i)      (7 == i)
-#define ICEMKII_MESSAGE_STAGE_BODY(i,s)     ((7 < i) && (i < (8 + s)))
-#define ICEMKII_MESSAGE_STAGE_CALC_CRC(i,s) (i < (8 + s))
-#define ICEMKII_MESSAGE_STAGE_CRCL(i,s)     (i == (8 + s))
-#define ICEMKII_MESSAGE_STAGE_CRCH(i,s)     (i == (8 + s + 1))
-#define ICEMKII_MESSAGE_STAGE_COMPLETE(i,s) (i == (8 + s + 2))
+#ifdef ICEMKII_DEBUG
+#  define ICEMKII_LOG    DBG
+#else
+#  define ICEMKII_LOG(...)
+#endif
+
+#define ICEMKII_MSG_START                   ( 0x1B )
+#define ICEMKII_MSG_TOKEN                   ( 0x0E )
+#define ICEMKII_MSG_HEADER_SIZE             ( 8 )
+
+#define ICEMKII_MSG_STAGE_START(i)          (0 == i)
+#define ICEMKII_MSG_STAGE_SEQNUML(i)        (1 == i)
+#define ICEMKII_MSG_STAGE_SEQNUMH(i)        (2 == i)
+#define ICEMKII_MSG_STAGE_SIZE0(i)          (3 == i)
+#define ICEMKII_MSG_STAGE_SIZE1(i)          (4 == i)
+#define ICEMKII_MSG_STAGE_SIZE2(i)          (5 == i)
+#define ICEMKII_MSG_STAGE_SIZE3(i)          (6 == i)
+#define ICEMKII_MSG_STAGE_TOKEN(i)          (7 == i)
+#define ICEMKII_MSG_STAGE_BODY(i,s)         ((7 < i) && (i < (8 + s)))
+#define ICEMKII_MSG_STAGE_CALC_CRC(i,s)     (i < (8 + s))
+#define ICEMKII_MSG_STAGE_CRCL(i,s)         (i == (8 + s))
+#define ICEMKII_MSG_STAGE_CRCH(i,s)         (i == (8 + s + 1))
+#define ICEMKII_MSG_STAGE_COMPLETE(i,s)     (i == (8 + s + 2))
 
 #define CRC16_INIT_VALUE                    ( 0xFFFF )
+
+typedef struct ICEMKII_MSG_s
+{
+  U8            * Buffer;
+  U32             MaxSize;
+  U32             ActSize;
+  U16             Index;
+  U16             RCRC;
+  U16             CCRC;
+  U16             SeqNumber;
+  U16             LastError;
+  FW_BOOLEAN      OK;
+} ICEMKII_MSG_t;
+
+//const int ICEMKII_MSG_SIZE = sizeof(ICEMKII_MSG_t);
 
 static const U16 CRC16_Table[256] =
 {
@@ -73,9 +97,96 @@ static U16 CRC16_Get(U8 * pMsg, U32 size, U16 crc)
  *  @return None
  */
 
-void ICEMKII_MESSAGE_Init(ICEMKII_MESSAGE * pMsg, U8 *pBuffer, U32 aSize)
+ICEMKII_MSG_p ICEMKII_MSG_Init
+(
+    U8 * pHolder,
+    U32 aSize,
+    U8 *pBuffer,
+    U32 aBufferSize
+)
 {
-    pMsg->MaxSize    = aSize;
+    ICEMKII_MSG_p result = NULL;
+
+    ICEMKII_LOG("-*- ICEMKII_Init() -*-\r\n");
+    ICEMKII_LOG("--- Inputs\r\n");
+    ICEMKII_LOG("  Holder    Addr = %08X\r\n", pHolder);
+    ICEMKII_LOG("  Container Size = %d\r\n", aSize);
+    ICEMKII_LOG("  Buffer Addr    = %08X\r\n", pBuffer);
+    ICEMKII_LOG("  Buffer Size    = %d\r\n", aSize);
+    ICEMKII_LOG("--- Internals\r\n");
+    ICEMKII_LOG("  ICEMKII Size   = %d\r\n", sizeof(ICEMKII_MSG_t));
+
+    /* Check the size of the holder */
+    if ((NULL == pHolder) || (sizeof(ICEMKII_MSG_t) > aSize))
+    {
+        ICEMKII_LOG("  Input parameters error!\r\n");
+        return NULL;
+    }
+
+    /* Initialization */
+    result = (ICEMKII_MSG_p)pHolder;
+    result->MaxSize    = aBufferSize;
+    result->ActSize    = 0;
+    result->Index      = 0;
+    result->RCRC       = CRC16_INIT_VALUE;
+    result->CCRC       = CRC16_INIT_VALUE;
+    result->SeqNumber  = 0;
+    result->LastError  = 0;
+    result->OK         = FW_FALSE;
+    result->Buffer     = pBuffer;
+
+    //result = (EAST_p)pContainer;
+    //result->ActSize = 0;
+    //result->Index = 0;
+    //result->FCS = 0;
+    //result->RCS = 0;
+    //result->OK = FW_FALSE;
+
+    if ((NULL == pBuffer) || (0 == aBufferSize))
+    {
+        result->Buffer = NULL;
+        result->MaxSize = 0;
+    }
+    else
+    {
+        result->Buffer = pBuffer;
+        result->MaxSize = aBufferSize;
+    }
+
+    ICEMKII_LOG("  ICEMKII Addr   = %08X\r\n", result);
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+
+FW_RESULT ICEMKII_MSG_SetBuffer
+(
+    ICEMKII_MSG_p pMsg,
+    U8 * pBuffer,
+    U32 aSize
+)
+{
+    ICEMKII_LOG("-*- ICEMKII_SetBuffer() -*-\r\n");
+    ICEMKII_LOG("--- Inputs\r\n");
+    ICEMKII_LOG("  Buffer Address = %08X\r\n", pBuffer);
+    ICEMKII_LOG("  Buffer Size    = %d\r\n", aSize);
+    ICEMKII_LOG("--- Internals\r\n");
+
+    if ((NULL == pMsg) || (NULL == pBuffer) || (0 == aSize))
+    {
+        ICEMKII_LOG("  Input parameters error!\r\n");
+        return FW_ERROR;
+    }
+
+    /* Reset the state */
+    //pEAST->ActSize = 0;
+    //pEAST->Index = 0;
+    //pEAST->FCS = 0;
+    //pEAST->RCS = 0;
+    //pEAST->OK = FW_FALSE;
+
+    //result->MaxSize    = aSize;
     pMsg->ActSize    = 0;
     pMsg->Index      = 0;
     pMsg->RCRC       = CRC16_INIT_VALUE;
@@ -83,7 +194,16 @@ void ICEMKII_MESSAGE_Init(ICEMKII_MESSAGE * pMsg, U8 *pBuffer, U32 aSize)
     pMsg->SeqNumber  = 0;
     pMsg->LastError  = 0;
     pMsg->OK         = FW_FALSE;
-    pMsg->Buffer     = pBuffer;
+    //result->Buffer     = pBuffer;
+
+    /* Set the buffer */
+    pMsg->Buffer = pBuffer;
+    pMsg->MaxSize = aSize;
+
+    ICEMKII_LOG("  ICEMKII Buffer = %08X\r\n", pBuffer);
+    ICEMKII_LOG("  ICEMKII Buf Sz = %d\r\n", aSize);
+
+    return FW_SUCCESS;
 }
 
 //-----------------------------------------------------------------------------
@@ -93,61 +213,73 @@ void ICEMKII_MESSAGE_Init(ICEMKII_MESSAGE * pMsg, U8 *pBuffer, U32 aSize)
  *  @return None
  */
 
-FW_RESULT ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
+FW_RESULT ICEMKII_MSG_PutByte(ICEMKII_MSG_p pMsg, U8 aValue)
 {
     FW_RESULT result = FW_SUCCESS;
     pMsg->OK = FW_TRUE;
 
-    /* Message Body Stage */
-    if ( ICEMKII_MESSAGE_STAGE_BODY(pMsg->Index, pMsg->ActSize) )
+    ICEMKII_LOG("-*- ICEMKII_PutByte -*-\r\n");
+    ICEMKII_LOG("--- Inputs\r\n");
+    ICEMKII_LOG("  ICEMKII Addr   = %08X\r\n", pMsg);
+    ICEMKII_LOG("  Value          = %02X\r\n", aValue);
+    ICEMKII_LOG("--- Internals\r\n");
+
+    if ((NULL == pMsg) || (NULL == pMsg->Buffer))
     {
-        pMsg->Buffer[pMsg->Index - ICEMKII_MESSAGE_HEADER_SIZE] = aValue;
+        ICEMKII_LOG("  Input parameters error!\r\n");
+        return FW_ERROR;
+    }
+
+    /* Message Body Stage */
+    if ( ICEMKII_MSG_STAGE_BODY(pMsg->Index, pMsg->ActSize) )
+    {
+        pMsg->Buffer[pMsg->Index - ICEMKII_MSG_HEADER_SIZE] = aValue;
     }
     /* Message Start Stage */
-    else if ( ICEMKII_MESSAGE_STAGE_START(pMsg->Index) )
+    else if ( ICEMKII_MSG_STAGE_START(pMsg->Index) )
     {
-        pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MESSAGE_START);
+        pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MSG_START);
         pMsg->CCRC = CRC16_INIT_VALUE;
     }
     /* Message Sequence Number Stage */
-    else if ( ICEMKII_MESSAGE_STAGE_SEQNUML(pMsg->Index) )
+    else if ( ICEMKII_MSG_STAGE_SEQNUML(pMsg->Index) )
     {
         pMsg->SeqNumber = aValue;
     }
-    else if ( ICEMKII_MESSAGE_STAGE_SEQNUMH(pMsg->Index) )
+    else if ( ICEMKII_MSG_STAGE_SEQNUMH(pMsg->Index) )
     {
         pMsg->SeqNumber = (pMsg->SeqNumber + (aValue << 8));
     }
     /* Message Size Stage */
-    else if ( ICEMKII_MESSAGE_STAGE_SIZE0(pMsg->Index) )
+    else if ( ICEMKII_MSG_STAGE_SIZE0(pMsg->Index) )
     {
         pMsg->ActSize = aValue;
     }
-    else if ( ICEMKII_MESSAGE_STAGE_SIZE1(pMsg->Index) )
+    else if ( ICEMKII_MSG_STAGE_SIZE1(pMsg->Index) )
     {
         pMsg->ActSize += (U32)(aValue << 8);
     }
-    else if ( ICEMKII_MESSAGE_STAGE_SIZE2(pMsg->Index) )
+    else if ( ICEMKII_MSG_STAGE_SIZE2(pMsg->Index) )
     {
         pMsg->ActSize += (U32)(aValue << 16);
     }
-    else if ( ICEMKII_MESSAGE_STAGE_SIZE3(pMsg->Index) )
+    else if ( ICEMKII_MSG_STAGE_SIZE3(pMsg->Index) )
     {
         pMsg->ActSize += (U32)(aValue << 24);
         pMsg->OK  = (FW_BOOLEAN)(0 < pMsg->ActSize);
         pMsg->OK |= (FW_BOOLEAN)(pMsg->MaxSize >= pMsg->ActSize);
     }
     /* Message Token Stage */
-    else if ( ICEMKII_MESSAGE_STAGE_TOKEN(pMsg->Index) )
+    else if ( ICEMKII_MSG_STAGE_TOKEN(pMsg->Index) )
     {
-        pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MESSAGE_TOKEN);
+        pMsg->OK = (FW_BOOLEAN)(aValue == ICEMKII_MSG_TOKEN);
     }
     /* Message CRC Stage */
-    else if ( ICEMKII_MESSAGE_STAGE_CRCL(pMsg->Index, pMsg->ActSize) )
+    else if ( ICEMKII_MSG_STAGE_CRCL(pMsg->Index, pMsg->ActSize) )
     {
         pMsg->RCRC = aValue;
     }
-    else if ( ICEMKII_MESSAGE_STAGE_CRCH(pMsg->Index, pMsg->ActSize) )
+    else if ( ICEMKII_MSG_STAGE_CRCH(pMsg->Index, pMsg->ActSize) )
     {
         pMsg->RCRC += (aValue << 8);
         pMsg->OK = (FW_BOOLEAN)(pMsg->CCRC == pMsg->RCRC);
@@ -156,7 +288,7 @@ FW_RESULT ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
     /* Packet Index Incrementing Stage */
     if (FW_TRUE == pMsg->OK)
     {
-        if ( ICEMKII_MESSAGE_STAGE_CALC_CRC(pMsg->Index, pMsg->ActSize) )
+        if ( ICEMKII_MSG_STAGE_CALC_CRC(pMsg->Index, pMsg->ActSize) )
         {
             pMsg->CCRC = CRC16_Get(&aValue, 1, pMsg->CCRC);
         }
@@ -168,16 +300,20 @@ FW_RESULT ICEMKII_MESSAGE_PutByte(ICEMKII_MESSAGE * pMsg, U8 aValue)
         pMsg->LastError = pMsg->Index;
         pMsg->Index = 0;
         pMsg->ActSize = 0;
+
+        ICEMKII_LOG("  Wrong packet format!\r\n");
     }
 
     /* Packet Completed Stage */
-    if ( ICEMKII_MESSAGE_STAGE_COMPLETE(pMsg->Index, pMsg->ActSize) )
+    if ( ICEMKII_MSG_STAGE_COMPLETE(pMsg->Index, pMsg->ActSize) )
     {
         result = FW_COMPLETE;
         /* Call Back */
         //if (NULL != pMsg->OnComplete) pMsg->OnComplete();
         /* Indicate Packet Completed */
         pMsg->Index = 0;
+
+        ICEMKII_LOG("  Packet complete!\r\n");
     }
 
     return result;

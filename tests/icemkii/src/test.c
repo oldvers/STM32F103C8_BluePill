@@ -5,9 +5,9 @@
 #include "usb.h"
 #include "fifo.h"
 
-#include "usb_definitions.h"
-#include "usb_control.h"
-#include "usb_icemkii.h"
+//#include "usb_definitions.h"
+//#include "usb_control.h"
+#include "icemkii_message.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -41,12 +41,16 @@ static U8 msgs[14 * 2] =
 //#define ICEMKII_TX_READY         (1)
 //#define ICEMKII_RX_READY         (1)
 
-extern FIFO_p              gRxFifo;
-extern FIFO_p              gTxFifo;
+//extern FIFO_p              gRxFifo;
+//extern FIFO_p              gTxFifo;
 extern EventGroupHandle_t  hEvtGroup;
 
-extern void icemkii_ProcessTx(void);
-extern void icemkii_ProcessRx(void);
+//extern void icemkii_ProcessTx(void);
+//extern void icemkii_ProcessRx(void);
+
+static U8            gIceMkIiMsg[24] = {0};
+static ICEMKII_MSG_p pIceMkIiMsg     = NULL;
+static U8            gIceMkIiBuf[64] = {0};
 
 /* --- Mocks ---------------------------------------------------------------- */
 
@@ -69,53 +73,29 @@ U32 USBD_EndPointRdWsCb(U32 aNumber, USB_CbByte pPutCb, U32 aSize)
 
 /* --- Tests ---------------------------------------------------------------- */
 
-static FW_BOOLEAN Test_Init(void)
+static FW_BOOLEAN Test_InitSuccess(void)
 {
-  FW_BOOLEAN result = FW_TRUE;
+    FW_BOOLEAN res = FW_TRUE;
+    FW_RESULT sts = FW_ERROR;
 
-  DBG("*** ICEMKII Test Init *************************************\r\n");
+    DBG("*** ICEMKII Test Init *************************************\r\n");
 
-  /* Call the initialization function */
-  ICEMKII_Init();
+    /* Call the initialization function */
+    pIceMkIiMsg = ICEMKII_MSG_Init
+                  (
+                      gIceMkIiMsg,
+                      sizeof(gIceMkIiMsg),
+                      gIceMkIiBuf,
+                      sizeof(gIceMkIiBuf)
+                  );
 
-  /* Check the parameters */
-  do
-  {
-    /* FIFO objects */
-    if (NULL == gRxFifo)
-    {
-      DBG(" - Rx FIFO is not ready!\r\n");
-      result = FW_FALSE;
-      break;
-    }
-    if (NULL == gTxFifo)
-    {
-      DBG(" - Tx FIFO is not ready!\r\n");
-      result = FW_FALSE;
-      break;
-    }
+    res = (FW_BOOLEAN)(NULL != pIceMkIiMsg);
+    if (FW_FALSE == res) return res;
 
-    /* FIFO capacities */
-    if ( (0 == FIFO_Size(gRxFifo)) || (0 == FIFO_Free(gRxFifo)))
-    {
-      DBG(" - Wrong Rx FIFO capacity:\r\n");
-      DBG("   - Size = %d\r\n", FIFO_Size(gRxFifo));
-      DBG("   - Free = %d\r\n", FIFO_Free(gRxFifo));
-      result = FW_FALSE;
-      break;
-    }
-    if ( (0 == FIFO_Size(gTxFifo)) || (0 == FIFO_Free(gTxFifo)))
-    {
-      DBG(" - Wrong Tx FIFO capacity:\r\n");
-      DBG("   - Size = %d\r\n", FIFO_Size(gTxFifo));
-      DBG("   - Free = %d\r\n", FIFO_Free(gTxFifo));
-      result = FW_FALSE;
-      break;
-    }
-  }
-  while (FW_FALSE);
+    sts = ICEMKII_MSG_SetBuffer(pIceMkIiMsg, gIceMkIiBuf, sizeof(gIceMkIiBuf));
+    res = (FW_BOOLEAN)(FW_SUCCESS == sts);
 
-  return result;
+    return res;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -126,33 +106,33 @@ static FW_BOOLEAN Test_RxIsReady(void)
   FW_BOOLEAN result = FW_FALSE;
   U8 data = 0;
 
-  DBG("*** ICEMKII Test USB Rx Is Ready **************************\r\n");
-
-  DBG(" - Put one bunch of data from USB EP to FIFO\r\n");
-  icemkii_ProcessRx();
-
-  DBG(" - Check if flag in Event Group is set\r\n");
-  uxReturned = xEventGroupWaitBits
-               (
-                 hEvtGroup,
-                 ICEMKII_RX_READY,
-                 pdFALSE,
-                 pdFALSE,
-                 0
-               );
-
-  if (0 != (uxReturned & ICEMKII_RX_READY))
-  {
-    result = FW_TRUE;
-
-    DBG("   - FIFO Count = %d\r\n", FIFO_Count(gRxFifo));
-
-    DBG("   - Clearing FIFO...\r\n");
-    while (FW_EMPTY != FIFO_Get(gRxFifo, &data)) {};
-    DBG("   - FIFO Count = %d\r\n", FIFO_Count(gRxFifo));
-
-    (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
-  }
+//  DBG("*** ICEMKII Test USB Rx Is Ready **************************\r\n");
+//
+//  DBG(" - Put one bunch of data from USB EP to FIFO\r\n");
+//  icemkii_ProcessRx();
+//
+//  DBG(" - Check if flag in Event Group is set\r\n");
+//  uxReturned = xEventGroupWaitBits
+//               (
+//                 hEvtGroup,
+//                 ICEMKII_RX_READY,
+//                 pdFALSE,
+//                 pdFALSE,
+//                 0
+//               );
+//
+//  if (0 != (uxReturned & ICEMKII_RX_READY))
+//  {
+//    result = FW_TRUE;
+//
+//    DBG("   - FIFO Count = %d\r\n", FIFO_Count(gRxFifo));
+//
+//    DBG("   - Clearing FIFO...\r\n");
+//    while (FW_EMPTY != FIFO_Get(gRxFifo, &data)) {};
+//    DBG("   - FIFO Count = %d\r\n", FIFO_Count(gRxFifo));
+//
+//    (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
+//  }
 
   return result;
 }
@@ -166,49 +146,49 @@ static FW_BOOLEAN Test_NoSpace(void)
   U32 bunch = 0, bunchExpctd, space, spaceExpctd;
   U8 data = 0;
 
-  DBG("*** ICEMKII Test USB No Space *****************************\r\n");
-
-  bunchExpctd = FIFO_Size(gRxFifo) / sizeof(msgs);
-  spaceExpctd = bunchExpctd * sizeof(msgs);
-
-  while (FW_TRUE)
-  {
-    DBG(" - Put %d bunch of data from USB EP to FIFO\r\n", bunch);
-    icemkii_ProcessRx();
-
-    DBG(" - Check if flag in Event Group is set\r\n");
-    uxReturned = xEventGroupWaitBits
-                 (
-                   hEvtGroup,
-                   ICEMKII_RX_WAITING,
-                   pdFALSE,
-                   pdFALSE,
-                   0
-                 );
-
-    if (0 != (uxReturned & ICEMKII_RX_WAITING))
-    {
-      space = FIFO_Count(gRxFifo);
-      if ((space == spaceExpctd) && (bunch == bunchExpctd))
-      {
-          result = FW_TRUE;
-      }
-
-      DBG("   - FIFO Size = %d Expected = %d\r\n", space, spaceExpctd);
-      DBG("   - Bunches = %d Expected = %d\r\n", bunch, bunchExpctd);
-
-      DBG("   - Clearing FIFO...\r\n");
-      while (FW_EMPTY != FIFO_Get(gRxFifo, &data)) {};
-      DBG("   - FIFO Size = %d\r\n", FIFO_Count(gRxFifo));
-
-      (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_WAITING);
-      (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
-
-      break;
-    }
-
-    bunch++;
-  }
+//  DBG("*** ICEMKII Test USB No Space *****************************\r\n");
+//
+//  bunchExpctd = FIFO_Size(gRxFifo) / sizeof(msgs);
+//  spaceExpctd = bunchExpctd * sizeof(msgs);
+//
+//  while (FW_TRUE)
+//  {
+//    DBG(" - Put %d bunch of data from USB EP to FIFO\r\n", bunch);
+//    icemkii_ProcessRx();
+//
+//    DBG(" - Check if flag in Event Group is set\r\n");
+//    uxReturned = xEventGroupWaitBits
+//                 (
+//                   hEvtGroup,
+//                   ICEMKII_RX_WAITING,
+//                   pdFALSE,
+//                   pdFALSE,
+//                   0
+//                 );
+//
+//    if (0 != (uxReturned & ICEMKII_RX_WAITING))
+//    {
+//      space = FIFO_Count(gRxFifo);
+//      if ((space == spaceExpctd) && (bunch == bunchExpctd))
+//      {
+//          result = FW_TRUE;
+//      }
+//
+//      DBG("   - FIFO Size = %d Expected = %d\r\n", space, spaceExpctd);
+//      DBG("   - Bunches = %d Expected = %d\r\n", bunch, bunchExpctd);
+//
+//      DBG("   - Clearing FIFO...\r\n");
+//      while (FW_EMPTY != FIFO_Get(gRxFifo, &data)) {};
+//      DBG("   - FIFO Size = %d\r\n", FIFO_Count(gRxFifo));
+//
+//      (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_WAITING);
+//      (void)xEventGroupClearBits(hEvtGroup, ICEMKII_RX_READY);
+//
+//      break;
+//    }
+//
+//    bunch++;
+//  }
 
   return result;
 }
@@ -248,7 +228,7 @@ void vTestHelpTaskFunction(void * pvParameters)
 
 const TestFunction_t gTests[] =
 {
-    Test_Init,
+    Test_InitSuccess,
     Test_RxIsReady,
     Test_NoSpace,
 };
