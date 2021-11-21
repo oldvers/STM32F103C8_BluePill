@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <workspace>
     <project>
+        <path>$WS_DIR$\..\..\east_block\project\iar\STM32F103C8_BluePill_Test_EastBlock.ewp</path>
+    </project>
+    <project>
         <path>$WS_DIR$\..\..\exceptions\project\iar\STM32F103C8_BluePill_Test_Exceptions.ewp</path>
     </project>
     <project>
@@ -49,6 +52,10 @@
             </member>
             <member>
                 <project>STM32F103C8_BluePill_Test_EastMessage</project>
+                <configuration>Test</configuration>
+            </member>
+            <member>
+                <project>STM32F103C8_BluePill_Test_EastBlock</project>
                 <configuration>Test</configuration>
             </member>
             <member>

@@ -354,6 +354,7 @@
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\rtt</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\rtt\config</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\block_queue</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\east</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1029,15 +1030,6 @@
         </settings>
     </configuration>
     <group>
-        <name>BlockQueue</name>
-        <file>
-            <name>$PROJ_DIR$\..\..\..\..\src\lib\block_queue\block_queue.c</name>
-        </file>
-        <file>
-            <name>$PROJ_DIR$\..\..\..\..\src\lib\block_queue\block_queue.h</name>
-        </file>
-    </group>
-    <group>
         <name>CMSIS</name>
         <file>
             <name>$PROJ_DIR$\..\..\..\..\src\lib\cmsis\Include\core_cm3.h</name>
@@ -1161,6 +1153,21 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\..\..\src\lib\rtt\SEGGER_RTT_printf.c</name>
+        </file>
+    </group>
+    <group>
+        <name>Utils</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\block_queue\block_queue.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\block_queue\block_queue.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\east\east_packet.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\east\east_packet.h</name>
         </file>
     </group>
 </project>

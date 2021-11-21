@@ -1,4 +1,5 @@
-#include "east_message.h"
+#include <string.h>
+#include "east_packet.h"
 #include "debug.h"
 
 /* EAST data packet format is as follows:
@@ -16,7 +17,7 @@
 
 //-----------------------------------------------------------------------------
 
-#define EAST_DEBUG
+//#define EAST_DEBUG
 
 #ifdef EAST_DEBUG
 #  define EAST_LOG    DBG
@@ -26,9 +27,13 @@
 
 #define EAST_PACKET_START_TOKEN           ( 0x24 )
 #define EAST_PACKET_STOP_TOKEN            ( 0x42 )
+#define EAST_PACKET_WRAPPER_SIZE          ( 6 )
+#define EAST_PACKET_MODE_INPUT            ( 0 )
+#define EAST_PACKET_MODE_OUTPUT           ( 1 )
 
 #define EAST_PACKET_CHECK_LENGTH(a,m)     ((FW_BOOLEAN)((0 < a) && (a <= m)))
 #define EAST_PACKET_POSITION(b,i)         (b[(i) - 3])
+#define EAST_PACKET_IS_COMPLETE(i,a)      ((FW_BOOLEAN)((0 == i) && (0 < a)))
 
 #define EAST_PACKET_STAGE_START(i)        (0 == i)
 #define EAST_PACKET_STAGE_LENGTHL(i)      (1 == i)
@@ -43,13 +48,18 @@
 
 typedef struct EAST_s
 {
-    U16             MaxSize; /* Maximum size of the data packet */
-    U16             ActSize; /* Size of the currently collected packet */
-    U16             Index;   /* Current position in the packet */
-    U16             FCS;     /* Factual control sum */
-    U16             RCS;     /* Running control sum */
-    FW_BOOLEAN      OK;      /* Data packet correctness */
-    U8            * Buffer;  /* Pointer to the data buffer */
+    U16             MaxSize;      /* Maximum size of the data */
+    U16             ActSize;      /* Size of the currently collected data */
+    U16             Index;        /* Current position in the packet */
+    U16             FCS;          /* Factual control sum */
+    U16             RCS;          /* Running control sum */
+    struct
+    {
+      U16           OK : 1;       /* Packet correctness */
+      U16           Mode : 1;     /* Packet mode: in/out */
+      U16           Complete : 1; /* Packet completeness */
+    };
+    U8            * Buffer;       /* Pointer to the data buffer */
 } EAST_t;
 
 //-----------------------------------------------------------------------------
@@ -83,21 +93,13 @@ EAST_p EAST_Init(U8 * pContainer, U32 aSize, U8 * pBuffer, U32 aBufferSize)
 
     /* Initialization */
     result = (EAST_p)pContainer;
-    result->ActSize = 0;
-    result->Index = 0;
-    result->FCS = 0;
-    result->RCS = 0;
-    result->OK = FW_FALSE;
+    memset(result, 0, sizeof(EAST_t));
 
-    if ((NULL == pBuffer) || (0 == aBufferSize))
-    {
-        result->Buffer = NULL;
-        result->MaxSize = 0;
-    }
-    else
+    if ((NULL != pBuffer) && (0 != aBufferSize))
     {
         result->Buffer = pBuffer;
         result->MaxSize = aBufferSize;
+        result->Mode = EAST_PACKET_MODE_OUTPUT;
     }
 
     EAST_LOG("  EAST Address   = %08X\r\n", result);
@@ -109,7 +111,7 @@ EAST_p EAST_Init(U8 * pContainer, U32 aSize, U8 * pBuffer, U32 aBufferSize)
 /** @brief Initializes the EAST component
  *  @param[in] pEAST - Pointer to the EAST
  *  @param[in] pBuffer - Pointer to the EAST data buffer
- *  @param[in] aSize - Size of the buffer
+ *  @param[in] aSize - Size of the data buffer
  *  @return FW_SUCCESS / FW_ERROR
  *  @note Can be used for reset the EAST component
  */
@@ -129,15 +131,12 @@ FW_RESULT EAST_SetBuffer(EAST_p pEAST, U8 * pBuffer, U32 aSize)
     }
 
     /* Reset the state */
-    pEAST->ActSize = 0;
-    pEAST->Index = 0;
-    pEAST->FCS = 0;
-    pEAST->RCS = 0;
-    pEAST->OK = FW_FALSE;
+    memset(pEAST, 0, sizeof(EAST_t));
 
     /* Set the buffer */
     pEAST->Buffer = pBuffer;
     pEAST->MaxSize = aSize;
+    pEAST->Mode = EAST_PACKET_MODE_OUTPUT;
 
     EAST_LOG("  EAST Buffer    = %08X\r\n", pBuffer);
     EAST_LOG("  EAST Buff Size = %d\r\n", aSize);
@@ -148,7 +147,7 @@ FW_RESULT EAST_SetBuffer(EAST_p pEAST, U8 * pBuffer, U32 aSize)
 //-----------------------------------------------------------------------------
 /** @brief Puts Byte into the EAST data packet
  *  @param[in] pEAST - Pointer to the EAST
- *  @param[in] aValue - Value that should be placed into the EAST data packet
+ *  @param[in] aValue - Value that should be placed into the EAST packet
  *  @return FW_INPROGRESS / FW_COMPLETE / FW_ERROR
  *  @note On the next call of this function after packet completion,
  *        collectiong of the new packet is started from the beginning. The
@@ -171,6 +170,9 @@ FW_RESULT EAST_PutByte(EAST_p pEAST, U8 aValue)
         EAST_LOG("  Input parameters error!\r\n");
         return FW_ERROR;
     }
+
+    pEAST->Mode = EAST_PACKET_MODE_INPUT;
+    pEAST->Complete = FW_FALSE;
 
     /* Data Stage */
     if EAST_PACKET_STAGE_DATA(pEAST->Index, pEAST->ActSize)
@@ -232,6 +234,7 @@ FW_RESULT EAST_PutByte(EAST_p pEAST, U8 aValue)
     if EAST_PACKET_STAGE_COMPLETE(pEAST->Index, pEAST->ActSize)
     {
         /* Indicate packet completion */
+        pEAST->Complete = FW_TRUE;
         result = FW_COMPLETE;
         /* Reset the packet position */
         pEAST->Index = 0;
@@ -243,7 +246,7 @@ FW_RESULT EAST_PutByte(EAST_p pEAST, U8 aValue)
 }
 
 //-----------------------------------------------------------------------------
-/** @brief Gets Byte from the EAST data packet
+/** @brief Gets Byte from the EAST packet
  *  @param[in] pEAST - Pointer to the EAST
  *  @param[out] pValue - Pointer to the placeholder for Value
  *  @return FW_INPROGRESS / FW_COMPLETE
@@ -256,6 +259,9 @@ FW_RESULT EAST_GetByte(EAST_p pEAST, U8 * pValue)
 {
     FW_RESULT result = FW_INPROGRESS;
     pEAST->OK = FW_TRUE;
+
+    pEAST->Mode = EAST_PACKET_MODE_OUTPUT;
+    pEAST->Complete = FW_FALSE;
 
     /* Data Stage */
     if EAST_PACKET_STAGE_DATA(pEAST->Index, pEAST->ActSize)
@@ -304,11 +310,65 @@ FW_RESULT EAST_GetByte(EAST_p pEAST, U8 * pValue)
     if EAST_PACKET_STAGE_COMPLETE(pEAST->Index, pEAST->ActSize)
     {
         /* Indicate packet completion */
+        pEAST->Complete = FW_TRUE;
         result = FW_COMPLETE;
         /* Reset the packet position */
         pEAST->Index = 0;
 
         EAST_LOG("  Packet complete!\r\n");
+    }
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets the size of the currently collected data
+ *  @param[in] pEAST - Pointer to the EAST
+ *  @return Packet size
+ */
+
+U16 EAST_GetDataSize(EAST_p pEAST)
+{
+    U16 result = 0;
+
+    if (EAST_PACKET_MODE_INPUT == pEAST->Mode)
+    {
+        if (FW_TRUE == pEAST->Complete)
+        {
+            result = pEAST->ActSize;
+        }
+    }
+    else
+    {
+        result = pEAST->MaxSize;
+    }
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Gets the size of the currently collected data
+ *  @param[in] pEAST - Pointer to the EAST
+ *  @return Packet size
+ */
+
+U16 EAST_GetPacketSize(EAST_p pEAST)
+{
+    U16 result = 0;
+
+    if (EAST_PACKET_MODE_INPUT == pEAST->Mode)
+    {
+        if (FW_TRUE == pEAST->Complete)
+        {
+            result = (EAST_PACKET_WRAPPER_SIZE + pEAST->ActSize);
+        }
+    }
+    else
+    {
+        if (FW_FALSE == pEAST->Complete)
+        {
+            result = (EAST_PACKET_WRAPPER_SIZE + pEAST->MaxSize - pEAST->Index);
+        }
     }
 
     return result;

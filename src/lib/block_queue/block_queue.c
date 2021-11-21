@@ -1,9 +1,11 @@
-#include "blockqueue.h"
+#include "block_queue.h"
 
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "task.h"
 
 #include "debug.h"
+#include "interrupts.h"
 
 /* Very simple queue
  * These are FIFO queues which discard the new data when full.
@@ -23,12 +25,20 @@
 
 //-----------------------------------------------------------------------------
 
-#define QUEUE_DEBUG
+//#define QUEUE_DEBUG
 
 #ifdef QUEUE_DEBUG
-#  define QUEUE_LOG           DBG
+#  define QUEUE_LOG                    DBG
+#  define QUEUE_LOG_AVAILABLE(q)                               \
+          do                                                   \
+          {                                                    \
+            UBaseType_t available = uxQueueSpacesAvailable(q); \
+            QUEUE_LOG("  OS Queue Free  = %d\r\n", available); \
+          }                                                    \
+          while (0);
 #else
 #  define QUEUE_LOG(...)
+#  define QUEUE_LOG_AVAILABLE(q)
 #endif
 
 //-----------------------------------------------------------------------------
@@ -62,13 +72,11 @@ typedef struct BlockQueue_s
 
 static QueueHandle_t osal_QueueCreate(U32 aCapacity, U32 aItemSize)
 {
-    UBaseType_t available = 0;
     QueueHandle_t result = NULL;
 
     result = xQueueCreate(aCapacity, (unsigned portBASE_TYPE)aItemSize);
 
-    available = uxQueueSpacesAvailable(result);
-    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+    QUEUE_LOG_AVAILABLE(result);
 
     return result;
 }
@@ -81,17 +89,13 @@ static QueueHandle_t osal_QueueCreate(U32 aCapacity, U32 aItemSize)
 
 static void osal_QueueReset(BlockQueue_p pQueue)
 {
-    UBaseType_t available = 0;
-
-    available = uxQueueSpacesAvailable(pQueue->osQueue);
-    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+    QUEUE_LOG_AVAILABLE(pQueue->osQueue);
 
     QUEUE_LOG("  OS Queue Reset\r\n");
 
     xQueueReset(pQueue->osQueue);
-    available = uxQueueSpacesAvailable(pQueue->osQueue);
 
-    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+    QUEUE_LOG_AVAILABLE(pQueue->osQueue);
 }
 
 //-----------------------------------------------------------------------------
@@ -106,22 +110,43 @@ static FW_BOOLEAN osal_QueuePut(BlockQueue_p pQueue, U8* pBlock, U32 aBlockSize)
 {
     BaseType_t status = pdFAIL;
     BlockItem_t item = {0};
-    UBaseType_t available = 0;
 
-    available = uxQueueSpacesAvailable(pQueue->osQueue);
-
-    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+    QUEUE_LOG_AVAILABLE(pQueue->osQueue);
 
     /* Fill the item fields */
     item.Data = pBlock;
     item.Size = aBlockSize;
 
     /* Put the item to the queue */
-    status = xQueueSendToBack(pQueue->osQueue, (void *)&item, (TickType_t)0);
+    if (FW_TRUE == IRQ_IsInExceptionMode())
+    {
+        /* We have not woken a task at the start of the ISR */
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    available = uxQueueSpacesAvailable(pQueue->osQueue);
+        status = xQueueSendToBackFromISR
+                 (
+                     pQueue->osQueue,
+                     (void *)&item,
+                     &xHigherPriorityTaskWoken
+                 );
 
-    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+        /* Now we can request to switch context if necessary */
+        if( xHigherPriorityTaskWoken )
+        {
+            taskYIELD();
+        }
+    }
+    else
+    {
+        status = xQueueSendToBack
+                 (
+                     pQueue->osQueue,
+                     (void *)&item,
+                     (TickType_t)0
+                 );
+    }
+
+    QUEUE_LOG_AVAILABLE(pQueue->osQueue);
 
     if (pdPASS != status)
     {
@@ -143,10 +168,8 @@ static FW_BOOLEAN osal_QueueGet(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
 {
     BaseType_t status = pdFAIL;
     BlockItem_t item = {0};
-    UBaseType_t available = 0;
 
-    available = uxQueueSpacesAvailable(pQueue->osQueue);
-    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+    QUEUE_LOG_AVAILABLE(pQueue->osQueue);
 
     /* Get the item from the queue */
     status = xQueueReceive
@@ -156,8 +179,7 @@ static FW_BOOLEAN osal_QueueGet(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize)
                  (TickType_t)pQueue->osTimeout
              );
 
-    available = uxQueueSpacesAvailable(pQueue->osQueue);
-    QUEUE_LOG("  OS Queue Free  = %d\r\n", available);
+    QUEUE_LOG_AVAILABLE(pQueue->osQueue);
 
     if (pdTRUE != status)
     {
