@@ -19,7 +19,7 @@
 #include "event_groups.h"
 
 //#include "east.h"
-#include "fifo.h"
+#include "block_queue.h"
 
 #include "debug.h"
 
@@ -27,7 +27,8 @@
 //#define STATIC
 
 //-----------------------------------------------------------------------------
-/* Private Types definitions */
+/* Private Type definitions */
+
 /* Line Coding Structure */
 //typedef __packed struct _CDC_LINE_CODING
 //{
@@ -69,12 +70,12 @@
 //  } Data;
 //} CDC_SERIAL_STATE;
 
-//#define ICEMKII_RX_READY         (1 << 0)
+#define ICEMKII_RX_READY         (1 << 0)
 //#define ICEMKII_RX_WAITING       (1 << 1)
 //#define ICEMKII_TX_READY         (1)
 //#define ICEMKII_RX_READY         (1)
 
-
+#define ICEMKII_MAX_MSG_LENGTH    (1024)
 
 typedef FW_BOOLEAN (*ICEMKII_EP_FUNCTION)(void);
 typedef U32 (*ICEMKII_EP_DATA_FUNCTION)(USBD_CbByte pPutByteCb, U32 aSize);
@@ -88,14 +89,14 @@ typedef struct ICEMKII_s
   ICEMKII_EP_DATA_FUNCTION fpEpIBlkWr;
   ICEMKII_EP_FUNCTION      fpEpIBlkIsTxEmpty;
   //FW_RESULT            result;
-  //EventGroupHandle_t   events;
+  EventGroupHandle_t       events;
   ICEMKII_MSG_p            iMsg;
   ICEMKII_MSG_p            oMsg;
   U8                       iMsgHolder[ICEMKII_MSG_HOLDER_SIZE];
   U8                       oMsgHolder[ICEMKII_MSG_HOLDER_SIZE];
-  //BlockQueue_p         iQueue;
-  //U8                   iBuffer[EAST_MAX_DATA_LENGTH * 8];
-  //U8                   oBuffer[EAST_MAX_DATA_LENGTH];
+  BlockQueue_p             iQueue;
+  U8                       iBuffer[ICEMKII_MAX_MSG_LENGTH * 4 + 40];
+  //U8                       oBuffer[EAST_MAX_DATA_LENGTH];
 } ICEMKII_t;
 
 
@@ -285,6 +286,52 @@ void ICEMKII_BulkIn(U32 aEvent)
   //icemkii_ProcessTx();
 }
 
+
+
+
+
+//-----------------------------------------------------------------------------
+/** @brief Puts received Byte from USB EP buffer to the packet. When the
+ *         packet is parsed correctly - puts it into the queue.
+ *  @param pByte - Pointer to the container for the Byte
+ *  @return None
+ *  @note If the queue is full - all the further received bytes are ignored.
+ */
+
+static void icemkii_IMsgPut(U8 * pByte)
+{
+  FW_RESULT result = FW_ERROR;
+  U8 * buffer = NULL;
+  U32 size = 0;
+
+  /* Fill the EAST block */
+  result = ICEMKII_MSG_PutByte(gIceMkII.iMsg, *pByte);
+  if (FW_COMPLETE == result)
+  {
+    /* If the block queue is full - ignore */
+    if (0 == BlockQueue_GetCountOfFree(gIceMkII.iQueue))
+    {
+      return;
+    }
+
+    /* Put the block into the queue */
+    result = BlockQueue_Enqueue
+             (
+                 gIceMkII.iQueue,
+                 ICEMKII_MSG_GetDataSize(gIceMkII.iMsg)
+             );
+    if (FW_SUCCESS == result)
+    {
+      /* Allocate the memory for the next block */
+      result = BlockQueue_Allocate(gIceMkII.iQueue, &buffer, &size);
+      if (FW_SUCCESS == result)
+      {
+        (void)ICEMKII_MSG_SetBuffer(gIceMkII.iMsg, buffer, size);
+      }
+    }
+  }
+}
+
 //-----------------------------------------------------------------------------
 /** @brief ICEMKII Bulk Out Callback
  *  @param aEvent - Event
@@ -294,6 +341,51 @@ void ICEMKII_BulkOut(U32 aEvent)
 {
   (void)aEvent;
   //icemkii_ProcessRx();
+  /* Read from OUT EP */
+  (void)gIceMkII.fpEpOBlkRd(icemkii_IMsgPut, ICEMKII_MAX_MSG_LENGTH);
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Thread function
+ *  @param pvParameters - Pointer to the parameters
+ *  @return None
+ */
+
+static void ICEMKII_Task(void * pvParameters)
+{
+  U8 * req = NULL; //, * rsp = (I2C_PACKET *)gPort.oBuffer;
+  U32 size = 0;
+
+  while (FW_TRUE)
+  {
+    /* Dequeue the request */
+    (void)BlockQueue_Dequeue(gIceMkII.iQueue, /*(U8 **)*/&req, &size);
+
+    /* Prepare the response */
+    //rsp->opcode = req->opcode;
+    //rsp->address = req->address;
+
+    ///* Process the request */
+    //if ((I2C_OPCODE_READ == req->opcode) && (4 == size))
+    //{
+    //  cdc_I2cRead(req, rsp, &size);
+    //}
+    //else if ((I2C_OPCODE_WRITE == req->opcode) && (4 < size))
+    //{
+    //  cdc_I2cWrite(req, rsp, &size);
+    //}
+    //else
+    //{
+    //  cdc_I2cError(req, rsp, &size);
+    //}
+
+    /* Send the response */
+    //cdc_SendResponse(rsp, size);
+
+    /* Release the block */
+    (void)BlockQueue_Release(gIceMkII.iQueue);
+  }
+  //vTaskDelete(NULL);
 }
 
 //-----------------------------------------------------------------------------
@@ -374,8 +466,8 @@ void ICEMKII_Init(void)
 //
 //void CDC_I2C_Init(void)
 //{
-//  U8 * buffer = NULL;
-//  U32 size = 0;
+  U8 * buffer = NULL;
+  U32 size = 0;
 
   /* Clear Port context */
   //memset(&gPort, 0, sizeof(gPort));
@@ -387,9 +479,6 @@ void ICEMKII_Init(void)
   gIceMkII.fpEpOBlkIsRxEmpty = USBD_ICEMKII_OEndPointIsRxEmpty;
   gIceMkII.fpEpIBlkWr        = USBD_ICEMKII_IEndPointWrWsCb;
   gIceMkII.fpEpIBlkIsTxEmpty = USBD_ICEMKII_IEndPointIsTxEmpty;
-  //gIceMkII.cdc.fpEpIIrqWr      = USBD_CDC_I2C_IrqEndPointWr;
-  //gIceMkII.cdc.fpOpen          = i2c_Open;
-  //gIceMkII.cdc.fpSetCtrlLine   = i2c_SetControlLine;
 
   /* Initialize EAST packet containers */
   gIceMkII.iMsg = ICEMKII_MSG_Init
@@ -407,40 +496,36 @@ void ICEMKII_Init(void)
                     0
                   );
 
-//  /* Initialize the EAST packet queue */
-//  gPort.iQueue = BlockQueue_Init
-//                 (
-//                   gPort.iBuffer,
-//                   sizeof(gPort.iBuffer),
-//                   EAST_MAX_DATA_LENGTH
-//                 );
-//  /* Allocate the memory for the first input EAST packet */
-//  (void)BlockQueue_Allocate(gPort.iQueue, &buffer, &size);
-//  /* Setup/Reset the input EAST packet */
-//  (void)EAST_SetBuffer(gPort.iEAST, buffer, size);
-//
-//  /* Initialize pointers */
-//  gPort.cdc.lineCoding = &gLineCoding;
-//  gPort.cdc.notification = &gNotification;
-//
-//  /* Create the event group for synchronization */
-//  gPort.events = xEventGroupCreate();
-//  (void)xEventGroupClearBits
-//        (
-//          gPort.events,
-//          EVT_EAST_TX_COMPLETE | EVT_I2C_EXCH_COMPLETE
-//        );
-//
-//  /* Create the I2C task */
-//  xTaskCreate
-//  (
-//    vI2CTask,
-//    "I2C",
-//    configMINIMAL_STACK_SIZE,
-//    NULL,
-//    tskIDLE_PRIORITY + 1,
-//    NULL
-//  );
+  /* Initialize the EAST packet queue */
+  gIceMkII.iQueue = BlockQueue_Init
+                    (
+                      gIceMkII.iBuffer,
+                      sizeof(gIceMkII.iBuffer),
+                      ICEMKII_MAX_MSG_LENGTH
+                    );
+  /* Allocate the memory for the first input packet */
+  (void)BlockQueue_Allocate(gIceMkII.iQueue, &buffer, &size);
+  /* Setup/Reset the input packet */
+  (void)ICEMKII_MSG_SetBuffer(gIceMkII.iMsg, buffer, size);
+
+  /* Create the event group for synchronization */
+  gIceMkII.events = xEventGroupCreate();
+  (void)xEventGroupClearBits
+        (
+          gIceMkII.events,
+          ICEMKII_RX_READY //| EVT_I2C_EXCH_COMPLETE
+        );
+
+  /* Create the I2C task */
+  xTaskCreate
+  (
+    ICEMKII_Task,
+    "ICEMKII",
+    configMINIMAL_STACK_SIZE,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  );
 }
 
 //-----------------------------------------------------------------------------

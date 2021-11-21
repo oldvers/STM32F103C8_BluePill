@@ -356,6 +356,7 @@
                     <state>$PROJ_DIR$\..\..\src\usb</state>
                     <state>$PROJ_DIR$\..\..\src\usb\icemkii</state>
                     <state>$PROJ_DIR$\..\..\src\lib\fifo</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\block_queue</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -1030,6 +1031,15 @@
             <data />
         </settings>
     </configuration>
+    <group>
+        <name>BlockQueue</name>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\block_queue\block_queue.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\lib\block_queue\block_queue.h</name>
+        </file>
+    </group>
     <group>
         <name>CMSIS</name>
         <file>
