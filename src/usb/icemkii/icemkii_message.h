@@ -3,6 +3,8 @@
 
 #include "types.h"
 
+#define ICEMKII_MSG_HOLDER_SIZE  (24)
+
 typedef struct ICEMKII_MSG_s * ICEMKII_MSG_p;
 
 ICEMKII_MSG_p ICEMKII_MSG_Init

@@ -235,6 +235,13 @@ const USBD_INTERFACE_CALLBACKS_DESCRIPTOR
 
 /* -------------------------------------------------------------------------- */
 
+U8 USBD_ICEMKII_GetInterfaceNumber(void)
+{
+  return USB_INTERFACE_IDX_ICEMKII;
+}
+
+/* -------------------------------------------------------------------------- */
+
 U32 USBD_ICEMKII_IEndPointWrWsCb(USBD_CbByte pGetByteCb, U32 aSize)
 {
   return USBD_EP_WrWsCb
@@ -247,6 +254,13 @@ U32 USBD_ICEMKII_IEndPointWrWsCb(USBD_CbByte pGetByteCb, U32 aSize)
 
 /* -------------------------------------------------------------------------- */
 
+FW_BOOLEAN USBD_ICEMKII_IEndPointIsTxEmpty(void)
+{
+  return USBD_EP_IsTxEmpty(USB_ENDPOINT_I(USB_ENDPOINT_IDX_ICEMKII));
+}
+
+/* -------------------------------------------------------------------------- */
+
 U32 USBD_ICEMKII_OEndPointRdWsCb(USBD_CbByte pPutByteCb, U32 aSize)
 {
   return USBD_EP_RdWsCb
@@ -255,6 +269,13 @@ U32 USBD_ICEMKII_OEndPointRdWsCb(USBD_CbByte pPutByteCb, U32 aSize)
            pPutByteCb,
            aSize
          );
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN USBD_ICEMKII_OEndPointIsRxEmpty(void)
+{
+  return USBD_EP_IsRxEmpty(USB_ENDPOINT_O(USB_ENDPOINT_IDX_ICEMKII));
 }
 
 /* -------------------------------------------------------------------------- */
