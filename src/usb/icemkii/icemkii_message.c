@@ -2,7 +2,7 @@
 #include "icemkii_message.h"
 #include "debug.h"
 
-#define ICEMKII_DEBUG
+//#define ICEMKII_DEBUG
 
 #ifdef ICEMKII_DEBUG
 #  define ICEMKII_LOG    DBG
