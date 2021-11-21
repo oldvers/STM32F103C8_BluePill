@@ -23,6 +23,7 @@ FW_RESULT ICEMKII_MSG_SetBuffer
 FW_RESULT ICEMKII_MSG_PutByte          (ICEMKII_MSG_p pMsg, U8   aValue);
 FW_RESULT ICEMKII_MSG_GetByte          (ICEMKII_MSG_p pMsg, U8 * pValue);
 void      ICEMKII_MSG_SetSequenceNumber(ICEMKII_MSG_p pMsg, U16 aValue);
+U16       ICEMKII_MSG_GetSequenceNumber(ICEMKII_MSG_p pMsg);
 U16       ICEMKII_MSG_GetDataSize      (ICEMKII_MSG_p pMsg);
 U16       ICEMKII_MSG_GetPacketSize    (ICEMKII_MSG_p pMsg);
 

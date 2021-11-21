@@ -408,11 +408,15 @@ void ICEMKII_BulkOut(U32 aEvent)
 static void icemkii_SendResponse(U8 * pRsp, U32 size)
 {
   EventBits_t events = 0;
+  U16 sn = 0;
 
   if (0 == size) return;
 
   /* Reset the message */
   ICEMKII_MSG_SetBuffer(gIceMkII.oMsg, pRsp, size);
+
+  sn = ICEMKII_MSG_GetSequenceNumber(gIceMkII.iMsg);
+  ICEMKII_MSG_SetSequenceNumber(gIceMkII.oMsg, sn);
 
   /* Send the response */
   ICEMKII_BulkIn(0);

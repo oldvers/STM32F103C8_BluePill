@@ -334,6 +334,25 @@ void ICEMKII_MSG_SetSequenceNumber(ICEMKII_MSG_p pMsg, U16 aValue)
 }
 
 //-----------------------------------------------------------------------------
+/** @brief Gets the Sequence Number of the JTAG ICE mkII message
+ *  @param[in] pMsg - Pointer to the ICE mkII message instance
+ *  @param[in] aValue - The Value of the Sequence Number
+ *  @return None
+ */
+
+U16 ICEMKII_MSG_GetSequenceNumber(ICEMKII_MSG_p pMsg)
+{
+    U16 result = 0;
+
+    if (NULL != pMsg)
+    {
+        result = pMsg->SeqNumber;
+    }
+
+    return result;
+}
+
+//-----------------------------------------------------------------------------
 /** @brief Gets Byte from the JTAG ICE mkII message
  *  @param[in] pMsg - Pointer to the ICE mkII message instance
  *  @param[out] pValue - Pointer to the placeholder for the Value
