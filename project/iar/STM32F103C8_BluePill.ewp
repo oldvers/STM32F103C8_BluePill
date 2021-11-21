@@ -1222,6 +1222,12 @@
                 <name>$PROJ_DIR$\..\..\src\usb\icemkii\icemkii_processor.h</name>
             </file>
             <file>
+                <name>$PROJ_DIR$\..\..\src\usb\icemkii\ispmkii_processor.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\icemkii\ispmkii_processor.h</name>
+            </file>
+            <file>
                 <name>$PROJ_DIR$\..\..\src\usb\icemkii\usb_icemkii.c</name>
             </file>
             <file>
