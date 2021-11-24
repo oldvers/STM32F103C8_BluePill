@@ -1,4 +1,5 @@
 #include "ispmkii_processor.h"
+#include "isp_processor.h"
 
 /*----------------------------------------------------------------------------*/
 
@@ -20,6 +21,14 @@
 
 /***[ STK status constants ]***/
 #define STATUS_CMD_OK                       (0x00)
+/*    Warnings */
+#define STATUS_CMD_TOUT                     (0x80)
+#define STATUS_RDY_BSY_TOUT                 (0x81)
+#define STATUS_SET_PARAM_MISSING            (0x82)
+/*    Errors */
+#define STATUS_CMD_FAILED                   (0xC0)
+#define STATUS_CKSUM_ERROR                  (0xC1)
+#define STATUS_CMD_UNKNOWN                  (0xC9)
 
 /*----------------------------------------------------------------------------*/
 
@@ -53,7 +62,7 @@ typedef __packed struct REQ_ENTER_PROG_MODE_s
 {
   U8 timeout;     // Command time-out (in ms)
   U8 stabDelay;   // Delay (in ms) used for pin stabilization
-  U8 cmdexeDelay; // Delay (in ms) in connection with the command execution
+  U8 cmdExeDelay; // Delay (in ms) in connection with the command execution
   U8 synchLoops;  // Number of synchronization loops
   U8 byteDelay;   // Delay (in ms) between each byte in the command
   U8 pollValue;   // Poll value: 0x53 for AVR, 0x69 for AT89xx
@@ -132,8 +141,6 @@ typedef __packed struct ISP_RSP_s
 
 /*----------------------------------------------------------------------------*/
 
-static U8 gSckDur = 1;
-
 static FW_BOOLEAN ispmkii_GetParameter(U8 id, ISP_RSP_p pRsp, U32 * pSize)
 {
   FW_BOOLEAN result = FW_TRUE;
@@ -145,7 +152,7 @@ static FW_BOOLEAN ispmkii_GetParameter(U8 id, ISP_RSP_p pRsp, U32 * pSize)
   {
     case PARAM_SCK_DURATION:
       pRsp->getParameter.status = STATUS_CMD_OK;
-      pRsp->getParameter.value = gSckDur;
+      pRsp->getParameter.value = gIspParams.sckDuration;
       break;
     default:
       result = FW_FALSE;
@@ -171,7 +178,7 @@ static FW_BOOLEAN ispmkii_SetParameter(U8 id, U8 v, ISP_RSP_p pRsp, U32 * pSize)
       break;
     case PARAM_SCK_DURATION:
       pRsp->setParameter.status = STATUS_CMD_OK;
-      gSckDur = v;
+      gIspParams.sckDuration = v;
       break;
     default:
       result = FW_FALSE;
@@ -190,13 +197,39 @@ static FW_BOOLEAN ispmkii_EnterProgMode
   U32 * pSize
 )
 {
-  FW_BOOLEAN result = FW_TRUE;
+  FW_RESULT result = FW_SUCCESS;
+  REQ_ENTER_PROG_MODE_p req = (REQ_ENTER_PROG_MODE_p)pReq;
+
+  gIspParams.timeout     = req->timeout;
+  gIspParams.stabDelay   = req->stabDelay;
+  gIspParams.cmdExeDelay = req->cmdExeDelay;
+  gIspParams.synchLoops  = req->synchLoops;
+  gIspParams.byteDelay   = req->byteDelay;
+  gIspParams.pollValue   = req->pollValue;
+  gIspParams.pollIndex   = req->pollIndex;
+  gIspParams.cmd[0]      = req->cmd1;
+  gIspParams.cmd[1]      = req->cmd2;
+  gIspParams.cmd[2]      = req->cmd3;
+  gIspParams.cmd[3]      = req->cmd4;
 
   pRsp->AnswerId = CMD_ENTER_PROGMODE_ISP;
-  pRsp->enterProgMode.status = STATUS_CMD_OK;
+
+  result = ISP_EnterProgMode();
+  switch (result)
+  {
+    case FW_SUCCESS:
+      pRsp->enterProgMode.status = STATUS_CMD_OK;
+      break;
+    case FW_TIMEOUT:
+      pRsp->enterProgMode.status = STATUS_CMD_TOUT;
+      break;
+    default:
+      pRsp->enterProgMode.status = STATUS_CMD_FAILED;
+      break;
+  }
   *pSize = 2;
 
-  return result;
+  return FW_TRUE;
 }
 
 /*----------------------------------------------------------------------------*/

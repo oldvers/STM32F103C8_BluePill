@@ -1091,10 +1091,22 @@
             <name>$PROJ_DIR$\..\..\src\hw\gpio.h</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\src\hw\i2c.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\i2c.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\hw\interrupts.c</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\interrupts.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\spi.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\spi.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\system.c</name>
@@ -1104,6 +1116,12 @@
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\types.h</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\uart.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\uart.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\hw\uniquedevid.h</name>
@@ -1220,6 +1238,12 @@
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\src\usb\icemkii\icemkii_processor.h</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\icemkii\isp_processor.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\icemkii\isp_processor.h</name>
             </file>
             <file>
                 <name>$PROJ_DIR$\..\..\src\usb\icemkii\ispmkii_processor.c</name>

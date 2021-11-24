@@ -349,10 +349,10 @@
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\include</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\hw</state>
-                    <state>$PROJ_DIR$\..\..\..\..\src\hw\config</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\freertos\Source\portable\IAR\ARM_CM3</state>
                     <state>$PROJ_DIR$\..\..\..\..\src\lib\rtt</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\rtt\config</state>
+                    <state>$PROJ_DIR$\..\..\..\..\src\lib\rtt\config</state>
+                    <state>$PROJ_DIR$\..\..\src\hw\config</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>
@@ -648,7 +648,7 @@
                 </option>
                 <option>
                     <name>OOCOutputFile</name>
-                    <state>STM32F103C8_BluePill.srec</state>
+                    <state>STM32F103C8_BluePill_Test_I2C.srec</state>
                 </option>
                 <option>
                     <name>OOCCommandLineProducer</name>
@@ -1054,7 +1054,7 @@
     <group>
         <name>Hardware</name>
         <file>
-            <name>$PROJ_DIR$\..\..\..\..\src\hw\config\board.h</name>
+            <name>$PROJ_DIR$\..\..\src\hw\config\board.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\..\..\src\hw\debug.c</name>
@@ -1171,7 +1171,7 @@
             <name>$PROJ_DIR$\..\..\..\..\src\lib\rtt\SEGGER_RTT.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\rtt\config\SEGGER_RTT_Conf.h</name>
+            <name>$PROJ_DIR$\..\..\..\..\src\lib\rtt\config\SEGGER_RTT_Conf.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\..\..\src\lib\rtt\SEGGER_RTT_printf.c</name>
