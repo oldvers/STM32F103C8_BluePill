@@ -38,15 +38,27 @@ typedef struct ISP_PARAMETERS_s
   U8   preDelay;    // Pre-delay (in ms)
   U8   postDelay;   // Post-delay (in ms)
   /* Read Fuse/Lock/Signature/OscCalibration value parameters */
-  U8   retAddr;     // Return address
+  //U8   retAddr;     // Return address
   //U8   cmd1;        // Command Byte #1
   //U8   cmd2;        // Command Byte #2
   //U8   cmd3;        // Command Byte #3
   //U8   cmd4;        // Command Byte #4
+  /* Load Address parameters */
+  union
+  {
+    U8  byte[4];
+    U16 word[2];
+    U32 value;
+  } address;
+  /* Read Memory Parameters */
+  //U16 length;
 } ISP_PARAMETERS_t;
 
 extern ISP_PARAMETERS_t gIspParams;
 
 FW_RESULT ISP_EnterProgMode(void);
+void      ISP_LeaveProgmode(void);
+U8        ISP_ReadFLSO     (void);
+FW_RESULT ISP_ReadMemory   (U8 * pBuffer, U32 size);
 
 #endif /* __ISP_PROCESSOR_H__ */

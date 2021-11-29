@@ -345,7 +345,7 @@
                     <state>$PROJ_DIR$\..\..\src</state>
                     <state>$PROJ_DIR$\..\..\src\lib\cmsis\Include</state>
                     <state>$PROJ_DIR$\..\..\src\lib\cmsis\Device\ST\STM32F1xx\Include</state>
-                    <state>$PROJ_DIR$\..\..\src\lib\freertos</state>
+                    <state>$PROJ_DIR$\..\..\src\lib\freertos\config</state>
                     <state>$PROJ_DIR$\..\..\src\lib\freertos\Source\include</state>
                     <state>$PROJ_DIR$\..\..\src\hw</state>
                     <state>$PROJ_DIR$\..\..\src\hw\config</state>
@@ -1151,7 +1151,7 @@
             <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\include\FreeRTOS.h</name>
         </file>
         <file>
-            <name>$PROJ_DIR$\..\..\src\lib\freertos\FreeRTOSConfig.h</name>
+            <name>$PROJ_DIR$\..\..\src\lib\freertos\config\FreeRTOSConfig.h</name>
         </file>
         <file>
             <name>$PROJ_DIR$\..\..\src\lib\freertos\Source\portable\MemMang\heap_2.c</name>
@@ -1227,6 +1227,12 @@
         </group>
         <group>
             <name>ICEmkII</name>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\icemkii\dwire_processor.c</name>
+            </file>
+            <file>
+                <name>$PROJ_DIR$\..\..\src\usb\icemkii\dwire_processor.h</name>
+            </file>
             <file>
                 <name>$PROJ_DIR$\..\..\src\usb\icemkii\icemkii_message.c</name>
             </file>

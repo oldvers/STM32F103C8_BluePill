@@ -89,8 +89,8 @@ void SPI_Init(SPI_t aSPI, SPI_CbComplete_t pCbComplete)
              SPI_CR1_SSI  |       //Internal Slave select
          //  SPI_CR1_LSBFIRST |   //LSB First
              SPI_CR1_BR_0 |       //Prescaller
-             SPI_CR1_BR_1 |
-         //  SPI_CR1_BR_2 |
+//             SPI_CR1_BR_1 |
+             SPI_CR1_BR_2 |
              SPI_CR1_MSTR |       //Master mode
          //  SPI_CR1_CPOL |
          //  SPI_CR1_CPHA |
@@ -178,6 +178,7 @@ void SPI_MExchange(SPI_t aSPI, U8 * pTx, U8 * pRx, U32 aSize)
 
   if (NULL == pTx)
   {
+    SPI->Dummy = 0xFF;
     SPI->TxDMA->CCR  &= ~(DMA_CCR_MINC);
     SPI->TxDMA->CMAR  = (U32)&SPI->Dummy;
   }
@@ -189,6 +190,7 @@ void SPI_MExchange(SPI_t aSPI, U8 * pTx, U8 * pRx, U32 aSize)
 
   if (NULL == pRx)
   {
+    SPI->Dummy = 0x00;
     SPI->RxDMA->CCR  &= ~(DMA_CCR_MINC);
     SPI->RxDMA->CMAR  = (U32)&SPI->Dummy;
   }
@@ -239,6 +241,54 @@ void SPI_IrqHandler(SPI_t aSPI)
 void SPI_DeInit(SPI_t aSPI)
 {
   //
+}
+
+//-----------------------------------------------------------------------------
+
+void SPI_SetBaudRate(U32 value)
+{
+//  U32 brr, mantissa, fraction;
+//
+//  switch (aUART)
+//  {
+//    case UART1:
+//      /* Pre-get clock */
+//      brr = APB2Clock / aValue;
+//      break;
+//
+//    case UART2:
+//      /* Pre-get clock */
+//      brr = APB1Clock / aValue;
+//      break;
+//
+//    case UART3:
+//      /* Pre-get clock */
+//      brr = APB1Clock / aValue;
+//      break;
+//  }
+//
+//  /* Setup Baud Rate */
+//  gUARTCtx[aUART].BaudRate = aValue;
+//
+//  mantissa = brr / 16;
+//  fraction = brr % 16;
+//  brr = (mantissa << 4) | fraction;
+//
+//  gUARTCtx[aUART].HW->BRR = brr;
+}
+
+U32 SPI_GetBaudRate(SPI_t aSPI) //, U8 * pTx, U8 * pRx, U32 aSize)
+{
+  //SPI_Context_p SPI = &gSPICtx[aSPI];
+  return 0;
+}
+
+//-----------------------------------------------------------------------------
+
+U8 SPI_GetLatestXferValue(SPI_t aSPI)
+{
+  SPI_Context_p SPI = &gSPICtx[aSPI];
+  return SPI->Dummy;
 }
 
 //-----------------------------------------------------------------------------

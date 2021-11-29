@@ -7,10 +7,10 @@
 
 //-----------------------------------------------------------------------------
 
-//#define UART_DEBUG
+#define UART_DEBUG
 
 #ifdef UART_DEBUG
-#  define UART_LOG           LOG
+#  define UART_LOG           DBG
 #else
 #  define UART_LOG(...)
 #endif

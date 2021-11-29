@@ -13,13 +13,22 @@
 #include "queue.h"
 
 #include "usb_device.h"
-//#include "vcp.h"
+
+#include "board.h"
+#include "gpio.h"
 
 #include "fifo.h"
 
 void vLEDTask(void * pvParameters)
 {
   GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ, 0);
+
+//  GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_OUT_OD_2MHZ, 1);
+
+//  GPIO_Lo(UART2_RTX_PORT, UART2_RTX_PIN);
+//  vTaskDelay(50);
+//  GPIO_Hi(UART2_RTX_PORT, UART2_RTX_PIN);
+//  vTaskDelay(2);
 
   while(1)
   {

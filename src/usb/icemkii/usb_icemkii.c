@@ -11,6 +11,8 @@
 #include "icemkii_message.h"
 #include "icemkii_processor.h"
 
+#include "dwire_processor.h"
+
 //#define ICEMKII_TEST_MODE
 
 #include "FreeRTOS.h"
@@ -448,7 +450,7 @@ static void icemkii_SendResponse(U8 * pRsp, U32 size)
  *  @return None
  */
 
-static void ICEMKII_Task(void * pvParameters)
+static void icemkii_Task(void * pvParameters)
 {
   U8 * req = NULL, * rsp = gIceMkII.oBuffer;
   U32 size = 0;
@@ -618,13 +620,15 @@ void ICEMKII_Init(void)
   /* Create the I2C task */
   xTaskCreate
   (
-    ICEMKII_Task,
+    icemkii_Task,
     "ICEMKII",
-    configMINIMAL_STACK_SIZE,
+    4* configMINIMAL_STACK_SIZE,
     NULL,
     tskIDLE_PRIORITY + 1,
     NULL
   );
+
+  DWIRE_Init();
 }
 
 //-----------------------------------------------------------------------------
