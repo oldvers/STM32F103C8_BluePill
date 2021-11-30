@@ -304,7 +304,7 @@ static FW_RESULT isp_WaitUntilReady(U32 msTimeOut)
   while (FW_TRUE == isp_IsDeviceBusy())
   {
     //if (timerTimeoutOccurred())
-    if (time > xTaskGetTickCount())
+    if (time < xTaskGetTickCount())
     {
       return FW_TIMEOUT; //STK_STATUS_RDY_BSY_TOUT;
     }
@@ -481,23 +481,31 @@ void ISP_LeaveProgmode(void) //stkLeaveProgIsp_t *param)
 
 /* ------------------------------------------------------------------------- */
 
-//U8   ispChipErase(stkChipEraseIsp_t *param)
-//{
+FW_RESULT ISP_ChipErase(void) //stkChipEraseIsp_t *param)
+{
 //U8   maxDelay = param->eraseDelay;
-//U8   rval = STK_STATUS_CMD_OK;
+  FW_RESULT rval = FW_SUCCESS;
 //
 //    PORT_PIN_SET(HWPIN_LED_WR);
-//	ispBlockTransfer(param->cmd, 4);
-//    if(param->pollMethod != 0){
-//        if(maxDelay < 10)   /* allow at least 10 ms */
+  (void)isp_Exchange(gIspParams.cmd, ISP_MAX_XFER_SIZE);
+  if (0 != gIspParams.pollMethod)
+  {
+//  if(maxDelay < 10)   /* allow at least 10 ms */
+    if (10 > gIspParams.eraseDelay)
 //            maxDelay = 10;
-//        rval = waitUntilReady(maxDelay);
-//    }else{
-//        timerMsDelay(maxDelay);
-//    }
+    {
+      gIspParams.eraseDelay = 10;
+    }
+
+    rval = isp_WaitUntilReady(gIspParams.eraseDelay);
+  }
+  else
+  {
+    vTaskDelay(gIspParams.eraseDelay);
+  }
 //	PORT_PIN_CLR(HWPIN_LED_WR);
-//    return rval;
-//}
+  return rval;
+}
 
 /* ------------------------------------------------------------------------- */
 

@@ -11,6 +11,7 @@
 /***[ STK ISP command constants ]***/
 #define CMD_ENTER_PROGMODE_ISP              (0x10)
 #define CMD_LEAVE_PROGMODE_ISP              (0x11)
+#define CMD_CHIP_ERASE_ISP                  (0x12)
 #define CMD_READ_FLASH_ISP                  (0x14)
 #define CMD_READ_FUSE_ISP                   (0x18)
 #define CMD_READ_LOCK_ISP                   (0x1A)
@@ -140,6 +141,20 @@ typedef __packed struct RSP_READ_MEMORY_s
   U8 data[1024];
 } RSP_READ_MEMORY_t, * RSP_READ_MEMORY_p;
 
+/*----------------------------------------------------------------------------*/
+
+/* Chip Erase */
+typedef __packed struct REQ_CHIP_ERASE_s
+{
+  U8 eraseDelay;
+  U8 pollMethod;
+  U8 cmd[4];
+} REQ_CHIP_ERASE_t, * REQ_CHIP_ERASE_p;
+
+typedef __packed struct RSP_CHIP_ERASE_s
+{
+  U8 status;
+} RSP_CHIP_ERASE_t, * RSP_CHIP_ERASE_p;
 
 /*----------------------------------------------------------------------------*/
 
@@ -156,6 +171,7 @@ typedef __packed struct ISP_REQ_s
     REQ_READ_FLSO_t       readFLSO;
     REQ_LOAD_ADDRESS_t    loadAddress;
     REQ_READ_MEMORY_t     readMemory;
+    REQ_CHIP_ERASE_t      chipErase;
   };
 } ISP_REQ_t, * ISP_REQ_p;
 
@@ -171,6 +187,7 @@ typedef __packed struct ISP_RSP_s
     RSP_READ_FLSO_t       readFLSO;
     RSP_LOAD_ADDRESS_t    loadAddress;
     RSP_READ_MEMORY_t     readMemory;
+    RSP_CHIP_ERASE_t      chipErase;
   };
 } ISP_RSP_t, * ISP_RSP_p;
 
@@ -416,6 +433,44 @@ static FW_BOOLEAN ispmkii_ReadFlash
 
 /*----------------------------------------------------------------------------*/
 
+static FW_BOOLEAN ispmkii_ChipErase
+(
+  ISP_REQ_p pReq,
+  ISP_RSP_p pRsp,
+  U32 * pSize
+)
+{
+  REQ_CHIP_ERASE_p req = &((ISP_REQ_p)pReq)->chipErase;
+//  RSP_CHIP_ERASE_p rsp = &((ISP_RSP_p)pRsp)->chipErase;
+  FW_RESULT result = FW_SUCCESS;
+
+  gIspParams.eraseDelay = req->eraseDelay;
+  gIspParams.pollMethod = req->pollMethod;
+  gIspParams.cmd[0]     = req->cmd[0];
+  gIspParams.cmd[1]     = req->cmd[1];
+  gIspParams.cmd[2]     = req->cmd[2];
+  gIspParams.cmd[3]     = req->cmd[3];
+
+  result = ISP_ChipErase();
+
+  pRsp->AnswerId = pReq->CommandId;
+  switch (result)
+  {
+    case FW_SUCCESS:
+      pRsp->chipErase.status = STATUS_CMD_OK;
+      break;
+    default:
+      pRsp->chipErase.status = STATUS_CMD_TOUT;
+      break;
+  }
+
+  *pSize = 2;
+
+  return FW_TRUE;
+}
+
+/*----------------------------------------------------------------------------*/
+
 FW_BOOLEAN ISPMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
 {
   FW_BOOLEAN result = FW_FALSE;
@@ -471,6 +526,12 @@ FW_BOOLEAN ISPMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
       break;
     case CMD_READ_FLASH_ISP:
       result = ispmkii_ReadFlash(req, rsp, pSize);
+      break;
+    case CMD_CHIP_ERASE_ISP:
+      if (2 == req->Size)
+      {
+        result = ispmkii_ChipErase(req, rsp, pSize);
+      }
       break;
   }
 

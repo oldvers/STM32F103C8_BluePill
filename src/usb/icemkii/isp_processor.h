@@ -52,6 +52,9 @@ typedef struct ISP_PARAMETERS_s
   } address;
   /* Read Memory Parameters */
   //U16 length;
+  /* Chip Erase */
+  U8 pollMethod;
+  U8 eraseDelay;
 } ISP_PARAMETERS_t;
 
 extern ISP_PARAMETERS_t gIspParams;
@@ -60,5 +63,6 @@ FW_RESULT ISP_EnterProgMode(void);
 void      ISP_LeaveProgmode(void);
 U8        ISP_ReadFLSO     (void);
 FW_RESULT ISP_ReadMemory   (U8 * pBuffer, U32 size);
+FW_RESULT ISP_ChipErase    (void);
 
 #endif /* __ISP_PROCESSOR_H__ */
