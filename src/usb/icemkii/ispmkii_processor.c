@@ -12,7 +12,9 @@
 #define CMD_ENTER_PROGMODE_ISP              (0x10)
 #define CMD_LEAVE_PROGMODE_ISP              (0x11)
 #define CMD_CHIP_ERASE_ISP                  (0x12)
+#define CMD_PROGRAM_FLASH_ISP               (0x13)
 #define CMD_READ_FLASH_ISP                  (0x14)
+#define CMD_READ_EEPROM_ISP                 (0x16)
 #define CMD_READ_FUSE_ISP                   (0x18)
 #define CMD_READ_LOCK_ISP                   (0x1A)
 #define CMD_READ_SIGNATURE_ISP              (0x1B)
@@ -158,6 +160,27 @@ typedef __packed struct RSP_CHIP_ERASE_s
 
 /*----------------------------------------------------------------------------*/
 
+/* Program Flash */
+typedef __packed struct REQ_PROGRAM_FLASH_s
+{
+  U8 numBytes[2]; // Total number of bytes to program, MSB first
+  U8 mode;        // Mode byte
+  U8 delay;       // Delay, used for different types of programming
+  U8 cmd[3];      // (Load Page, Write Program Memory)
+  //U8 cmd2;        // (Write Program Memory Page)
+  //U8 cmd3;        // (Read Program Memory)
+  U8 poll1;
+  U8 poll2;
+  U8 data[1024];
+} REQ_PROGRAM_FLASH_t, * REQ_PROGRAM_FLASH_p;
+
+typedef __packed struct RSP_PROGRAM_FLASH_s
+{
+  U8 status;
+} RSP_PROGRAM_FLASH_t, * RSP_PROGRAM_FLASH_p;
+
+/*----------------------------------------------------------------------------*/
+
 typedef __packed struct ISP_REQ_s
 {
   U16 Size;
@@ -172,6 +195,7 @@ typedef __packed struct ISP_REQ_s
     REQ_LOAD_ADDRESS_t    loadAddress;
     REQ_READ_MEMORY_t     readMemory;
     REQ_CHIP_ERASE_t      chipErase;
+    REQ_PROGRAM_FLASH_t   programFlash;
   };
 } ISP_REQ_t, * ISP_REQ_p;
 
@@ -188,6 +212,7 @@ typedef __packed struct ISP_RSP_s
     RSP_LOAD_ADDRESS_t    loadAddress;
     RSP_READ_MEMORY_t     readMemory;
     RSP_CHIP_ERASE_t      chipErase;
+    RSP_PROGRAM_FLASH_t   programFlash;
   };
 } ISP_RSP_t, * ISP_RSP_p;
 
@@ -395,11 +420,12 @@ static FW_BOOLEAN ispmkii_LoadAddress
 
 /*----------------------------------------------------------------------------*/
 
-static FW_BOOLEAN ispmkii_ReadFlash
+static FW_BOOLEAN ispmkii_ReadMemory
 (
   ISP_REQ_p pReq,
   ISP_RSP_p pRsp,
-  U32 * pSize
+  U32 * pSize,
+  ISP_MEMORY_t memory
 )
 {
   REQ_READ_MEMORY_p req = &((ISP_REQ_p)pReq)->readMemory;
@@ -412,7 +438,7 @@ static FW_BOOLEAN ispmkii_ReadFlash
   length |= (req->numBytes[1] << 0);
   length |= (req->numBytes[0] << 8);
 
-  result = ISP_ReadMemory(rsp->data, length);
+  result = ISP_ReadMemory(rsp->data, length, memory);
 
   pRsp->AnswerId = pReq->CommandId;
   switch (result)
@@ -464,6 +490,50 @@ static FW_BOOLEAN ispmkii_ChipErase
       break;
   }
 
+  *pSize = 2;
+
+  return FW_TRUE;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static FW_BOOLEAN ispmkii_ProgramFlash
+(
+  ISP_REQ_p pReq,
+  ISP_RSP_p pRsp,
+  U32 * pSize
+)
+{
+  REQ_PROGRAM_FLASH_p req = &((ISP_REQ_p)pReq)->programFlash;
+  //RSP_PROGRAM_FLASH_p rsp = &((ISP_RSP_p)pRsp)->programFlash;
+  FW_RESULT result = FW_SUCCESS;
+  U16 length = 0;
+
+  length |= (req->numBytes[1] << 0);
+  length |= (req->numBytes[0] << 8);
+
+  gIspParams.mode        = req->mode;
+  gIspParams.cmdExeDelay = req->delay;
+  gIspParams.cmd[0]      = req->cmd[0];
+  gIspParams.cmd[1]      = req->cmd[1];
+  gIspParams.cmd[2]      = req->cmd[2];
+  gIspParams.pollValue   = req->poll1;
+  gIspParams.pollValue2  = req->poll2;
+  //U8 data[1024];
+  //gIspParams.cmd[0] = req->cmd1;
+
+  result = ISP_ProgramMemory(req->data, length);
+
+  pRsp->AnswerId = pReq->CommandId;
+  switch (result)
+  {
+    case FW_SUCCESS:
+      pRsp->programFlash.status = STATUS_CMD_OK;
+      break;
+    default:
+      pRsp->programFlash.status = STATUS_CMD_TOUT;
+      break;
+  }
   *pSize = 2;
 
   return FW_TRUE;
@@ -525,12 +595,21 @@ FW_BOOLEAN ISPMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
       }
       break;
     case CMD_READ_FLASH_ISP:
-      result = ispmkii_ReadFlash(req, rsp, pSize);
+      result = ispmkii_ReadMemory(req, rsp, pSize, ISP_FLASH);
+      break;
+    case CMD_READ_EEPROM_ISP:
+      result = ispmkii_ReadMemory(req, rsp, pSize, ISP_EEPROM);
       break;
     case CMD_CHIP_ERASE_ISP:
       if (2 == req->Size)
       {
         result = ispmkii_ChipErase(req, rsp, pSize);
+      }
+      break;
+    case CMD_PROGRAM_FLASH_ISP:
+      if (2 == req->Size)
+      {
+        result = ispmkii_ProgramFlash(req, rsp, pSize);
       }
       break;
   }

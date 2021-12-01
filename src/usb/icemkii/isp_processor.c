@@ -16,6 +16,18 @@
 
 /* -------------------------------------------------------------------------- */
 
+#define ISP_DEBUG
+
+#ifdef ISP_DEBUG
+#  define ISP_LOG                 DBG
+#else
+#  define ISP_LOG(...)
+#endif
+#define ISP_LOG_FUNC_START()      ISP_LOG("--- ISP Start ----------------\r\n")
+#define ISP_LOG_FUNC_END()        ISP_LOG("--- ISP End ------------------\r\n")
+#define ISP_LOG_SUCCESS()         ISP_LOG(" - Success\r\n")
+#define ISP_LOG_ERROR()           ISP_LOG(" - Fail\r\n")
+
 #define ISP_VERSION_HW            (1)
 #define ISP_VERSION_MAJOR         (2)
 #define ISP_VERSION_MINOR         (10)
@@ -24,6 +36,8 @@
 #define EVT_SPI_EXCH_TIMEOUT      (100)
 
 #define ISP_MAX_XFER_SIZE         (4)
+
+/* -------------------------------------------------------------------------- */
 
 ISP_PARAMETERS_t gIspParams =
 {
@@ -431,8 +445,12 @@ static void isp_DetachFromDevice(void) //U8 removeResetDelay)
 
 FW_RESULT ISP_EnterProgMode(void) //stkEnterProgIsp_t *param)
 {
-  U8 rval = FW_SUCCESS;
+  FW_RESULT result = FW_FAIL;
+  U8 rval = 0;
   U8 i = 0;
+
+  ISP_LOG_FUNC_START();
+  ISP_LOG("Enter Prog Mode\r\n");
 
   isp_AttachToDevice();//gIspParams.sckDuration, param->stabDelay);
 
@@ -456,27 +474,42 @@ FW_RESULT ISP_EnterProgMode(void) //stkEnterProgIsp_t *param)
 
     if (rval == gIspParams.pollValue)
     {
-      /* success: we are in sync */
-      return FW_SUCCESS;
+      /* Success: we are in sync */
+      //return
+      ISP_LOG_SUCCESS();
+      result = FW_SUCCESS;
+      break;
     }
 
-    isp_InsertClockPulse();
     /* Insert one clock pulse and try again */
+    isp_InsertClockPulse();
+
 //        PORT_PIN_SET(HWPIN_ISP_SCK);
 //    timerTicksDelay(ispClockDelay);
 //        PORT_PIN_CLR(HWPIN_ISP_SCK);
 //    timerTicksDelay(ispClockDelay);
   }
 
-  isp_DetachFromDevice(); //0);
+  if (FW_FAIL == result)
+  {
+    ISP_LOG_ERROR();
+    isp_DetachFromDevice(); //0);
+  }
 
-  return FW_FAIL;
+  ISP_LOG_FUNC_END();
+  //return FW_FAIL;
+  return result;
 }
 
 void ISP_LeaveProgmode(void) //stkLeaveProgIsp_t *param)
 {
+  ISP_LOG_FUNC_START();
+  ISP_LOG("Leave Prog Mode\r\n");
+
   isp_DetachFromDevice(); //param->preDelay);
   vTaskDelay(gIspParams.postDelay); //timerMsDelay(param->postDelay);
+
+  ISP_LOG_FUNC_END();
 }
 
 /* ------------------------------------------------------------------------- */
@@ -486,6 +519,9 @@ FW_RESULT ISP_ChipErase(void) //stkChipEraseIsp_t *param)
 //U8   maxDelay = param->eraseDelay;
   FW_RESULT rval = FW_SUCCESS;
 //
+  ISP_LOG_FUNC_START();
+  ISP_LOG("Chip Erase");
+
 //    PORT_PIN_SET(HWPIN_LED_WR);
   (void)isp_Exchange(gIspParams.cmd, ISP_MAX_XFER_SIZE);
   if (0 != gIspParams.pollMethod)
@@ -503,144 +539,195 @@ FW_RESULT ISP_ChipErase(void) //stkChipEraseIsp_t *param)
   {
     vTaskDelay(gIspParams.eraseDelay);
   }
+
+
+  if (FW_SUCCESS == rval)
+  {
+    ISP_LOG_SUCCESS();
+  }
+  else
+  {
+    ISP_LOG_ERROR();
+  }
+  ISP_LOG_FUNC_END();
 //	PORT_PIN_CLR(HWPIN_LED_WR);
   return rval;
 }
 
 /* ------------------------------------------------------------------------- */
 
-//U8   ispProgramMemory(stkProgramFlashIsp_t *param, U8 isEeprom)
-//{
+FW_RESULT ISP_ProgramMemory(U8 * pBuffer, U32 size) //stkProgramFlashIsp_t *param, U8 isEeprom)
+{
 //utilWord_t  numBytes;
-//U8       rval = STK_STATUS_CMD_OK;
-//U8       valuePollingMask, rdyPollingMask;
-//uint        i;
-//
+  FW_RESULT rval = FW_SUCCESS;
+  U8 valuePollingMask, rdyPollingMask;
+  U32 i;
+  U32 time = 0;
+
+
 //    PORT_PIN_SET(HWPIN_LED_WR);
 //    numBytes.bytes[1] = param->numBytes[0];
 //    numBytes.bytes[0] = param->numBytes[1];
-//    if(param->mode & 1){    /* page mode */
-//        valuePollingMask = 0x20;
-//        rdyPollingMask = 0x40;
-//    }else{                  /* word mode */
-//        valuePollingMask = 4;
-//        rdyPollingMask = 8;
-//    }
-//    for(i = 0; rval == STK_STATUS_CMD_OK && i < numBytes.word; i++){
-//        U8 x;
+  if (1 == gIspParams.mode & 1)
+  {
+    /* page mode */
+    valuePollingMask = 0x20;
+    rdyPollingMask = 0x40;
+  }
+  else
+  {
+    /* word mode */
+    valuePollingMask = 4;
+    rdyPollingMask = 8;
+  }
+
+  for (i = 0; (rval == FW_SUCCESS) && (i < size); i++)
+  {
+    U8 x;
 //        wdt_reset();
-//        cmdBuffer[1] = stkAddress.bytes[1];
-//        cmdBuffer[2] = stkAddress.bytes[0];
-//        cmdBuffer[3] = param->data[i];
-//        x = param->cmd[0];
-//        if(!isEeprom){
-//            x &= ~0x08;
-//            if((U8)i & 1){
-//                x |= 0x08;
-//                stkIncrementAddress();
-//            }
-//        }else{
-//            stkIncrementAddress();
-//        }
-//        cmdBuffer[0] = x;
+    gTxBuffer[1] = gIspParams.address.byte[1]; // cmdBuffer[1] = stkAddress.bytes[1];
+    gTxBuffer[2] = gIspParams.address.byte[0]; // cmdBuffer[2] = stkAddress.bytes[0];
+    gTxBuffer[3] = pBuffer[i]; // cmdBuffer[3] = param->data[i];
+    x = gIspParams.cmd[0]; // x = param->cmd[0];
+//  if (!isEeprom)
+//  {
+//    x &= ~0x08;
+//    if ((U8)i & 1)
+//    {
+//      x |= 0x08;
+//      stkIncrementAddress();
+//    }
+//  }
+//  else
+//  {
+//    stkIncrementAddress();
+      gIspParams.address.value++;
+//  }
+    gTxBuffer[0] = x; // cmdBuffer[0] = x;
 ////        if(cmdBuffer[3] == 0xff && !(param->mode & 1) && !isEeprom)   /* skip 0xff in word mode */
 ////            continue;
-//        ispBlockTransfer(cmdBuffer, 4);
-//        if(param->mode & 1){            /* is page mode */
-//            if(i < numBytes.word - 1 || !(param->mode & 0x80))
-//                continue;               /* not last byte written */
-//            cmdBuffer[0] = param->cmd[1];     /* write program memory page */
-//            ispBlockTransfer(cmdBuffer, 4);
-//        }
-//        /* poll for ready after each byte (word mode) or page (page mode) */
-//        if(param->mode & valuePollingMask){ /* value polling */
-//            U8 d = param->data[i];
-//            if(d == param->poll[0] || d == param->poll[1]){ /* must use timed polling */
-//                timerMsDelay(param->delay);
-//            }else{
-//                U8 x = param->cmd[2];     /* read flash */
-//                x &= ~0x08;
-//                if((U8)i & 1){
-//                    x |= 0x08;
-//                }
-//                cmdBuffer[0] = x;
-//                timerSetupTimeout(param->delay);
-//                while(ispBlockTransfer(cmdBuffer, 4) != d){
-//                    if(timerTimeoutOccurred()){
-//                        rval = STK_STATUS_CMD_TOUT;
-//                        break;
-//                    }
-//                }
-//            }
-//        }else if(param->mode & rdyPollingMask){ /* rdy/bsy polling */
-//            rval = waitUntilReady(param->delay);
-//        }else{                          /* must be timed delay */
-//            timerMsDelay(param->delay);
-//        }
-//    }
+    (void)isp_Exchange(gTxBuffer, ISP_MAX_XFER_SIZE); // ispBlockTransfer(cmdBuffer, 4);
+    if (1 == (gIspParams.mode & 1))
+    {
+      /* is page mode */
+      if (i < size - 1 || !(gIspParams.mode & 0x80))
+             continue;               /* not last byte written */
+
+      gTxBuffer[0] = gIspParams.cmd[1]; //cmdBuffer[0] = param->cmd[1];     /* write program memory page */
+      (void)isp_Exchange(gTxBuffer, ISP_MAX_XFER_SIZE); //ispBlockTransfer(cmdBuffer, 4);
+    }
+    /* poll for ready after each byte (word mode) or page (page mode) */
+    if (gIspParams.mode & valuePollingMask)
+    {
+      /* value polling */
+      U8 d = pBuffer[i];
+      if (d == gIspParams.pollValue || d == gIspParams.pollValue2) //if (d == param->poll[0] || d == param->poll[1])
+      { /* must use timed polling */
+        vTaskDelay(gIspParams.cmdExeDelay); // timerMsDelay(param->delay);
+      }
+      else
+      {
+        U8 x = gIspParams.cmd[2]; // param->cmd[2];     /* read flash */
+        x &= ~0x08;
+        if ((U8)i & 1)
+        {
+          x |= 0x08;
+        }
+        gTxBuffer[0] = x; // cmdBuffer[0] = x;
+//      timerSetupTimeout(param->delay);
+        time = xTaskGetTickCount() + gIspParams.cmdExeDelay;
+        while (isp_Exchange(gTxBuffer, ISP_MAX_XFER_SIZE) != d)// while(ispBlockTransfer(cmdBuffer, 4) != d)
+        {
+          //if (timerTimeoutOccurred())
+          if (time < xTaskGetTickCount())
+          {
+            rval = FW_TIMEOUT; // rval = STK_STATUS_CMD_TOUT;
+            break;
+          }
+        }
+      }
+    }
+    else if (gIspParams.mode & rdyPollingMask)
+    {
+      /* rdy/bsy polling */
+      rval = isp_WaitUntilReady(gIspParams.cmdExeDelay); // param->delay);
+    }
+    else
+    {
+      /* must be timed delay */
+      vTaskDelay(gIspParams.cmdExeDelay); // timerMsDelay(param->delay);
+    }
+  }
 //	PORT_PIN_CLR(HWPIN_LED_WR);
-//    return rval;
-//}
+  return rval;
+}
 
 /* -------------------------------------------------------------------------- */
 
-FW_RESULT ISP_ReadMemory(U8 * pBuffer, U32 size) //, U8 isEeprom)
+FW_RESULT ISP_ReadMemory(U8 * pBuffer, U32 size, ISP_MEMORY_t memory)
 {
   //utilWord_t  numBytes;
   //U8         *p, cmd0;
   U32        i;
 
+  ISP_LOG_FUNC_START();
+  ISP_LOG("Read Memory\r\n");
+  ISP_LOG("Address = %08X\r\n", gIspParams.address.value);
+  ISP_LOG("Size    = %d\r\n", size);
+
 //  PORT_PIN_SET(HWPIN_LED_RD);
-  gIspParams.cmd[3] = 0; //cmdBuffer[3] = 0;
+  gTxBuffer[0] = gIspParams.cmd[0];
+  gTxBuffer[3] = 0; //cmdBuffer[3] = 0;
 //  numBytes.bytes[1] = param->numBytes[0];
 //  numBytes.bytes[0] = param->numBytes[1];
 //  p = result->data;
 //  result->status1 = STK_STATUS_CMD_OK;
 //  cmd0 = param->cmd;
 
-  DBG("Address = %d\r\n", gIspParams.address.value);
+//  DBG("Address = %d\r\n", gIspParams.address.value);
 
   for (i = 0; /*i < numBytes.word;*/ i < size; i++)
   {
     //wdt_reset();
-    gIspParams.cmd[1] = gIspParams.address.byte[1]; // cmdBuffer[1] = stkAddress.bytes[1];
-    gIspParams.cmd[2] = gIspParams.address.byte[0]; // cmdBuffer[2] = stkAddress.bytes[0];
+    gTxBuffer[1] = gIspParams.address.byte[1]; // cmdBuffer[1] = stkAddress.bytes[1];
+    gTxBuffer[2] = gIspParams.address.byte[0]; // cmdBuffer[2] = stkAddress.bytes[0];
 
-    //if (!isEeprom)
-    //{
-    //  if ((U8)i & 1)
-    //  {
-    //    cmd0 |= 0x08;
-    //    stkIncrementAddress();
-    //  }
-    //  else
-    //  {
-    //    cmd0 &= ~0x08;
-    //  }
-    //}
-    //else
-    //{
-    //  stkIncrementAddress();
-    //}
-    gIspParams.address.value++;
-
+    if (ISP_EEPROM == memory)
+    {
+      gIspParams.address.value++; // stkIncrementAddress();
+    }
+    else
+    {
+      if (1 == (i & 1))
+      {
+        gTxBuffer[0] |= (0x08);
+        gIspParams.address.value++; // stkIncrementAddress();
+      }
+      else
+      {
+        gTxBuffer[0] &= ~(0x08);
+      }
+    }
     //cmdBuffer[0] = cmd0;
     *pBuffer++ = isp_Exchange(gIspParams.cmd, ISP_MAX_XFER_SIZE); // *p++ = ispBlockTransfer(cmdBuffer, 4);
   }
   //*p = STK_STATUS_CMD_OK; /* status2 */
 	//PORT_PIN_CLR(HWPIN_LED_RD);
+
+  ISP_LOG_FUNC_END();
+
   return FW_SUCCESS; // numBytes.word + 2;
 }
 
 /* ------------------------------------------------------------------------- */
 
-//U8   ispProgramFuse(stkProgramFuseIsp_t *param)
-//{
+void ISP_ProgramFLSO(void) // stkProgramFuseIsp_t *param)
+{
 //    PORT_PIN_SET(HWPIN_LED_WR);
-//    ispBlockTransfer(param->cmd, 4);
+  (void)isp_Exchange(gIspParams.cmd, ISP_MAX_XFER_SIZE); // ispBlockTransfer(param->cmd, 4);
 //	PORT_PIN_CLR(HWPIN_LED_WR);
 //    return STK_STATUS_CMD_OK;
-//}
+}
 
 /* ------------------------------------------------------------------------- */
 
@@ -687,23 +774,23 @@ U8 ISP_ReadFLSO(void) //stkReadFuseIsp_t * param)
 
 /* ------------------------------------------------------------------------- */
 
-//void    ispResetTarget(stkResetTargetIsp_t *param)
-//{
+void ISP_ResetTarget(void) // stkResetTargetIsp_t *param)
+{
 //    PORT_PIN_SET(HWPIN_LED_WR);
 //
-//    PORT_DDR_SET(HWPIN_ISP_RESET);
-//
-//    PORT_PIN_CLR(HWPIN_ISP_RESET);
-//    timerMsDelay(param->rstDelay);
-//    timerTicksDelay(ispClockDelay);
-//
-//    PORT_PIN_SET(HWPIN_ISP_RESET);
-//    timerMsDelay(param->postDelay);
-//    timerTicksDelay(ispClockDelay);
-//
+  GPIO_Init(SPI1_RST_PORT,  SPI1_RST_PIN,  GPIO_TYPE_OUT_OD_10MHZ, 1); // PORT_DDR_SET(HWPIN_ISP_RESET);
+
+  GPIO_Lo(SPI1_RST_PORT, SPI1_RST_PIN); // PORT_PIN_CLR(HWPIN_ISP_RESET);
+  vTaskDelay(gIspParams.preDelay); // timerMsDelay(param->rstDelay);
+//timerTicksDelay(ispClockDelay);
+
+  GPIO_Hi(SPI1_RST_PORT, SPI1_RST_PIN); // PORT_PIN_SET(HWPIN_ISP_RESET);
+  vTaskDelay(gIspParams.postDelay); // timerMsDelay(param->postDelay);
+//timerTicksDelay(ispClockDelay);
+
 //    PORT_DDR_CLR(HWPIN_ISP_RESET);
 //
 //    PORT_PIN_CLR(HWPIN_LED_WR);
-//}
+}
 
 /* ------------------------------------------------------------------------- */

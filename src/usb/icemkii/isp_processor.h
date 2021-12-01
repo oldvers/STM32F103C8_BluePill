@@ -3,6 +3,12 @@
 
 #include "types.h"
 
+typedef enum
+{
+  ISP_FLASH = 0,
+  ISP_EEPROM,
+} ISP_MEMORY_t;
+
 typedef struct ISP_PARAMETERS_s
 {
   /* Global Parameters */
@@ -29,6 +35,7 @@ typedef struct ISP_PARAMETERS_s
   U8   synchLoops;  // Number of synchronization loops
   U8   byteDelay;   // Delay (in ms) between each byte in the command
   U8   pollValue;   // Poll value: 0x53 for AVR, 0x69 for AT89xx
+  U8   pollValue2;
   U8   pollIndex;   // Start addr, rx byte: 0 = no polling, 3 = AVR, 4 = AT89xx
   U8   cmd[4];      // Command Byte # 1 to be transmitted
   //U8   cmd2;        // Command Byte # 2 to be transmitted
@@ -55,6 +62,8 @@ typedef struct ISP_PARAMETERS_s
   /* Chip Erase */
   U8 pollMethod;
   U8 eraseDelay;
+  /* Program Flash */
+  U8 mode;
 } ISP_PARAMETERS_t;
 
 extern ISP_PARAMETERS_t gIspParams;
@@ -62,7 +71,10 @@ extern ISP_PARAMETERS_t gIspParams;
 FW_RESULT ISP_EnterProgMode(void);
 void      ISP_LeaveProgmode(void);
 U8        ISP_ReadFLSO     (void);
-FW_RESULT ISP_ReadMemory   (U8 * pBuffer, U32 size);
+FW_RESULT ISP_ReadMemory   (U8 * pBuffer, U32 size, ISP_MEMORY_t memory);
 FW_RESULT ISP_ChipErase    (void);
+FW_RESULT ISP_ProgramMemory(U8 * pBuffer, U32 size);
+void      ISP_ProgramFLSO  (void);
+void      ISP_ResetTarget  (void);
 
 #endif /* __ISP_PROCESSOR_H__ */
