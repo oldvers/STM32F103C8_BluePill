@@ -16,7 +16,9 @@
 #define CMD_READ_FLASH_ISP                  (0x14)
 #define CMD_PROGRAM_EEPROM_ISP              (0x15)
 #define CMD_READ_EEPROM_ISP                 (0x16)
+#define CMD_PROGRAM_FUSE_ISP                (0x17)
 #define CMD_READ_FUSE_ISP                   (0x18)
+#define CMD_PROGRAM_LOCK_ISP                (0x19)
 #define CMD_READ_LOCK_ISP                   (0x1A)
 #define CMD_READ_SIGNATURE_ISP              (0x1B)
 #define CMD_READ_OSCCAL_ISP                 (0x1C)
@@ -182,6 +184,20 @@ typedef __packed struct RSP_PROGRAM_FLASH_s
 
 /*----------------------------------------------------------------------------*/
 
+/* Program Fuse/Lock */
+typedef __packed struct REQ_PROGRAM_FLSO_s
+{
+  U8 cmd[4];
+} REQ_PROGRAM_FLSO_t, * REQ_PROGRAM_FLSO_p;
+
+typedef __packed struct RSP_PROGRAM_FLSO_s
+{
+  U8 status1;
+  U8 status2;
+} RSP_PROGRAM_FLSO_t, * RSP_PROGRAM_FLSO_p;
+
+/*----------------------------------------------------------------------------*/
+
 typedef __packed struct ISP_REQ_s
 {
   U16 Size;
@@ -197,6 +213,7 @@ typedef __packed struct ISP_REQ_s
     REQ_READ_MEMORY_t     readMemory;
     REQ_CHIP_ERASE_t      chipErase;
     REQ_PROGRAM_FLASH_t   programFlash;
+    REQ_PROGRAM_FLSO_t    programFLSO;
   };
 } ISP_REQ_t, * ISP_REQ_p;
 
@@ -214,6 +231,7 @@ typedef __packed struct ISP_RSP_s
     RSP_READ_MEMORY_t     readMemory;
     RSP_CHIP_ERASE_t      chipErase;
     RSP_PROGRAM_FLASH_t   programFlash;
+    RSP_PROGRAM_FLSO_t    programFLSO;
   };
 } ISP_RSP_t, * ISP_RSP_p;
 
@@ -278,9 +296,9 @@ static FW_BOOLEAN ispmkii_EnterProgMode
   FW_RESULT result = FW_SUCCESS;
   REQ_ENTER_PROG_MODE_p req = &((ISP_REQ_p)pReq)->enterProgMode;
 
-  gIspParams.timeout      = req->timeout;
+  gIspParams.cmdTimeout   = req->timeout;
   gIspParams.stabDelay    = req->stabDelay;
-  gIspParams.cmdExeDelay  = req->cmdExeDelay;
+  gIspParams.cmdDelay     = req->cmdExeDelay;
   gIspParams.synchLoops   = req->synchLoops;
   gIspParams.byteDelay    = req->byteDelay;
   gIspParams.pollValue[0] = req->pollValue;
@@ -515,7 +533,7 @@ static FW_BOOLEAN ispmkii_ProgramMemory
   length |= (req->numBytes[0] << 8);
 
   gIspParams.mode         = req->mode;
-  gIspParams.cmdExeDelay  = req->delay;
+  gIspParams.cmdDelay     = req->delay;
   gIspParams.cmd[0]       = req->cmd[0];
   gIspParams.cmd[1]       = req->cmd[1];
   gIspParams.cmd[2]       = req->cmd[2];
@@ -537,6 +555,33 @@ static FW_BOOLEAN ispmkii_ProgramMemory
       break;
   }
   *pSize = 2;
+
+  return FW_TRUE;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static FW_BOOLEAN ispmkii_ProgramFLSO
+(
+  ISP_REQ_p pReq,
+  ISP_RSP_p pRsp,
+  U32 * pSize
+)
+{
+  REQ_PROGRAM_FLSO_p req = &((ISP_REQ_p)pReq)->programFLSO;
+
+  gIspParams.cmd[0] = req->cmd[0];
+  gIspParams.cmd[1] = req->cmd[1];
+  gIspParams.cmd[2] = req->cmd[2];
+  gIspParams.cmd[3] = req->cmd[3];
+
+  ISP_ProgramFLSO();
+
+  pRsp->AnswerId            = pReq->CommandId;
+  pRsp->programFLSO.status1 = STATUS_CMD_OK;
+  pRsp->programFLSO.status2 = STATUS_CMD_OK;
+
+  *pSize = 3;
 
   return FW_TRUE;
 }
@@ -618,6 +663,13 @@ FW_BOOLEAN ISPMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
       if (2 == req->Size)
       {
         result = ispmkii_ProgramMemory(req, rsp, pSize, ISP_EEPROM);
+      }
+      break;
+    case CMD_PROGRAM_FUSE_ISP:
+    case CMD_PROGRAM_LOCK_ISP:
+      if (3 == req->Size)
+      {
+        result = ispmkii_ProgramFLSO(req, rsp, pSize);
       }
       break;
   }
