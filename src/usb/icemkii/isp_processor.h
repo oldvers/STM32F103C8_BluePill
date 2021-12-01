@@ -34,8 +34,7 @@ typedef struct ISP_PARAMETERS_s
   U8   cmdExeDelay; // Delay (in ms) in connection with the command execution
   U8   synchLoops;  // Number of synchronization loops
   U8   byteDelay;   // Delay (in ms) between each byte in the command
-  U8   pollValue;   // Poll value: 0x53 for AVR, 0x69 for AT89xx
-  U8   pollValue2;
+  U8   pollValue[2]; // Poll value: 0x53 for AVR, 0x69 for AT89xx
   U8   pollIndex;   // Start addr, rx byte: 0 = no polling, 3 = AVR, 4 = AT89xx
   U8   cmd[4];      // Command Byte # 1 to be transmitted
   //U8   cmd2;        // Command Byte # 2 to be transmitted
@@ -73,7 +72,7 @@ void      ISP_LeaveProgmode(void);
 U8        ISP_ReadFLSO     (void);
 FW_RESULT ISP_ReadMemory   (U8 * pBuffer, U32 size, ISP_MEMORY_t memory);
 FW_RESULT ISP_ChipErase    (void);
-FW_RESULT ISP_ProgramMemory(U8 * pBuffer, U32 size);
+FW_RESULT ISP_ProgramMemory(U8 * pBuffer, U32 size, ISP_MEMORY_t memory);
 void      ISP_ProgramFLSO  (void);
 void      ISP_ResetTarget  (void);
 
