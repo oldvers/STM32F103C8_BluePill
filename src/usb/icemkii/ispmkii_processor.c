@@ -105,10 +105,7 @@ typedef __packed struct RSP_LEAVE_PROG_MODE_s
 typedef __packed struct REQ_READ_FLSO_s
 {
   U8 RetAddr; // Return address
-  U8 cmd1;    // Command Byte #1
-  U8 cmd2;    // Command Byte #2
-  U8 cmd3;    // Command Byte #3
-  U8 cmd4;    // Command Byte #4
+  U8 cmd[4];  // Command Byte #1-#4
 } REQ_READ_FLSO_t, * REQ_READ_FLSO_p;
 
 typedef __packed struct RSP_READ_FLSO_s
@@ -137,7 +134,7 @@ typedef __packed struct RSP_LOAD_ADDRESS_s
 typedef __packed struct REQ_READ_MEMORY_s
 {
   U8 numBytes[2];
-  U8 cmd1;
+  U8 cmd;
 } REQ_READ_MEMORY_t, * REQ_READ_MEMORY_p;
 
 typedef __packed struct RSP_READ_MEMORY_s
@@ -170,10 +167,9 @@ typedef __packed struct REQ_PROGRAM_FLASH_s
   U8 mode;        // Mode byte
   U8 delay;       // Delay, used for different types of programming
   U8 cmd[3];      // (Load Page, Write Program Memory)
-  //U8 cmd2;        // (Write Program Memory Page)
-  //U8 cmd3;        // (Read Program Memory)
-  U8 poll1;
-  U8 poll2;
+                  // (Write Program Memory Page)
+                  // (Read Program Memory)
+  U8 poll[2];
   U8 data[1024];
 } REQ_PROGRAM_FLASH_t, * REQ_PROGRAM_FLASH_p;
 
@@ -200,8 +196,8 @@ typedef __packed struct RSP_PROGRAM_FLSO_s
 
 typedef __packed struct ISP_REQ_s
 {
-  U16 Size;
-  U8  CommandId;
+  U16 size;
+  U8  commandId;
   union
   {
     REQ_GET_PARAMETER_t   getParameter;
@@ -219,7 +215,7 @@ typedef __packed struct ISP_REQ_s
 
 typedef __packed struct ISP_RSP_s
 {
-  U8  AnswerId;
+  U8  answerId;
   union
   {
     RSP_GET_PARAMETER_t   getParameter;
@@ -237,18 +233,20 @@ typedef __packed struct ISP_RSP_s
 
 /*----------------------------------------------------------------------------*/
 
-static FW_BOOLEAN ispmkii_GetParameter(U8 id, ISP_RSP_p pRsp, U32 * pSize)
+static FW_BOOLEAN ispmkii_GetParameter(ISP_REQ_p req, ISP_RSP_p rsp, U32 * size)
 {
   FW_BOOLEAN result = FW_TRUE;
 
-  pRsp->AnswerId = CMD_GET_PARAMETER;
-  *pSize = 3;
+  if (3 != req->size) return FW_FALSE;
 
-  switch (id)
+  rsp->answerId = req->commandId;
+  *size = 3;
+
+  switch (req->getParameter.id)
   {
     case PARAM_SCK_DURATION:
-      pRsp->getParameter.status = STATUS_CMD_OK;
-      pRsp->getParameter.value = gIspParams.sckDuration;
+      rsp->getParameter.status = STATUS_CMD_OK;
+      rsp->getParameter.value = gIspParams.sckDuration;
       break;
     default:
       result = FW_FALSE;
@@ -260,21 +258,23 @@ static FW_BOOLEAN ispmkii_GetParameter(U8 id, ISP_RSP_p pRsp, U32 * pSize)
 
 /*----------------------------------------------------------------------------*/
 
-static FW_BOOLEAN ispmkii_SetParameter(U8 id, U8 v, ISP_RSP_p pRsp, U32 * pSize)
+static FW_BOOLEAN ispmkii_SetParameter(ISP_REQ_p req, ISP_RSP_p rsp, U32 * size)
 {
   FW_BOOLEAN result = FW_TRUE;
 
-  pRsp->AnswerId = CMD_SET_PARAMETER;
-  *pSize = 2;
+  if (2 != req->size) return FW_FALSE;
 
-  switch (id)
+  rsp->answerId = req->commandId;
+  *size = 2;
+
+  switch (req->setParameter.id)
   {
     case PARAM_RESET_POLARITY:
-      pRsp->setParameter.status = STATUS_CMD_OK;
+      rsp->setParameter.status = STATUS_CMD_OK;
       break;
     case PARAM_SCK_DURATION:
-      pRsp->setParameter.status = STATUS_CMD_OK;
-      gIspParams.sckDuration = v;
+      rsp->setParameter.status = STATUS_CMD_OK;
+      gIspParams.sckDuration = req->setParameter.value;
       break;
     default:
       result = FW_FALSE;
@@ -286,190 +286,131 @@ static FW_BOOLEAN ispmkii_SetParameter(U8 id, U8 v, ISP_RSP_p pRsp, U32 * pSize)
 
 /*----------------------------------------------------------------------------*/
 
-static FW_BOOLEAN ispmkii_EnterProgMode
-(
-  ISP_REQ_p pReq,
-  ISP_RSP_p pRsp,
-  U32 * pSize
-)
+static FW_BOOLEAN ispmkii_EnterProgMode(ISP_REQ_p rq, ISP_RSP_p rp, U32 * size)
 {
   FW_RESULT result = FW_SUCCESS;
-  REQ_ENTER_PROG_MODE_p req = &((ISP_REQ_p)pReq)->enterProgMode;
 
-  gIspParams.cmdTimeout   = req->timeout;
-  gIspParams.stabDelay    = req->stabDelay;
-  gIspParams.cmdDelay     = req->cmdExeDelay;
-  gIspParams.synchLoops   = req->synchLoops;
-  gIspParams.byteDelay    = req->byteDelay;
-  gIspParams.pollValue[0] = req->pollValue;
-  gIspParams.pollIndex    = req->pollIndex;
-  gIspParams.cmd[0]       = req->cmd1;
-  gIspParams.cmd[1]       = req->cmd2;
-  gIspParams.cmd[2]       = req->cmd3;
-  gIspParams.cmd[3]       = req->cmd4;
+  if (2 != rq->size) return FW_FALSE;
 
-  pRsp->AnswerId = pReq->CommandId;
+  gIspParams.cmdTimeout   = rq->enterProgMode.timeout;
+  gIspParams.stabDelay    = rq->enterProgMode.stabDelay;
+  gIspParams.cmdDelay     = rq->enterProgMode.cmdExeDelay;
+  gIspParams.synchLoops   = rq->enterProgMode.synchLoops;
+  gIspParams.byteDelay    = rq->enterProgMode.byteDelay;
+  gIspParams.pollValue[0] = rq->enterProgMode.pollValue;
+  gIspParams.pollIndex    = rq->enterProgMode.pollIndex;
+  gIspParams.cmd[0]       = rq->enterProgMode.cmd1;
+  gIspParams.cmd[1]       = rq->enterProgMode.cmd2;
+  gIspParams.cmd[2]       = rq->enterProgMode.cmd3;
+  gIspParams.cmd[3]       = rq->enterProgMode.cmd4;
+
+  rp->answerId = rq->commandId;
 
   result = ISP_EnterProgMode();
   switch (result)
   {
     case FW_SUCCESS:
-      pRsp->enterProgMode.status = STATUS_CMD_OK;
+      rp->enterProgMode.status = STATUS_CMD_OK;
       break;
     case FW_TIMEOUT:
-      pRsp->enterProgMode.status = STATUS_CMD_TOUT;
+      rp->enterProgMode.status = STATUS_CMD_TOUT;
       break;
     default:
-      pRsp->enterProgMode.status = STATUS_CMD_FAILED;
+      rp->enterProgMode.status = STATUS_CMD_FAILED;
       break;
   }
-  *pSize = 2;
+  *size = 2;
 
   return FW_TRUE;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static FW_BOOLEAN ispmkii_LeaveProgMode
-(
-  ISP_REQ_p pReq,
-  ISP_RSP_p pRsp,
-  U32 * pSize
-)
+static FW_BOOLEAN ispmkii_LeaveProgMode(ISP_REQ_p rq, ISP_RSP_p rp, U32 * size)
 {
-  FW_BOOLEAN result = FW_TRUE;
+  if (2 != rq->size) return FW_FALSE;
 
   ISP_LeaveProgmode();
 
-  pRsp->AnswerId = CMD_LEAVE_PROGMODE_ISP;
-  pRsp->enterProgMode.status = STATUS_CMD_OK;
-  *pSize = 2;
-
-  return result;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static FW_BOOLEAN ispmkii_ReadFLSO
-(
-  ISP_REQ_p pReq,
-  ISP_RSP_p pRsp,
-  U32 * pSize
-)
-{
-//  FW_BOOLEAN result = FW_TRUE;
-//  /* ATmega48 signature/fuses */
-//  U8 sign[3] = {0x1E, 0x92, 0x05};
-//  /* Default */
-//  //U8 fuse[3] = {0x62, 0xDF, 0xFF};
-//  /* DebugWire enabled */
-//  U8 fuse[3] = {0x62, 0x9F, 0xFF};
-
-//  pRsp->AnswerId = pReq->CommandId;
-//  pRsp->readFLSO.status1 = STATUS_CMD_OK;
-//  pRsp->readFLSO.status2 = STATUS_CMD_OK;
-//  *pSize = 4;
-
-//  //Read signature
-//  if (0x30 == pReq->readFLSO.cmd1)
-//  {
-//    pRsp->readFLSO.data = sign[pReq->readFLSO.cmd3];
-//  }
-//  else if ((0x50 == pReq->readFLSO.cmd1) && (0x00 == pReq->readFLSO.cmd2))
-//  {
-//    pRsp->readFLSO.data = fuse[0];
-//  }
-//  else if ((0x58 == pReq->readFLSO.cmd1) && (0x08 == pReq->readFLSO.cmd2))
-//  {
-//    pRsp->readFLSO.data = fuse[1];
-//  }
-//  else if ((0x50 == pReq->readFLSO.cmd1) && (0x08 == pReq->readFLSO.cmd2))
-//  {
-//    pRsp->readFLSO.data = fuse[2];
-//  }
-//  else
-//  {
-//    pRsp->readFLSO.data = 0xFF;
-//  }
-
-//  return result;
-
-//  FW_RESULT result = FW_SUCCESS;
-  REQ_READ_FLSO_p req = &((ISP_REQ_p)pReq)->readFLSO;
-
-  gIspParams.pollIndex   = req->RetAddr;
-  gIspParams.cmd[0]      = req->cmd1;
-  gIspParams.cmd[1]      = req->cmd2;
-  gIspParams.cmd[2]      = req->cmd3;
-  gIspParams.cmd[3]      = req->cmd4;
-
-  pRsp->AnswerId         = pReq->CommandId;
-  pRsp->readFLSO.status1 = STATUS_CMD_OK;
-  pRsp->readFLSO.data    = ISP_ReadFLSO();
-  pRsp->readFLSO.status2 = STATUS_CMD_OK;
-
-  *pSize = 4;
+  rp->answerId = rq->commandId;
+  rp->enterProgMode.status = STATUS_CMD_OK;
+  *size = 2;
 
   return FW_TRUE;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static FW_BOOLEAN ispmkii_LoadAddress
-(
-  ISP_REQ_p pReq,
-  ISP_RSP_p pRsp,
-  U32 * pSize
-)
+static FW_BOOLEAN ispmkii_ReadFLSO(ISP_REQ_p req, ISP_RSP_p rsp, U32 * size)
 {
-  FW_BOOLEAN result = FW_TRUE;
+  if (4 != req->size) return FW_FALSE;
 
-  //gIspParams.address  = 0;
-  gIspParams.address.byte[0] = pReq->loadAddress.value[3];
-  gIspParams.address.byte[1] = pReq->loadAddress.value[2];
-  gIspParams.address.byte[2] = pReq->loadAddress.value[1];
-  gIspParams.address.byte[3] = pReq->loadAddress.value[0];
+  gIspParams.pollIndex = req->readFLSO.RetAddr;
+  gIspParams.cmd[0]    = req->readFLSO.cmd[0];
+  gIspParams.cmd[1]    = req->readFLSO.cmd[1];
+  gIspParams.cmd[2]    = req->readFLSO.cmd[2];
+  gIspParams.cmd[3]    = req->readFLSO.cmd[3];
 
-  pRsp->AnswerId = pReq->CommandId;
-  pRsp->loadAddress.status = STATUS_CMD_OK;
-  *pSize = 2;
+  rsp->answerId         = req->commandId;
+  rsp->readFLSO.status1 = STATUS_CMD_OK;
+  rsp->readFLSO.data    = ISP_ReadFLSO();
+  rsp->readFLSO.status2 = STATUS_CMD_OK;
+  *size = 4;
 
-  return result;
+  return FW_TRUE;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static FW_BOOLEAN ispmkii_LoadAddress(ISP_REQ_p req, ISP_RSP_p rsp, U32 * size)
+{
+  if (2 != req->size) return FW_FALSE;
+
+  gIspParams.address.byte[0] = req->loadAddress.value[3];
+  gIspParams.address.byte[1] = req->loadAddress.value[2];
+  gIspParams.address.byte[2] = req->loadAddress.value[1];
+  gIspParams.address.byte[3] = req->loadAddress.value[0];
+
+  rsp->answerId           = req->commandId;
+  rsp->loadAddress.status = STATUS_CMD_OK;
+  *size = 2;
+
+  return FW_TRUE;
 }
 
 /*----------------------------------------------------------------------------*/
 
 static FW_BOOLEAN ispmkii_ReadMemory
 (
-  ISP_REQ_p pReq,
-  ISP_RSP_p pRsp,
-  U32 * pSize,
+  ISP_REQ_p req,
+  ISP_RSP_p rsp,
+  U32 * size,
   ISP_MEMORY_t memory
 )
 {
-  REQ_READ_MEMORY_p req = &((ISP_REQ_p)pReq)->readMemory;
-  RSP_READ_MEMORY_p rsp = &((ISP_RSP_p)pRsp)->readMemory;
   FW_RESULT result = FW_SUCCESS;
   U16 length = 0;
 
-  gIspParams.cmd[0] = req->cmd1;
-  length  = 0;
-  length |= (req->numBytes[1] << 0);
-  length |= (req->numBytes[0] << 8);
+  length |= (req->readMemory.numBytes[1] << 0);
+  length |= (req->readMemory.numBytes[0] << 8);
 
-  result = ISP_ReadMemory(rsp->data, length, memory);
+  if (length != (req->size - 3)) return FW_FALSE;
 
-  pRsp->AnswerId = pReq->CommandId;
+  gIspParams.cmd[0] = req->readMemory.cmd;
+
+  result = ISP_ReadMemory(rsp->readMemory.data, length, memory);
+
+  rsp->answerId = req->commandId;
   switch (result)
   {
     case FW_SUCCESS:
-      pRsp->readMemory.status1      = STATUS_CMD_OK;
-      pRsp->readMemory.data[length] = STATUS_CMD_OK;
-      *pSize                        = (length + 3);
+      rsp->readMemory.status1      = STATUS_CMD_OK;
+      rsp->readMemory.data[length] = STATUS_CMD_OK;
+      *size                        = (length + 3);
       break;
     default:
-      pRsp->enterProgMode.status    = STATUS_CMD_FAILED;
-      *pSize                        = 2;
+      rsp->enterProgMode.status    = STATUS_CMD_FAILED;
+      *size                        = 2;
       break;
   }
 
@@ -478,38 +419,33 @@ static FW_BOOLEAN ispmkii_ReadMemory
 
 /*----------------------------------------------------------------------------*/
 
-static FW_BOOLEAN ispmkii_ChipErase
-(
-  ISP_REQ_p pReq,
-  ISP_RSP_p pRsp,
-  U32 * pSize
-)
+static FW_BOOLEAN ispmkii_ChipErase(ISP_REQ_p req, ISP_RSP_p rsp, U32 * size)
 {
-  REQ_CHIP_ERASE_p req = &((ISP_REQ_p)pReq)->chipErase;
-//  RSP_CHIP_ERASE_p rsp = &((ISP_RSP_p)pRsp)->chipErase;
   FW_RESULT result = FW_SUCCESS;
 
-  gIspParams.eraseDelay = req->eraseDelay;
-  gIspParams.pollMethod = req->pollMethod;
-  gIspParams.cmd[0]     = req->cmd[0];
-  gIspParams.cmd[1]     = req->cmd[1];
-  gIspParams.cmd[2]     = req->cmd[2];
-  gIspParams.cmd[3]     = req->cmd[3];
+  if (2 != req->size) return FW_FALSE;
+
+  gIspParams.eraseDelay = req->chipErase.eraseDelay;
+  gIspParams.pollMethod = req->chipErase.pollMethod;
+  gIspParams.cmd[0]     = req->chipErase.cmd[0];
+  gIspParams.cmd[1]     = req->chipErase.cmd[1];
+  gIspParams.cmd[2]     = req->chipErase.cmd[2];
+  gIspParams.cmd[3]     = req->chipErase.cmd[3];
 
   result = ISP_ChipErase();
 
-  pRsp->AnswerId = pReq->CommandId;
+  rsp->answerId = req->commandId;
   switch (result)
   {
     case FW_SUCCESS:
-      pRsp->chipErase.status = STATUS_CMD_OK;
+      rsp->chipErase.status = STATUS_CMD_OK;
       break;
     default:
-      pRsp->chipErase.status = STATUS_CMD_TOUT;
+      rsp->chipErase.status = STATUS_CMD_TOUT;
       break;
   }
 
-  *pSize = 2;
+  *size = 2;
 
   return FW_TRUE;
 }
@@ -518,70 +454,63 @@ static FW_BOOLEAN ispmkii_ChipErase
 
 static FW_BOOLEAN ispmkii_ProgramMemory
 (
-  ISP_REQ_p pReq,
-  ISP_RSP_p pRsp,
-  U32 * pSize,
+  ISP_REQ_p req,
+  ISP_RSP_p rsp,
+  U32 * size,
   ISP_MEMORY_t memory
 )
 {
-  REQ_PROGRAM_FLASH_p req = &((ISP_REQ_p)pReq)->programFlash;
-  //RSP_PROGRAM_FLASH_p rsp = &((ISP_RSP_p)pRsp)->programFlash;
   FW_RESULT result = FW_SUCCESS;
   U16 length = 0;
 
-  length |= (req->numBytes[1] << 0);
-  length |= (req->numBytes[0] << 8);
+  if (2 != req->size) return FW_FALSE;
 
-  gIspParams.mode         = req->mode;
-  gIspParams.cmdDelay     = req->delay;
-  gIspParams.cmd[0]       = req->cmd[0];
-  gIspParams.cmd[1]       = req->cmd[1];
-  gIspParams.cmd[2]       = req->cmd[2];
-  gIspParams.pollValue[0] = req->poll1;
-  gIspParams.pollValue[1] = req->poll2;
-  //U8 data[1024];
-  //gIspParams.cmd[0] = req->cmd1;
+  length |= (req->programFlash.numBytes[1] << 0);
+  length |= (req->programFlash.numBytes[0] << 8);
 
-  result = ISP_ProgramMemory(req->data, length, memory);
+  gIspParams.mode         = req->programFlash.mode;
+  gIspParams.cmdDelay     = req->programFlash.delay;
+  gIspParams.cmd[0]       = req->programFlash.cmd[0];
+  gIspParams.cmd[1]       = req->programFlash.cmd[1];
+  gIspParams.cmd[2]       = req->programFlash.cmd[2];
+  gIspParams.pollValue[0] = req->programFlash.poll[0];
+  gIspParams.pollValue[1] = req->programFlash.poll[1];
 
-  pRsp->AnswerId = pReq->CommandId;
+  result = ISP_ProgramMemory(req->programFlash.data, length, memory);
+
+  rsp->answerId = req->commandId;
   switch (result)
   {
     case FW_SUCCESS:
-      pRsp->programFlash.status = STATUS_CMD_OK;
+      rsp->programFlash.status = STATUS_CMD_OK;
       break;
     default:
-      pRsp->programFlash.status = STATUS_CMD_TOUT;
+      rsp->programFlash.status = STATUS_CMD_TOUT;
       break;
   }
-  *pSize = 2;
+  *size = 2;
 
   return FW_TRUE;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static FW_BOOLEAN ispmkii_ProgramFLSO
-(
-  ISP_REQ_p pReq,
-  ISP_RSP_p pRsp,
-  U32 * pSize
-)
+static FW_BOOLEAN ispmkii_ProgramFLSO(ISP_REQ_p req, ISP_RSP_p rsp, U32 * size)
 {
-  REQ_PROGRAM_FLSO_p req = &((ISP_REQ_p)pReq)->programFLSO;
+  if (3 != req->size) return FW_FALSE;
 
-  gIspParams.cmd[0] = req->cmd[0];
-  gIspParams.cmd[1] = req->cmd[1];
-  gIspParams.cmd[2] = req->cmd[2];
-  gIspParams.cmd[3] = req->cmd[3];
+  gIspParams.cmd[0] = req->programFLSO.cmd[0];
+  gIspParams.cmd[1] = req->programFLSO.cmd[1];
+  gIspParams.cmd[2] = req->programFLSO.cmd[2];
+  gIspParams.cmd[3] = req->programFLSO.cmd[3];
 
   ISP_ProgramFLSO();
 
-  pRsp->AnswerId            = pReq->CommandId;
-  pRsp->programFLSO.status1 = STATUS_CMD_OK;
-  pRsp->programFLSO.status2 = STATUS_CMD_OK;
+  rsp->answerId            = req->commandId;
+  rsp->programFLSO.status1 = STATUS_CMD_OK;
+  rsp->programFLSO.status2 = STATUS_CMD_OK;
 
-  *pSize = 3;
+  *size = 3;
 
   return FW_TRUE;
 }
@@ -594,52 +523,28 @@ FW_BOOLEAN ISPMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
   ISP_REQ_p  req = (ISP_REQ_p)pReqBody;
   ISP_RSP_p  rsp = (ISP_RSP_p)pRspBody;
 
-  switch (req->CommandId)
+  switch (req->commandId)
   {
     case CMD_GET_PARAMETER:
-      if (3 == req->Size)
-      {
-        result = ispmkii_GetParameter(req->getParameter.id, rsp, pSize);
-      }
+      result = ispmkii_GetParameter(req, rsp, pSize);
       break;
     case CMD_SET_PARAMETER:
-      if (2 == req->Size)
-      {
-        result = ispmkii_SetParameter
-                 (
-                   req->setParameter.id,
-                   req->setParameter.value,
-                   rsp,
-                   pSize
-                 );
-      }
+      result = ispmkii_SetParameter(req, rsp, pSize);
       break;
     case CMD_ENTER_PROGMODE_ISP:
-      if (2 == req->Size)
-      {
-        result = ispmkii_EnterProgMode(req, rsp, pSize);
-      }
+      result = ispmkii_EnterProgMode(req, rsp, pSize);
       break;
     case CMD_LEAVE_PROGMODE_ISP:
-      if (2 == req->Size)
-      {
-        result = ispmkii_LeaveProgMode(req, rsp, pSize);
-      }
+      result = ispmkii_LeaveProgMode(req, rsp, pSize);
       break;
     case CMD_READ_FUSE_ISP:
     case CMD_READ_LOCK_ISP:
     case CMD_READ_SIGNATURE_ISP:
     case CMD_READ_OSCCAL_ISP:
-      if (4 == req->Size)
-      {
-        result = ispmkii_ReadFLSO(req, rsp, pSize);
-      }
+      result = ispmkii_ReadFLSO(req, rsp, pSize);
       break;
     case CMD_LOAD_ADDRESS:
-      if (2 == req->Size)
-      {
-        result = ispmkii_LoadAddress(req, rsp, pSize);
-      }
+      result = ispmkii_LoadAddress(req, rsp, pSize);
       break;
     case CMD_READ_FLASH_ISP:
       result = ispmkii_ReadMemory(req, rsp, pSize, ISP_FLASH);
@@ -648,29 +553,17 @@ FW_BOOLEAN ISPMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
       result = ispmkii_ReadMemory(req, rsp, pSize, ISP_EEPROM);
       break;
     case CMD_CHIP_ERASE_ISP:
-      if (2 == req->Size)
-      {
-        result = ispmkii_ChipErase(req, rsp, pSize);
-      }
+      result = ispmkii_ChipErase(req, rsp, pSize);
       break;
     case CMD_PROGRAM_FLASH_ISP:
-      if (2 == req->Size)
-      {
-        result = ispmkii_ProgramMemory(req, rsp, pSize, ISP_FLASH);
-      }
+      result = ispmkii_ProgramMemory(req, rsp, pSize, ISP_FLASH);
       break;
     case CMD_PROGRAM_EEPROM_ISP:
-      if (2 == req->Size)
-      {
-        result = ispmkii_ProgramMemory(req, rsp, pSize, ISP_EEPROM);
-      }
+      result = ispmkii_ProgramMemory(req, rsp, pSize, ISP_EEPROM);
       break;
     case CMD_PROGRAM_FUSE_ISP:
     case CMD_PROGRAM_LOCK_ISP:
-      if (3 == req->Size)
-      {
-        result = ispmkii_ProgramFLSO(req, rsp, pSize);
-      }
+      result = ispmkii_ProgramFLSO(req, rsp, pSize);
       break;
   }
 
