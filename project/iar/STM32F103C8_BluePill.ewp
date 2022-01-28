@@ -1115,6 +1115,12 @@
             <name>$PROJ_DIR$\..\..\src\hw\system.h</name>
         </file>
         <file>
+            <name>$PROJ_DIR$\..\..\src\hw\tim.c</name>
+        </file>
+        <file>
+            <name>$PROJ_DIR$\..\..\src\hw\tim.h</name>
+        </file>
+        <file>
             <name>$PROJ_DIR$\..\..\src\hw\types.h</name>
         </file>
         <file>

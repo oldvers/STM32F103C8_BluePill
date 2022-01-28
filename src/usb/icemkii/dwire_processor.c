@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "types.h"
 //#include "interrupts.h"
 //#include "usb.h"
@@ -10,21 +12,26 @@
 #include "gpio.h"
 #include "uart.h"
 #include "debug.h"
+#include "tim.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 #include "event_groups.h"
 
+#define DWIRE_TX_COMPLETE              (1 << 0)
+#define DWIRE_RX_COMPLETE              (1 << 1)
+#define DWIRE_BAUD_COMPLETE            (1 << 2)
+#define DWIRE_TIMEOUT                  (100)
+#define DWIRE_BAUD_MEAS_COUNT          (6)
+#define DWIRE_BAUD_MEAS_START_IDX      (2)
 
-static U8                 gTxBuffer[16] = {0};
-static U32                gTxLen        = 0;
-static U8                 gRxBuffer[16] = {0};
-static U32                gRxLen        = 0;
-static EventGroupHandle_t gEvents       = NULL;
-
-#define DWIRE_TX_COMPLETE         (1 << 0)
-#define DWIRE_RX_COMPLETE         (1 << 1)
-#define DWIRE_TIMEOUT             (100)
+static U8                 gTxBuffer[16]                          = {0};
+static U32                gTxLen                                 = 0;
+static U8                 gRxBuffer[16]                          = {0};
+static U32                gRxLen                                 = 0;
+static EventGroupHandle_t gEvents                                = NULL;
+static U16                gBaudRateValue[DWIRE_BAUD_MEAS_COUNT]  = {0};
+static U8                 gBaudRateCnt                           = 0;
 
 //-----------------------------------------------------------------------------
 /** @brief Puts received Byte from UART to the Tx FIFO
@@ -210,6 +217,148 @@ static void uart_Write(U8 * pBuffer, U32 size)
 
 
 
+//-----------------------------------------------------------------------------
+
+static void dwire_BaudCaptComplete(TIM_CH_t aChannel, U16 aValue)
+{
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+  GPIO_Hi(GPIOB, 5);
+  gBaudRateValue[gBaudRateCnt++] = aValue;
+  if (DWIRE_BAUD_MEAS_COUNT == gBaudRateCnt)
+  {
+    (void)xEventGroupSetBitsFromISR
+      (
+        gEvents,
+        DWIRE_BAUD_COMPLETE,
+        &xHigherPriorityTaskWoken
+      );
+
+    if (xHigherPriorityTaskWoken)
+    {
+      taskYIELD();
+    }
+  }
+  GPIO_Lo(GPIOB, 5);
+}
+
+//-----------------------------------------------------------------------------
+
+static FW_BOOLEAN dwire_Sync(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U32 idx           = 0;
+  U32 baudrate      = 0;
+  U16 time          = 0;
+
+  memset(gBaudRateValue, 0, sizeof(gBaudRateValue));
+  gBaudRateCnt = 0;
+
+  /* Init timer */
+  TIM2_InitInputCapture(TIM_CH3, dwire_BaudCaptComplete);
+
+  /* Activate the Reset pin */
+  GPIO_Init(TIM2_CH3_PORT, TIM2_CH3_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
+  vTaskDelay(5);
+
+  /* Enable the timer */
+  TIM2_Enable();
+
+  /* Release the Reset pin */
+  GPIO_Init(TIM2_CH3_PORT, TIM2_CH3_PIN, GPIO_TYPE_IN_FLOATING, 0);
+
+  /* Wait for measurement is complete */
+  result = uart_WaitForComplete(DWIRE_BAUD_COMPLETE);
+
+  /* Disable the timer */
+  TIM2_Disable();
+  TIM2_DeInit();
+
+  if (FW_TRUE == result)
+  {
+    /* Calculate the baudrate */
+    baudrate = 0;
+    for (idx = DWIRE_BAUD_MEAS_START_IDX; idx < DWIRE_BAUD_MEAS_COUNT; idx++)
+    {
+      time = gBaudRateValue[idx] - gBaudRateValue[idx - 1];
+      DBG(" - Meas[%d] = %d\r\n", idx - 2, time);
+
+      baudrate += time;
+    }
+    baudrate /= (DWIRE_BAUD_MEAS_COUNT - DWIRE_BAUD_MEAS_START_IDX);
+    baudrate = 2 * CPUClock / baudrate;
+    DBG(" - Baud    = %d\r\n", baudrate);
+
+    /* Initialize the UART */
+    UART_Init
+    (
+      UART2,
+      baudrate,
+      uart_RxByte,
+      uart_RxComplete,
+      uart_TxByte,
+      uart_TxComplete
+    );
+
+    /* Enable the bidirectional mode */
+    UART_BiDirModeEn(UART2);
+
+    /* Activate the Reset pin */
+    GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
+    vTaskDelay(5);
+
+    /* Release the Reset pin */
+    GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_ALT_OD_2MHZ, 1);
+
+    /* Wait for the Sync byte from the target */
+    idx = uart_Read(gRxBuffer, 1);
+    DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
+
+    if ( (1 == idx) && (0x55 == gRxBuffer[0]) )
+    {
+      DBG("DWire: In sync!\r\n");
+    }
+    else
+    {
+      result = FW_FALSE;
+      DBG("DWire: Sync error!\r\n");
+    }
+
+//  vTaskDelay(50);
+//
+//  gTxBuffer[0] = 0x07;
+//  gTxLen = 1;
+//  DBG("DWire: Transmit: L = %d, B[0] = %02X\r\n", gTxLen, gTxBuffer[0]);
+//  uart_Write(gTxBuffer, 1);
+//
+//  (void)uart_Read(gRxBuffer, 1);
+//  DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
+  }
+
+//  (void)uart_Read(gRxBuffer, 1);
+//  DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
+//
+//  vTaskDelay(50);
+//
+//  gTxBuffer[0] = 0x07;
+//  gTxLen = 1;
+//  DBG("DWire: Transmit: L = %d, B[0] = %02X\r\n", gTxLen, gTxBuffer[0]);
+//  uart_Write(gTxBuffer, 1);
+//
+//  (void)uart_Read(gRxBuffer, 1);
+//  DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
+//
+//  while(1)
+//  {
+//    vTaskDelay(500);
+//  }
+
+  return result;
+}
+
+
+
+
 
 
 
@@ -244,38 +393,42 @@ void dwire_Task(void * pvParameters)
 {
   DBG("Debug Wire Task Started...\r\n");
 
-  UART_Init
-  (
-    UART2,
-    86400,
-    uart_RxByte,
-    uart_RxComplete,
-    uart_TxByte,
-    uart_TxComplete
-  );
+  GPIO_Init(GPIOB, 5, GPIO_TYPE_OUT_PP_50MHZ, 0);
 
-  USART2->CR3 |= USART_CR3_HDSEL;
+  (void)dwire_Sync();
 
-  GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
-  //GPIO_Lo(UART2_RTX_PORT, UART2_RTX_PIN);
-  vTaskDelay(50);
-  //GPIO_Hi(UART2_RTX_PORT, UART2_RTX_PIN);
-  //vTaskDelay(2);
-
-  GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_ALT_OD_2MHZ, 1);
-
-  (void)uart_Read(gRxBuffer, 1);
-  DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
-
-  vTaskDelay(50);
-
-  gTxBuffer[0] = 0x06;
-  gTxLen = 1;
-  DBG("DWire: Transmit: L = %d, B[0] = %02X\r\n", gTxLen, gTxBuffer[0]);
-  uart_Write(gTxBuffer, 1);
-
-  (void)uart_Read(gRxBuffer, 1);
-  DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
+//  UART_Init
+//  (
+//    UART2,
+//    86400,
+//    uart_RxByte,
+//    uart_RxComplete,
+//    uart_TxByte,
+//    uart_TxComplete
+//  );
+//
+//  USART2->CR3 |= USART_CR3_HDSEL;
+//
+//  GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
+//  //GPIO_Lo(UART2_RTX_PORT, UART2_RTX_PIN);
+//  vTaskDelay(50);
+//  //GPIO_Hi(UART2_RTX_PORT, UART2_RTX_PIN);
+//  //vTaskDelay(2);
+//
+//  GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_ALT_OD_2MHZ, 1);
+//
+//  (void)uart_Read(gRxBuffer, 1);
+//  DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
+//
+//  vTaskDelay(50);
+//
+//  gTxBuffer[0] = 0x07;
+//  gTxLen = 1;
+//  DBG("DWire: Transmit: L = %d, B[0] = %02X\r\n", gTxLen, gTxBuffer[0]);
+//  uart_Write(gTxBuffer, 1);
+//
+//  (void)uart_Read(gRxBuffer, 1);
+//  DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
 
   while(1)
   {

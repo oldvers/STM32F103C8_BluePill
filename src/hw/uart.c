@@ -439,3 +439,12 @@ void UART_RxStart(UART_t aUART)
   gUARTCtx[aUART].HW->CR1 |= (USART_CR1_RE);
   UART_LOG("UART: Rx Start\r\n");
 }
+
+//-----------------------------------------------------------------------------
+
+void UART_BiDirModeEn(UART_t aUART)
+{
+  gUARTCtx[aUART].HW->CR3 |= USART_CR3_HDSEL;
+}
+
+//-----------------------------------------------------------------------------

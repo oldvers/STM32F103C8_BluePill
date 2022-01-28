@@ -22,13 +22,15 @@
 /* SPI1/UART2: PA2 - RST/RX/TX, PA5 - SCK, PA6 - MISO, PA7 - MOSI */
 #define SPI1_RST_PORT        GPIOA
 #define SPI1_RST_PIN         2
+#define UART2_RTX_PORT       SPI1_RST_PORT
+#define UART2_RTX_PIN        SPI1_RST_PIN
+#define TIM2_CH3_PORT        SPI1_RST_PORT
+#define TIM2_CH3_PIN         SPI1_RST_PIN
 #define SPI1_SCK_PORT        GPIOA
 #define SPI1_SCK_PIN         5
 #define SPI1_MISO_PORT       GPIOA
 #define SPI1_MISO_PIN        6
 #define SPI1_MOSI_PORT       GPIOA
 #define SPI1_MOSI_PIN        7
-#define UART2_RTX_PORT       GPIOA
-#define UART2_RTX_PIN        2
 
 #endif  /* __BOARD_H__ */

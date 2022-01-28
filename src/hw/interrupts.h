@@ -31,5 +31,7 @@ void       IRQ_SPI1_Enable         (void);
 void       IRQ_SPI1_Disable        (void);
 void       IRQ_SPI2_Enable         (void);
 void       IRQ_SPI2_Disable        (void);
+void       IRQ_TIM2_Enable         (void);
+void       IRQ_TIM2_Disable        (void);
 
 #endif /* __INTERRUPTS_H__ */

@@ -42,9 +42,9 @@ typedef struct ISP_PARAMETERS_s
     U16 word[2];
     U32 value;
   } address;
-  U8 pollMethod;
-  U8 eraseDelay;
-  U8 mode;
+  U8   pollMethod;
+  U8   eraseDelay;
+  U8   mode;
 } ISP_PARAMETERS_t;
 
 extern ISP_PARAMETERS_t gIspParams;

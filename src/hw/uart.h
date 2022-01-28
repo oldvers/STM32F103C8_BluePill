@@ -42,6 +42,7 @@ void UART_DeInit      (UART_t aUART);
 void UART_TxStart     (UART_t aUART);
 void UART_RxStart     (UART_t aUART);
 void UART_SetBaudrate (UART_t aUART, U32 aValue);
+void UART_BiDirModeEn (UART_t aUART);
 
 /* Interrupt Handler Declaration */
 void UART_IrqHandler (UART_t aUART);

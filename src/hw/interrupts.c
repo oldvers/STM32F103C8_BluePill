@@ -6,6 +6,7 @@
 #include "debug.h"
 #include "i2c.h"
 #include "spi.h"
+#include "tim.h"
 
 /* --- Logging -------------------------------------------------------------- */
 
@@ -56,6 +57,7 @@
 #define IRQ_PRIORITY_I2C1               ( 1)
 #define IRQ_PRIORITY_I2C2               ( 1)
 #define IRQ_PRIORITY_I2C3               ( 1)
+#define IRQ_PRIORITY_TIM2               ( 1)
 #define IRQ_PRIORITY_UART1              ( 3)
 #define IRQ_PRIORITY_UART2              ( 3)
 #define IRQ_PRIORITY_UART3              ( 3)
@@ -457,6 +459,38 @@ void IRQ_SPI2_Disable(void)
 void DMA1_Channel4_IRQHandler(void)
 {
   SPI_IrqHandler(SPI_2);
+}
+
+/* --- TIM2 ----------------------------------------------------------------- */
+
+void IRQ_TIM2_Enable(void)
+{
+  U32 priority = NVIC_EncodePriority
+                 (
+                   IRQ_PRIORITY_GROUPS_CONFIG,
+                   IRQ_PRIORITY_TIM2,
+                   IRQ_SUB_PRIORITY
+                 );
+  IRQ_LOG("IRQ: TIM2 Priority = 0x%02X\r\n", priority);
+
+  NVIC_ClearPendingIRQ(TIM2_IRQn);
+  NVIC_SetPriority(TIM2_IRQn, priority);
+  NVIC_EnableIRQ(TIM2_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void IRQ_TIM2_Disable(void)
+{
+  NVIC_DisableIRQ(TIM2_IRQn);
+  NVIC_ClearPendingIRQ(TIM2_IRQn);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void TIM2_IRQHandler(void)
+{
+  TIM2_IrqHandler();
 }
 
 /* -------------------------------------------------------------------------- */

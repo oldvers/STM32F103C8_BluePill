@@ -10,44 +10,48 @@
 #else
 #  define ICEMKII_LOG(...)
 #endif
+//#define ISP_LOG_FUNC_START()      ISP_LOG("--- ISP Start ----------------\r\n")
+//#define ISP_LOG_FUNC_END()        ISP_LOG("--- ISP End ------------------\r\n")
+//#define ISP_LOG_SUCCESS()         ISP_LOG(" - Success\r\n")
+//#define ISP_LOG_ERROR()           ISP_LOG(" - Fail\r\n")
 
 /*----------------------------------------------------------------------------*/
 
 typedef __packed struct DEVICE_DESCRIPTOR_s
 {
-  U8  ucReadIO[8];           //LSB = IOloc  0, MSB = IOloc63
-  U8  ucReadIOShadow[8];     //LSB = IOloc  0, MSB = IOloc63
-  U8  ucWriteIO[8];          //LSB = IOloc  0, MSB = IOloc63
-  U8  ucWriteIOShadow[8];    //LSB = IOloc  0, MSB = IOloc63
-  U8  ucReadExtIO[52];       //LSB = IOloc  96, MSB = IOloc511
-  U8  ucReadIOExtShadow[52]; //LSB = IOloc  96, MSB = IOloc511
-  U8  ucWriteExtIO[52];      //LSB = IOloc  96, MSB = IOloc511
-  U8  ucWriteIOExtShadow[52];//LSB = IOloc  96, MSB = IOloc511
-  U8  ucIDRAddress;          //IDR address
+  U8  ucReadIO[8]; //LSB = IOloc 0, MSB = IOloc63
+  U8  ucReadIOShadow[8]; //LSB = IOloc 0, MSB = IOloc63
+  U8  ucWriteIO[8]; //LSB = IOloc 0, MSB = IOloc63
+  U8  ucWriteIOShadow[8]; //LSB = IOloc 0, MSB = IOloc63
+  U8  ucReadExtIO[52]; //LSB = IOloc 96, MSB = IOloc511
+  U8  ucReadIOExtShadow[52]; //LSB = IOloc 96, MSB = IOloc511
+  U8  ucWriteExtIO[52]; //LSB = IOloc 96, MSB = IOloc511
+  U8  ucWriteIOExtShadow[52];//LSB = IOloc 96, MSB = IOloc511
+  U8  ucIDRAddress; //IDR address
   U8  ucSPMCRAddress; //SPMCR Register address and dW BasePC
-  U32 ulBootAddress;  //Device Boot Loader Start Address
+  U32 ulBootAddress; //Device Boot Loader Start Address
   U8  ucRAMPZAddress; //RAMPZ Register address in SRAM I/O space
-  U32 uiFlashPageSize;  //Device Flash Page Size, Size = 2 exp ucFlashPageSize
-  U8  ucEepromPageSize;  //Device Eeprom Page Size in bytes
-  U32 uiUpperExtIOLoc;  //Topmost (last) extended I/O location, 0 if no external I/O
-  U32 ulFlashSize;   //Device Flash Size
-  U8  ucEepromInst[20];  //Instructions for W/R EEPROM
-  U8  ucFlashInst[3];  //Instructions for W/R FLASH
-  U8  ucSPHaddr;    // Stack pointer high
-  U8  ucSPLaddr;    // Stack pointer low
-  U32 uiFlashpages;  // number of pages in flash
-  U8  ucDWDRAddress;  // DWDR register address
-  U8  ucDWBasePC;    // Base/mask value of the PC
+  U16 uiFlashPageSize; //Device Flash Page Size, Size = 2 exp ucFlashPageSize
+  U8  ucEepromPageSize; //Device Eeprom Page Size in bytes
+  U16 uiUpperExtIOLoc; //Topmost (last) extended I/O location, 0 if no external I/O
+  U32 ulFlashSize; //Device Flash Size
+  U8  ucEepromInst[20]; //Instructions for W/R EEPROM
+  U8  ucFlashInst[3]; //Instructions for W/R FLASH
+  U8  ucSPHaddr; // Stack pointer high
+  U8  ucSPLaddr; // Stack pointer low
+  U16 uiFlashpages; // number of pages in flash
+  U8  ucDWDRAddress; // DWDR register address
+  U8  ucDWBasePC; // Base/mask value of the PC
   U8  ucAllowFullPageBitstream; // FALSE on ALL new parts
-  U32 uiStartSmallestBootLoaderSection; //
-  U8  ucEnablePageProgramming; // For JTAG parts only, default TRUE
-  U8  ucCacheType;    // CacheType_Normal 0x00, CacheType_CAN 0x01,
-  U32 uiSramStartAddr;   // Start of SRAM
-  U8  ucResetType;   // Selects reset type. 0x00
-  U8  ucPCMaskExtended;   // For parts with extended PC
-  U8  ucPCMaskHigh;  // PC high mask
-  U8  ucEindAddress;  // EIND IO address
-  U32 uiEECRAddress;    // EECR IO address
+  U16 uiStartSmallestBootLoaderSection; //
+  U8  EnablePageProgramming; // For JTAG parts only, default TRUE
+  U8  ucCacheType; // CacheType_Normal 0x00, CacheType_CAN 0x01, CacheType_HEIMDALL 0x02
+  U16 uiSramStartAddr; // Start of SRAM
+  U8  ucResetType; // Selects reset type. 0x00
+  U8  ucPCMaskExtended; // For parts with extended PC
+  U8  ucPCMaskHigh; // PC high mask
+  U8  ucEindAddress; // EIND IO address
+  U16 EECRAddress; // EECR IO address
 } DEVICE_DESCRIPTOR_t;
 
 /*----------------------------------------------------------------------------*/
@@ -201,80 +205,100 @@ typedef __packed struct ICEMKII_MSG_BODY_s
   U8 MESSAGE_ID;
   union
   {
-    ICEMKII_RSP_SIGN_ON_t       rspSignOn;
     ICEMKII_REQ_SET_PARAMETER_t reqSetParameter;
     ICEMKII_REQ_RESET_t         reqReset;
-    ICEMKII_ISP_t               isp;
     ICEMKII_REQ_GET_PARAMETER_t reqGetParameter;
-    ICEMKII_RSP_GET_PARAMETER_t rspGetParameter;
     ICEMKII_REQ_FORCED_STOP_t   forcedStop;
+    ICEMKII_ISP_t               isp;
+    ICEMKII_RSP_SIGN_ON_t       rspSignOn;
+    ICEMKII_RSP_GET_PARAMETER_t rspGetParameter;
   };
 } ICEMKII_MSG_BODY_t, * ICEMKII_MSG_BODY_p;
 
 /*----------------------------------------------------------------------------*/
 
-static void icemkii_SignOn(U8 * pRspBody, U32 * pSize)
+static void icemkii_SignOn
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
 {
-  ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
   U8 sn[6] = ICEMKII_SN;
 
   ICEMKII_LOG("ICE Rx: Sign On\r\n");
 
-  rsp->MESSAGE_ID             = RSP_SIGN_ON;
-  rsp->rspSignOn.COMM_ID      = ICEMKII_COMM_ID;
-  rsp->rspSignOn.M_MCU_BLDR   = ICEMKII_BLDR_FW;
-  rsp->rspSignOn.M_MCU_FW_MIN = ICEMKII_MCU_FW_MIN;
-  rsp->rspSignOn.M_MCU_FW_MAJ = ICEMKII_MCU_FW_MAJ;
-  rsp->rspSignOn.M_MCU_HW     = 0x00;
-  rsp->rspSignOn.S_MCU_BLDR   = ICEMKII_BLDR_FW;
-  rsp->rspSignOn.S_MCU_FW_MIN = ICEMKII_MCU_FW_MIN;
-  rsp->rspSignOn.S_MCU_FW_MAJ = ICEMKII_MCU_FW_MAJ;
-  rsp->rspSignOn.S_MCU_HW     = 0x01;
-  memcpy(rsp->rspSignOn.SERIAL_NUMBER, sn, 6);
-  memcpy(rsp->rspSignOn.DEVICE_ID_STR, ICEMKII_ID_STR, 12);
+  pRsp->MESSAGE_ID             = RSP_SIGN_ON;
+  pRsp->rspSignOn.COMM_ID      = ICEMKII_COMM_ID;
+  pRsp->rspSignOn.M_MCU_BLDR   = ICEMKII_BLDR_FW;
+  pRsp->rspSignOn.M_MCU_FW_MIN = ICEMKII_MCU_FW_MIN;
+  pRsp->rspSignOn.M_MCU_FW_MAJ = ICEMKII_MCU_FW_MAJ;
+  pRsp->rspSignOn.M_MCU_HW     = 0x00;
+  pRsp->rspSignOn.S_MCU_BLDR   = ICEMKII_BLDR_FW;
+  pRsp->rspSignOn.S_MCU_FW_MIN = ICEMKII_MCU_FW_MIN;
+  pRsp->rspSignOn.S_MCU_FW_MAJ = ICEMKII_MCU_FW_MAJ;
+  pRsp->rspSignOn.S_MCU_HW     = 0x01;
+  memcpy(pRsp->rspSignOn.SERIAL_NUMBER, sn, 6);
+  memcpy(pRsp->rspSignOn.DEVICE_ID_STR, ICEMKII_ID_STR, 12);
 
   *pSize = (sizeof(ICEMKII_RSP_SIGN_ON_t) + 1);
 }
 
 /*----------------------------------------------------------------------------*/
 
-static void icemkii_SignOff(U8 * pRspBody, U32 * pSize)
+static void icemkii_SignOff
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
 {
-  ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
-
   ICEMKII_LOG("ICE Rx: Sign Off\r\n");
 
-  rsp->MESSAGE_ID = RSP_OK;
+  pRsp->MESSAGE_ID = RSP_OK;
   *pSize = 1;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static void icemkii_SetParameter(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
+static void icemkii_SetParameter
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
 {
-  ICEMKII_MSG_BODY_p req = (ICEMKII_MSG_BODY_p)pReqBody;
-  ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
-
   ICEMKII_LOG("ICE Rx: Set Parameter\r\n");
-  rsp->MESSAGE_ID = RSP_OK;
+  pRsp->MESSAGE_ID = RSP_OK;
 
-  switch (req->reqSetParameter.PARAMETER_ID)
+  switch (pReq->reqSetParameter.PARAMETER_ID)
   {
     case PARAMETER_ID_EMULATOR_MODE:
-      if ( (EMULATOR_MODE_SPI      != req->reqSetParameter.emulator.mode) &&
-           (EMULATOR_MODE_DBG_WIRE != req->reqSetParameter.emulator.mode) )
+      ICEMKII_LOG(" - Emulator mode\r\n");
+      if ( (EMULATOR_MODE_SPI      != pReq->reqSetParameter.emulator.mode) &&
+           (EMULATOR_MODE_DBG_WIRE != pReq->reqSetParameter.emulator.mode) )
       {
-        rsp->MESSAGE_ID = RSP_FAILED;
+        pRsp->MESSAGE_ID = RSP_FAILED;
       }
       break;
     case PARAMETER_ID_RUN_AFTER_PROG:
+      ICEMKII_LOG(" - Run after programming\r\n");
+      break;
     case PARAMETER_ID_TIMERS_UNDER_DBG:
+      ICEMKII_LOG(" - Timers under debug\r\n");
+      break;
     case PARAMETER_ID_PDI_APPL_OFFS:
+      ICEMKII_LOG(" - PDI application offset\r\n");
+      break;
     case PARAMETER_ID_PDI_BOOT_OFFS:
+      ICEMKII_LOG(" - PDI bootloader offset\r\n");
+      break;
     case PARAMETER_ID_UNKNOWN:
+      ICEMKII_LOG(" - Unknown\r\n");
       break;
     default:
-      rsp->MESSAGE_ID = RSP_FAILED;
+      ICEMKII_LOG(" - Undefined\r\n");
+      pRsp->MESSAGE_ID = RSP_FAILED;
       break;
   }
 
@@ -283,28 +307,34 @@ static void icemkii_SetParameter(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
 
 /*----------------------------------------------------------------------------*/
 
-static void icemkii_GetParameter(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
+static void icemkii_GetParameter
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
 {
-  ICEMKII_MSG_BODY_p req = (ICEMKII_MSG_BODY_p)pReqBody;
-  ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
   U16 sign = 0x9205;
 
   ICEMKII_LOG("ICE Rx: Get Parameter\r\n");
 
-  rsp->MESSAGE_ID = RSP_PARAMETER;
+  pRsp->MESSAGE_ID = RSP_PARAMETER;
 
-  switch (req->reqGetParameter.PARAMETER_ID)
+  switch (pReq->reqGetParameter.PARAMETER_ID)
   {
     case PARAMETER_ID_OCD_VTARGET:
-      rsp->rspGetParameter.ocdVtarget.voltage = 3300;
+      ICEMKII_LOG(" - OCD Vtarget\r\n");
+      pRsp->rspGetParameter.ocdVtarget.voltage = 3300;
       *pSize = 3;
       break;
     case PARAMETER_ID_TARGET_SIGNATURE:
-      rsp->rspGetParameter.targetSign.value = sign;
+      ICEMKII_LOG(" - Target signature\r\n");
+      pRsp->rspGetParameter.targetSign.value = sign;
       *pSize = 3;
       break;
     default:
-      rsp->MESSAGE_ID = RSP_FAILED;
+      ICEMKII_LOG(" - Undefined\r\n");
+      pRsp->MESSAGE_ID = RSP_FAILED;
       *pSize = 1;
       break;
   }
@@ -312,42 +342,46 @@ static void icemkii_GetParameter(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
 
 /*----------------------------------------------------------------------------*/
 
-static void icemkii_IspPacket(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
+static void icemkii_IspPacket
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
 {
-  ICEMKII_MSG_BODY_p req = (ICEMKII_MSG_BODY_p)pReqBody;
-  ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
-
   ICEMKII_LOG("ICE Rx: ISP Packet\r\n");
 
   *pSize -= 1;
 
-  if (FW_FALSE == ISPMKII_Process(req->isp.packet, rsp->isp.packet, pSize))
+  if (FW_FALSE == ISPMKII_Process(pReq->isp.packet, pRsp->isp.packet, pSize))
   {
-    rsp->MESSAGE_ID = RSP_FAILED;
+    pRsp->MESSAGE_ID = RSP_FAILED;
     *pSize = 1;
   }
   else
   {
-    rsp->MESSAGE_ID = RSP_SPI_DATA;
+    pRsp->MESSAGE_ID = RSP_SPI_DATA;
     *pSize += 1;
   }
 }
 
 /*----------------------------------------------------------------------------*/
 
-static void icemkii_Reset(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
+static void icemkii_Reset
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
 {
-  ICEMKII_MSG_BODY_p req = (ICEMKII_MSG_BODY_p)pReqBody;
-  ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
-
   ICEMKII_LOG("ICE Rx: Reset\r\n");
-  rsp->MESSAGE_ID = RSP_FAILED;
+  pRsp->MESSAGE_ID = RSP_FAILED;
 
-  switch (req->reqReset.FLAG)
+  switch (pReq->reqReset.FLAG)
   {
     case RESET_FLAG_LOW_LEVEL:
     case RESET_FLAG_HIGH_LEVEL:
-      rsp->MESSAGE_ID = RSP_OK;
+      pRsp->MESSAGE_ID = RSP_OK;
       break;
     default:
       break;
@@ -358,27 +392,69 @@ static void icemkii_Reset(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
 
 /*----------------------------------------------------------------------------*/
 
-static void icemkii_Go(U8 * pRspBody, U32 * pSize)
+static void icemkii_Go
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
 {
-  ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
-
   ICEMKII_LOG("ICE Rx: Go\r\n");
 
-  rsp->MESSAGE_ID = RSP_OK;
+  pRsp->MESSAGE_ID = RSP_OK;
   *pSize = 1;
 }
 
 /*----------------------------------------------------------------------------*/
 
-static void icemkii_SetDvcDescr(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
+static void icemkii_SetDvcDescr
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
 {
-  ICEMKII_MSG_BODY_p req = (ICEMKII_MSG_BODY_p)pReqBody;
-  ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
+  ICEMKII_LOG("ICE Rx: Set Device Descriptor:\r\n");
+  ICEMKII_LOG(" Rcvd  = %d\r\n", (*pSize - 1));
+  ICEMKII_LOG(" Fact  = %d\r\n", sizeof(DEVICE_DESCRIPTOR_t));
 
-  ICEMKII_LOG("ICE Rx: Set Device Descriptor: Rcvd = %d, Fact = %d\r\n",
-              (*pSize - 1), sizeof(DEVICE_DESCRIPTOR_t));
+  DEVICE_DESCRIPTOR_t * dsc = (DEVICE_DESCRIPTOR_t *)(pReq + 1);
 
-  rsp->MESSAGE_ID = RSP_OK;
+  ICEMKII_LOG(" ucReadIO[0]                      = %08X\r\n", dsc->ucReadIO[0]);
+  ICEMKII_LOG(" ucReadIOShadow[0]                = %08X\r\n", dsc->ucReadIOShadow[0]);
+  ICEMKII_LOG(" ucWriteIO[0]                     = %08X\r\n", dsc->ucWriteIO[0]);
+  ICEMKII_LOG(" ucWriteIOShadow[0]               = %08X\r\n", dsc->ucWriteIOShadow[0]);
+  ICEMKII_LOG(" ucReadExtIO[0]                   = %08X\r\n", dsc->ucReadExtIO[0]);
+  ICEMKII_LOG(" ucReadIOExtShadow[0]             = %08X\r\n", dsc->ucReadIOExtShadow[0]);
+  ICEMKII_LOG(" ucWriteExtIO[0]                  = %08X\r\n", dsc->ucWriteExtIO[0]);
+  ICEMKII_LOG(" ucWriteIOExtShadow[0]            = %08X\r\n", dsc->ucWriteIOExtShadow[0]);
+  ICEMKII_LOG(" ucIDRAddress                     = %08X\r\n", dsc->ucIDRAddress);
+  ICEMKII_LOG(" ucSPMCRAddress                   = %08X\r\n", dsc->ucSPMCRAddress);
+  ICEMKII_LOG(" ulBootAddress                    = %08X\r\n", dsc->ulBootAddress);
+  ICEMKII_LOG(" ucRAMPZAddress                   = %08X\r\n", dsc->ucRAMPZAddress);
+  ICEMKII_LOG(" uiFlashPageSize                  = %08X\r\n", dsc->uiFlashPageSize);
+  ICEMKII_LOG(" ucEepromPageSize                 = %08X\r\n", dsc->ucEepromPageSize);
+  ICEMKII_LOG(" uiUpperExtIOLoc                  = %08X\r\n", dsc->uiUpperExtIOLoc);
+  ICEMKII_LOG(" ulFlashSize                      = %08X\r\n", dsc->ulFlashSize);
+  ICEMKII_LOG(" ucEepromInst[0]                  = %08X\r\n", dsc->ucEepromInst[0]);
+  ICEMKII_LOG(" ucFlashInst[0]                   = %08X\r\n", dsc->ucFlashInst[0]);
+  ICEMKII_LOG(" ucSPHaddr                        = %08X\r\n", dsc->ucSPHaddr);
+  ICEMKII_LOG(" ucSPLaddr                        = %08X\r\n", dsc->ucSPLaddr);
+  ICEMKII_LOG(" uiFlashpages                     = %08X\r\n", dsc->uiFlashpages);
+  ICEMKII_LOG(" ucDWDRAddress                    = %08X\r\n", dsc->ucDWDRAddress);
+  ICEMKII_LOG(" ucDWBasePC                       = %08X\r\n", dsc->ucDWBasePC);
+  ICEMKII_LOG(" ucAllowFullPageBitstream         = %08X\r\n", dsc->ucAllowFullPageBitstream);
+  ICEMKII_LOG(" uiStartSmallestBootLoaderSection = %08X\r\n", dsc->uiStartSmallestBootLoaderSection);
+  ICEMKII_LOG(" EnablePageProgramming            = %08X\r\n", dsc->EnablePageProgramming);
+  ICEMKII_LOG(" ucCacheType                      = %08X\r\n", dsc->ucCacheType);
+  ICEMKII_LOG(" uiSramStartAddr                  = %08X\r\n", dsc->uiSramStartAddr);
+  ICEMKII_LOG(" ucResetType                      = %08X\r\n", dsc->ucResetType);
+  ICEMKII_LOG(" ucPCMaskExtended                 = %08X\r\n", dsc->ucPCMaskExtended);
+  ICEMKII_LOG(" ucPCMaskHigh                     = %08X\r\n", dsc->ucPCMaskHigh);
+  ICEMKII_LOG(" ucEindAddress                    = %08X\r\n", dsc->ucEindAddress);
+  ICEMKII_LOG(" EECRAddress                      = %08X\r\n", dsc->EECRAddress);
+
+  pRsp->MESSAGE_ID = RSP_OK;
   *pSize = 1;
 }
 
@@ -386,8 +462,11 @@ static void icemkii_SetDvcDescr(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
 
 void ICEMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
 {
+  ICEMKII_MSG_BODY_p req = (ICEMKII_MSG_BODY_p)pReqBody;
+  ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
   U32 i = 0;
 
+  ICEMKII_LOG("---------------------------------------------------------\r\n");
   ICEMKII_LOG("--> ");
   for (i = 0; i < *pSize; i++)
   {
@@ -399,28 +478,28 @@ void ICEMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
   switch ( ((ICEMKII_MSG_BODY_p)pReqBody)->MESSAGE_ID )
   {
     case CMND_GET_SIGN_ON:
-      icemkii_SignOn(pRspBody, pSize);
+      icemkii_SignOn(req, rsp, pSize);
       break;
     case CMND_SIGN_OFF:
-      icemkii_SignOff(pRspBody, pSize);
+      icemkii_SignOff(req, rsp, pSize);
       break;
     case CMND_SET_PARAMETER:
-      icemkii_SetParameter(pReqBody, pRspBody, pSize);
+      icemkii_SetParameter(req, rsp, pSize);
       break;
     case CMND_ISP_PACKET:
-      icemkii_IspPacket(pReqBody, pRspBody, pSize);
+      icemkii_IspPacket(req, rsp, pSize);
       break;
     case CMND_RESET:
-      icemkii_Reset(pReqBody, pRspBody, pSize);
-      break;
-    case CMND_GO:
-      icemkii_Go(pRspBody, pSize);
+      icemkii_Reset(req, rsp, pSize);
       break;
     case CMND_GET_PARAMETER:
-      icemkii_GetParameter(pReqBody, pRspBody, pSize);
+      icemkii_GetParameter(req, rsp, pSize);
+      break;
+    case CMND_GO:
+      icemkii_Go(req, rsp, pSize);
       break;
     case CMND_SET_DEVICE_DESCRIPTOR:
-      icemkii_SetDvcDescr(pReqBody, pRspBody, pSize);
+      icemkii_SetDvcDescr(req, rsp, pSize);
       break;
     case CMND_FORCED_STOP:
     case CMND_WRITE_MEMORY:
