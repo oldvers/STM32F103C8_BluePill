@@ -67,12 +67,20 @@ typedef __packed struct DEVICE_DESCRIPTOR_s
 #define CMND_FORCED_STOP               (0x0A)
 #define CMND_WRITE_MEMORY              (0x04)
 #define CMND_CLEAR_EVENTS              (0x22)
+#define CMND_READ_MEMORY               (0x05)
+#define CMND_READ_PC                   (0x07)
+#define CMND_RESTORE_TARGET            (0x23)
+#define CMND_SINGLE_STEP               (0x09)
 
 #define RSP_OK                         (0x80)
 #define RSP_PARAMETER                  (0x81)
 #define RSP_SIGN_ON                    (0x86)
 #define RSP_SPI_DATA                   (0x88)
 #define RSP_FAILED                     (0xA0)
+#define RSP_MEMORY                     (0x82)
+#define RSP_PC                         (0x84)
+
+#define EVT_BREAK                      (0xE0)
 
 /*----------------------------------------------------------------------------*/
 
@@ -174,7 +182,7 @@ typedef __packed struct ICEMKII_RSP_GET_PARAMETER_s
 
 #define RESET_FLAG_LOW_LEVEL     (0x01) // Low level
 #define RESET_FLAG_HIGH_LEVEL    (0x02) // High level (reset, then run to main)
-#define RESET_FLAG_DBG_WITE_DSBL (0x04) // Reset with debugWire disable
+#define RESET_FLAG_DBG_WIRE_DSBL (0x04) // Reset with debugWire disable
 
 typedef __packed struct ICEMKII_REQ_RESET_s
 {
@@ -191,12 +199,76 @@ typedef __packed struct ICEMKII_REQ_FORCED_STOP_s
   U8 MODE;
 } ICEMKII_REQ_FORCED_STOP_t, * ICEMKII_REQ_FORCED_STOP_p;
 
+#define BREAK_CAUSE_UNSPECIFIED       (0x00)
+#define BREAK_CAUSE_PROGRAM           (0x01)
+#define BREAK_CAUSE_DATA_PDSB         (0x02)
+#define BREAK_CAUSE_DATA_PDMSB        (0x03)
+
+typedef __packed struct ICEMKII_EVT_BREAK_s
+{
+  U32 PROGRAM_COUNTER;
+  U8  BREAK_CAUSE;
+} ICEMKII_EVT_BREAK_t, * ICEMKII_EVT_BREAK_p;
+
 /*----------------------------------------------------------------------------*/
 
 typedef __packed struct ICEMKII_ISP_s
 {
   U8 packet[4];
 } ICEMKII_ISP_t, * ICEMKII_ISP_p;
+
+/*----------------------------------------------------------------------------*/
+
+#define MEMORY_TYPE_IO_SHADOW                    (0x30)
+#define MEMORY_TYPE_SRAM                         (0x20)
+#define MEMORY_TYPE_EEPROM                       (0x22)
+#define MEMORY_TYPE_EVENT                        (0x60)
+#define MEMORY_TYPE_SPM                          (0xA0)
+#define MEMORY_TYPE_FLASH_PAGE                   (0xB0)
+#define MEMORY_TYPE_EEPROM_PAGE                  (0xB1)
+#define MEMORY_TYPE_FUSE_BITS                    (0xB2)
+#define MEMORY_TYPE_LOCK_BITS                    (0xB3)
+#define MEMORY_TYPE_SIGN_JTAG                    (0xB4)
+#define MEMORY_TYPE_OSCCAL_BYTE                  (0xB5)
+#define MEMORY_TYPE_CAN                          (0xB6)
+#define MEMORY_TYPE_XMEGA_APPLICATION_FLASH      (0xC0)
+#define MEMORY_TYPE_XMEGA_BOOT_FLASH             (0xC1)
+#define MEMORY_TYPE_XMEGA_USER_SIGNATURE         (0xC5)
+#define MEMORY_TYPE_XMEGA_CALIBRATION_SIGNATURE  (0xC6)
+
+typedef __packed struct ICEMKII_REQ_READ_MEMORY_s
+{
+  U8  MEMORY_TYPE;
+  U32 BYTE_COUNT;
+  U32 START_ADDRESS;
+} ICEMKII_REQ_READ_MEMORY_t, * ICEMKII_REQ_READ_MEMORY_p;
+
+typedef __packed struct ICEMKII_RSP_MEMORY_s
+{
+  U8 DATA[1];
+} ICEMKII_RSP_MEMORY_t, * ICEMKII_RSP_MEMORY_p;
+
+/*----------------------------------------------------------------------------*/
+
+typedef __packed struct ICEMKII_RSP_PC_s
+{
+  U32 PROGRAM_COUNTER;
+} ICEMKII_RSP_PC_t, * ICEMKII_RSP_PC_p;
+
+/*----------------------------------------------------------------------------*/
+
+#define SINGLE_STEP_LOW_LEVEL                    (0x01)
+#define SINGLE_STEP_HIGH_LEVEL                   (0x02)
+
+#define SINGLE_STEP_OVER                         (0x00)
+#define SINGLE_STEP_INTO                         (0x01)
+#define SINGLE_STEP_OUT                          (0x02)
+
+typedef __packed struct ICEMKII_REQ_SINGLE_STEP_s
+{
+  U8 FLAG;
+  U8 STEP_MODE;
+} ICEMKII_REQ_SINGLE_STEP_t, * ICEMKII_REQ_SINGLE_STEP_p;
 
 /*----------------------------------------------------------------------------*/
 
@@ -208,10 +280,14 @@ typedef __packed struct ICEMKII_MSG_BODY_s
     ICEMKII_REQ_SET_PARAMETER_t reqSetParameter;
     ICEMKII_REQ_RESET_t         reqReset;
     ICEMKII_REQ_GET_PARAMETER_t reqGetParameter;
-    ICEMKII_REQ_FORCED_STOP_t   forcedStop;
+    ICEMKII_REQ_FORCED_STOP_t   reqForcedStop;
+    ICEMKII_REQ_READ_MEMORY_t   reqReadMemory;
     ICEMKII_ISP_t               isp;
     ICEMKII_RSP_SIGN_ON_t       rspSignOn;
     ICEMKII_RSP_GET_PARAMETER_t rspGetParameter;
+    ICEMKII_RSP_MEMORY_t        rspMemory;
+    ICEMKII_RSP_PC_t            rspPc;
+    ICEMKII_EVT_BREAK_t         evtBreak;
   };
 } ICEMKII_MSG_BODY_t, * ICEMKII_MSG_BODY_p;
 
@@ -460,6 +536,62 @@ static void icemkii_SetDvcDescr
 
 /*----------------------------------------------------------------------------*/
 
+static void icemkii_ReadMemory
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
+{
+  ICEMKII_LOG("ICE Rx: Read Memory\r\n");
+  pRsp->MESSAGE_ID = RSP_FAILED;
+
+  switch (pReq->reqReadMemory.MEMORY_TYPE)
+  {
+    case MEMORY_TYPE_IO_SHADOW:
+    case MEMORY_TYPE_SRAM:
+    case MEMORY_TYPE_EEPROM:
+    case MEMORY_TYPE_EVENT:
+    case MEMORY_TYPE_SPM:
+    case MEMORY_TYPE_FLASH_PAGE:
+    case MEMORY_TYPE_EEPROM_PAGE:
+    case MEMORY_TYPE_FUSE_BITS:
+    case MEMORY_TYPE_LOCK_BITS:
+    case MEMORY_TYPE_SIGN_JTAG:
+    case MEMORY_TYPE_OSCCAL_BYTE:
+    case MEMORY_TYPE_CAN:
+    case MEMORY_TYPE_XMEGA_APPLICATION_FLASH:
+    case MEMORY_TYPE_XMEGA_BOOT_FLASH:
+    case MEMORY_TYPE_XMEGA_USER_SIGNATURE:
+    case MEMORY_TYPE_XMEGA_CALIBRATION_SIGNATURE:
+      pRsp->MESSAGE_ID = RSP_MEMORY;
+      memset(pRsp->rspMemory.DATA, 0, pReq->reqReadMemory.BYTE_COUNT);
+      *pSize = (1 + pReq->reqReadMemory.BYTE_COUNT);
+      break;
+    default:
+      *pSize = 1;
+      break;
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void icemkii_ReadPc
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
+{
+  ICEMKII_LOG("ICE Rx: Read PC\r\n");
+
+  pRsp->MESSAGE_ID = RSP_PC;
+  pRsp->rspPc.PROGRAM_COUNTER = 0;
+  *pSize = 5;
+}
+
+/*----------------------------------------------------------------------------*/
+
 void ICEMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
 {
   ICEMKII_MSG_BODY_p req = (ICEMKII_MSG_BODY_p)pReqBody;
@@ -501,9 +633,17 @@ void ICEMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
     case CMND_SET_DEVICE_DESCRIPTOR:
       icemkii_SetDvcDescr(req, rsp, pSize);
       break;
+    case CMND_READ_MEMORY:
+      icemkii_ReadMemory(req, rsp, pSize);
+      break;
+    case CMND_READ_PC:
+      icemkii_ReadPc(req, rsp, pSize);
+      break;
     case CMND_FORCED_STOP:
     case CMND_WRITE_MEMORY:
     case CMND_CLEAR_EVENTS:
+    case CMND_RESTORE_TARGET:
+    case CMND_SINGLE_STEP:
       pRspBody[0] = RSP_OK;
       *pSize = 1;
       break;
@@ -522,3 +662,62 @@ void ICEMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
     ICEMKII_LOG("\r\n");
   }
 }
+
+
+
+
+
+
+
+/*----------------------------------------------------------------------------*/
+
+static void icemkii_Event
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
+{
+  ICEMKII_LOG("ICE Rx: Break Event\r\n");
+
+  pRsp->MESSAGE_ID               = EVT_BREAK;
+  pRsp->evtBreak.PROGRAM_COUNTER = 0;
+  pRsp->evtBreak.BREAK_CAUSE     = BREAK_CAUSE_PROGRAM;
+  *pSize = 6;
+}
+
+/*----------------------------------------------------------------------------*/
+
+FW_BOOLEAN ICEMKII_CheckForEvents(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
+{
+  FW_BOOLEAN result = FW_FALSE;
+  ICEMKII_MSG_BODY_p req = (ICEMKII_MSG_BODY_p)pReqBody;
+  ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
+  U32 i = 0;
+
+  switch ( ((ICEMKII_MSG_BODY_p)pReqBody)->MESSAGE_ID )
+  {
+    case CMND_FORCED_STOP:
+    case CMND_SINGLE_STEP:
+      icemkii_Event(req, rsp, pSize);
+      result = FW_TRUE;
+      break;
+    default:
+      *pSize = 0;
+      break;
+  }
+
+  if (0 < *pSize)
+  {
+    ICEMKII_LOG("<-- ");
+    for (i = 0; i < *pSize; i++)
+    {
+      ICEMKII_LOG("%02X ", pRspBody[i]);
+    }
+    ICEMKII_LOG("\r\n");
+  }
+
+  return result;
+}
+
+/*----------------------------------------------------------------------------*/

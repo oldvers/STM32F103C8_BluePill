@@ -407,7 +407,7 @@ void ICEMKII_BulkOut(U32 aEvent)
  *  @return None
  */
 
-static void icemkii_SendResponse(U8 * pRsp, U32 size)
+static void icemkii_SendResponse(U8 * pRsp, U32 size, FW_BOOLEAN evt)
 {
   EventBits_t events = 0;
   U16 sn = 0;
@@ -417,7 +417,14 @@ static void icemkii_SendResponse(U8 * pRsp, U32 size)
   /* Reset the message */
   ICEMKII_MSG_SetBuffer(gIceMkII.oMsg, pRsp, size);
 
-  sn = ICEMKII_MSG_GetSequenceNumber(gIceMkII.iMsg);
+  if (FW_TRUE == evt)
+  {
+    sn = 0xFFFF;
+  }
+  else
+  {
+    sn = ICEMKII_MSG_GetSequenceNumber(gIceMkII.iMsg);
+  }
   ICEMKII_MSG_SetSequenceNumber(gIceMkII.oMsg, sn);
 
   /* Send the response */
@@ -481,10 +488,15 @@ static void icemkii_Task(void * pvParameters)
     //}
 
     /* Send the response */
-    icemkii_SendResponse(rsp, size);
+    icemkii_SendResponse(rsp, size, FW_FALSE);
 
     /* Release the block */
     (void)BlockQueue_Release(gIceMkII.iQueue);
+
+    if (FW_TRUE == ICEMKII_CheckForEvents(req, rsp, &size))
+    {
+      icemkii_SendResponse(rsp, size, FW_TRUE);
+    }
   }
   //vTaskDelete(NULL);
 }
