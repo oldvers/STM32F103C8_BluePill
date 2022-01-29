@@ -402,8 +402,6 @@ static void icemkii_GetParameter
   U32 * pSize
 )
 {
-  U16 sign = 0x9205;
-
   ICEMKII_LOG("ICE Rx: Get Parameter\r\n");
 
   pRsp->MESSAGE_ID = RSP_PARAMETER;
@@ -417,7 +415,7 @@ static void icemkii_GetParameter
       break;
     case PARAMETER_ID_TARGET_SIGNATURE:
       ICEMKII_LOG(" - Target signature\r\n");
-      pRsp->rspGetParameter.targetSign.value = sign;
+      pRsp->rspGetParameter.targetSign.value = DWire_ReadSignature();
       *pSize = 3;
       break;
     default:
