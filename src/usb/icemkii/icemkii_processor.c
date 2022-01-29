@@ -1,6 +1,7 @@
 #include <string.h>
 #include "icemkii_processor.h"
 #include "ispmkii_processor.h"
+#include "dwire_processor.h"
 #include "debug.h"
 
 #define ICEMKII_DEBUG
@@ -146,7 +147,7 @@ typedef __packed struct ICEMKII_REQ_SET_PARAMETER_s
   U8 PARAMETER_ID;
   union
   {
-    U8                                    PARAMETER_VALUE;
+    U8                                    PARAMETER_VALUE[1];
     ICEMKII_SET_PARAMETER_EMULATOR_MODE_t emulator;
   };
 } ICEMKII_REQ_SET_PARAMETER_t, * ICEMKII_REQ_SET_PARAMETER_p;
@@ -172,7 +173,7 @@ typedef __packed struct ICEMKII_RSP_GET_PARAMETER_s
 {
   union
   {
-    U8                                    PARAMETER_VALUE;
+    U8                                    PARAMETER_VALUE[1];
     ICEMKII_GET_PARAMETER_OCD_VTARGET_t   ocdVtarget;
     ICEMKII_GET_PARAMETER_TGT_SIGN_t      targetSign;
   };
@@ -351,8 +352,19 @@ static void icemkii_SetParameter
   {
     case PARAMETER_ID_EMULATOR_MODE:
       ICEMKII_LOG(" - Emulator mode\r\n");
-      if ( (EMULATOR_MODE_SPI      != pReq->reqSetParameter.emulator.mode) &&
-           (EMULATOR_MODE_DBG_WIRE != pReq->reqSetParameter.emulator.mode) )
+      if (EMULATOR_MODE_SPI == pReq->reqSetParameter.emulator.mode)
+      {
+        //
+      }
+      else if (EMULATOR_MODE_DBG_WIRE == pReq->reqSetParameter.emulator.mode)
+      {
+        DWire_Init();
+        if (FW_FALSE == DWire_Sync())
+        {
+          pRsp->MESSAGE_ID = RSP_FAILED;
+        }
+      }
+      else
       {
         pRsp->MESSAGE_ID = RSP_FAILED;
       }

@@ -3,6 +3,7 @@
 
 #include "types.h"
 
-void DWIRE_Init(void);
+void       DWire_Init (void);
+FW_BOOLEAN DWire_Sync (void);
 
 #endif /* __DWIRE_PROCESSOR_H__ */

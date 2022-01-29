@@ -18,6 +18,14 @@
 #include "task.h"
 #include "event_groups.h"
 
+#define DWIRE_DEBUG
+
+#ifdef DWIRE_DEBUG
+#  define DWIRE_LOG      DBG
+#else
+#  define DWIRE_LOG(...)
+#endif
+
 #define DWIRE_TX_COMPLETE              (1 << 0)
 #define DWIRE_RX_COMPLETE              (1 << 1)
 #define DWIRE_BAUD_COMPLETE            (1 << 2)
@@ -244,12 +252,14 @@ static void dwire_BaudCaptComplete(TIM_CH_t aChannel, U16 aValue)
 
 //-----------------------------------------------------------------------------
 
-static FW_BOOLEAN dwire_Sync(void)
+FW_BOOLEAN DWire_Sync(void)
 {
   FW_BOOLEAN result = FW_TRUE;
   U32 idx           = 0;
   U32 baudrate      = 0;
   U16 time          = 0;
+
+  DWIRE_LOG("DWire: Sync\r\n");
 
   memset(gBaudRateValue, 0, sizeof(gBaudRateValue));
   gBaudRateCnt = 0;
@@ -281,13 +291,13 @@ static FW_BOOLEAN dwire_Sync(void)
     for (idx = DWIRE_BAUD_MEAS_START_IDX; idx < DWIRE_BAUD_MEAS_COUNT; idx++)
     {
       time = gBaudRateValue[idx] - gBaudRateValue[idx - 1];
-      DBG(" - Meas[%d] = %d\r\n", idx - 2, time);
+      DWIRE_LOG(" - Meas[%d]  = %d\r\n", idx - 2, time);
 
       baudrate += time;
     }
     baudrate /= (DWIRE_BAUD_MEAS_COUNT - DWIRE_BAUD_MEAS_START_IDX);
     baudrate = 2 * CPUClock / baudrate;
-    DBG(" - Baud    = %d\r\n", baudrate);
+    DWIRE_LOG(" - BaudRate = %d\r\n", baudrate);
 
     /* Initialize the UART */
     UART_Init
@@ -312,16 +322,16 @@ static FW_BOOLEAN dwire_Sync(void)
 
     /* Wait for the Sync byte from the target */
     idx = uart_Read(gRxBuffer, 1);
-    DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
+    DWIRE_LOG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
 
     if ( (1 == idx) && (0x55 == gRxBuffer[0]) )
     {
-      DBG("DWire: In sync!\r\n");
+      DWIRE_LOG("DWire: In sync!\r\n");
     }
     else
     {
       result = FW_FALSE;
-      DBG("DWire: Sync error!\r\n");
+      DWIRE_LOG("DWire: Sync error!\r\n");
     }
 
 //  vTaskDelay(50);
@@ -391,11 +401,9 @@ static FW_BOOLEAN dwire_Sync(void)
 
 void dwire_Task(void * pvParameters)
 {
-  DBG("Debug Wire Task Started...\r\n");
+  DWIRE_LOG("Debug Wire Task Started...\r\n");
 
-  GPIO_Init(GPIOB, 5, GPIO_TYPE_OUT_PP_50MHZ, 0);
-
-  (void)dwire_Sync();
+//  (void)dwire_Sync();
 
 //  UART_Init
 //  (
@@ -438,10 +446,16 @@ void dwire_Task(void * pvParameters)
 
 /* -------------------------------------------------------------------------- */
 
-void DWIRE_Init(void)
+void DWire_Init(void)
 {
   /* Event Group for flow control */
-  gEvents = xEventGroupCreate();
+  if (NULL == gEvents)
+  {
+    gEvents = xEventGroupCreate();
+  }
+
+  /* Init the test pin (temporarily) */
+  GPIO_Init(GPIOB, 5, GPIO_TYPE_OUT_PP_50MHZ, 0);
 
 //  /* FIFOs */
 //  gRxFifo = FIFO_Init(gRxBuffer, sizeof(gRxBuffer));
@@ -470,13 +484,13 @@ void DWIRE_Init(void)
 //        );
 
   /* Create the Debug Wire task */
-  xTaskCreate
-  (
-    dwire_Task,
-    "DWIRE",
-    2 * configMINIMAL_STACK_SIZE,
-    NULL,
-    tskIDLE_PRIORITY + 1,
-    NULL
-  );
+//  xTaskCreate
+//  (
+//    dwire_Task,
+//    "DWIRE",
+//    2 * configMINIMAL_STACK_SIZE,
+//    NULL,
+//    tskIDLE_PRIORITY + 1,
+//    NULL
+//  );
 }
