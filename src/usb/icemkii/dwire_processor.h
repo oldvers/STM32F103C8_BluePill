@@ -50,9 +50,6 @@ U16 DWire_ReadPC(void);
  */
 FW_BOOLEAN DWire_Disable(void);
 
-
-
-
 /** @brief Reads the device register
  *  @param reg - Register's number (0x00..0x20)
  *  @return Register's value
@@ -79,29 +76,30 @@ U8 DWire_ReadIOReg(U8 reg);
  */
 FW_BOOLEAN DWire_WriteIOReg(U8 reg, U8 value);
 
-
-
-
-
-
-
-
-
 /** @brief Reads the device registers
- *  @param first - The address of the first register
- *  @param pBuffer - The container for registers
+ *  @param first - The number of the first register
+ *  @param pRaw - The container for registers' values
  *  @param count - The count of registers to be read
  *  @return True - in case of success
  */
-FW_BOOLEAN DWire_ReadRegs(U16 first, U8 * pBuffer, U16 count);
+FW_BOOLEAN DWire_ReadRegs(U8 first, U8 * pRaw, U8 count);
 
 /** @brief Writes the device registers
- *  @param first - The address of the first register
- *  @param pBuffer - The container with registers' values
+ *  @param first - The number of the first register
+ *  @param pRaw - The container with registers' values
  *  @param count - The count of registers to be written
  *  @return True - in case of success
  */
-FW_BOOLEAN DWire_WriteRegs(U16 first, U8 * pBuffer, U16 count);
+FW_BOOLEAN DWire_WriteRegs(U8 first, U8 * pRaw, U8 count);
+
+
+
+
+
+
+
+
+
 
 /** @brief Sets the device Z register
  *  @param address - The value of Z register

@@ -168,21 +168,38 @@ static FW_BOOLEAN Test_WriteRegSequence(void)
   return result;
 }
 
-
-
-
-
-
-
 /* -------------------------------------------------------------------------- */
 
 static FW_BOOLEAN Test_ReadRegs(void)
 {
   FW_BOOLEAN result = FW_TRUE;
+  U8 raw[32] = {0};
 
   DBG("*** dWire Test Read Regs ***\r\n");
 
-  result = DWire_ReadRegs(0x1800, NULL, 32);
+  result = DWire_ReadRegs(0, raw, sizeof(raw));
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_WriteRegs(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 raw[32] = {0};
+  U8 i = 0;
+
+  DBG("*** dWire Test Write Regs ***\r\n");
+
+  for (i = 0; i < sizeof(raw); i++) raw[i] = 0x37;
+  result = DWire_WriteRegs(0, raw, sizeof(raw));
+
+  if (FW_TRUE == result)
+  {
+    result = DWire_ReadRegs(0, raw, sizeof(raw));
+    for (i = 0; i < sizeof(raw); i++) result &= (FW_BOOLEAN)(raw[i] == 0x37);
+  }
 
   return result;
 }
@@ -234,6 +251,7 @@ const TestFunction_t gTests[] =
   Test_WriteReg,
   Test_WriteRegSequence,
   Test_ReadRegs,
+  Test_WriteRegs,
 };
 
 U32 uiTestsGetCount(void)

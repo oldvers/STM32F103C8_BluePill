@@ -586,24 +586,20 @@ FW_BOOLEAN DWire_WriteIOReg(U8 reg, U8 value)
   return result;
 }
 
+/* -------------------------------------------------------------------------- */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-FW_BOOLEAN DWire_ReadRegs(U16 first, U8 * pBuffer, U16 count)
+FW_BOOLEAN DWire_ReadRegs(U8 first, U8 * pRaw, U8 count)
 {
   FW_BOOLEAN result = FW_FALSE;
+
+  if ( (REG_NUM_HI < first) || (REG_NUM_HI < (first + count - 1)) )
+  {
+    return result;
+  }
+  if ( (NULL == pRaw) || (0 == count) )
+  {
+    return result;
+  }
 
   GPIO_Hi(GPIOA, 8);
 
@@ -619,8 +615,8 @@ FW_BOOLEAN DWire_ReadRegs(U16 first, U8 * pBuffer, U16 count)
 
   if (FW_TRUE == uart_WriteRead(count))
   {
+    memcpy(pRaw, gDWire.rxBuffer, count);
     result = FW_TRUE;
-    DWIRE_LOG("DWire: Success\r\n");
   }
 
   GPIO_Lo(GPIOA, 8);
@@ -630,8 +626,17 @@ FW_BOOLEAN DWire_ReadRegs(U16 first, U8 * pBuffer, U16 count)
 
 /* -------------------------------------------------------------------------- */
 
-FW_BOOLEAN DWire_WriteRegs(U16 first, U8 * pBuffer, U16 count)
+FW_BOOLEAN DWire_WriteRegs(U8 first, U8 * pRaw, U8 count)
 {
+  if ((REG_NUM_HI < first) || (REG_NUM_HI < (first + count - 1)))
+  {
+    return FW_FALSE;
+  }
+  if ( (NULL == pRaw) || (0 == count) )
+  {
+    return FW_FALSE;
+  }
+
   dwire_Clear();
   dwire_Append_SetPC(first);
   dwire_Append_SetBP(first + count);
@@ -639,11 +644,20 @@ FW_BOOLEAN DWire_WriteRegs(U16 first, U8 * pBuffer, U16 count)
   dwire_Append(DWIRE_RW_MODE);
   dwire_Append(DWIRE_MODE_WRITE_REGS);
   dwire_Append(DWIRE_GO);
-  dwire_Append_Raw(pBuffer, count);
+  dwire_Append_Raw(pRaw, count);
   return uart_Write();
 }
 
 /* -------------------------------------------------------------------------- */
+
+
+
+
+
+
+
+
+
 
 FW_BOOLEAN DWire_SetZ(U16 address)
 {
@@ -1006,6 +1020,7 @@ static void dwire_Clear(void)
 
 static void dwire_Append_SetPC(U16 value)
 {
+  value += gDWire.basePC;
   gDWire.txBuffer[gDWire.txLen++] = DWIRE_SET_PC;
   gDWire.txBuffer[gDWire.txLen++] = (value >> 8);
   gDWire.txBuffer[gDWire.txLen++] = (value & 0xFF);
@@ -1015,6 +1030,7 @@ static void dwire_Append_SetPC(U16 value)
 
 static void dwire_Append_SetBP(U16 value)
 {
+  value += gDWire.basePC;
   gDWire.txBuffer[gDWire.txLen++] = DWIRE_SET_BP;
   gDWire.txBuffer[gDWire.txLen++] = (value >> 8);
   gDWire.txBuffer[gDWire.txLen++] = (value & 0xFF);
