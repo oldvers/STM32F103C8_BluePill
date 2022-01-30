@@ -84,6 +84,9 @@ void TIM2_DeInit(void)
   RCC->APB1RSTR |= RCC_APB1RSTR_TIM2RST;
   RCC->APB1RSTR &= ~(RCC_APB1RSTR_TIM2RST);
   RCC->APB1ENR  &= ~(RCC_APB1ENR_TIM2EN);
+
+  /* Disable interrupts */
+  IRQ_TIM2_Disable();
 }
 
 /* -------------------------------------------------------------------------- */

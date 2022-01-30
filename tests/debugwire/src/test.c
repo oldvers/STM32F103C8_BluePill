@@ -44,6 +44,35 @@ static FW_BOOLEAN Test_ReadSignature(void)
   return result;
 }
 
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_ReadPc(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U16 sign = 0;
+
+  DBG("*** dWire Test Read PC ***\r\n");
+
+  sign = DWire_ReadPc();
+
+  result = (FW_BOOLEAN)(0 != sign);
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_ReadRegs(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+
+  DBG("*** dWire Test Read Regs ***\r\n");
+
+  result = DWire_ReadRegs(0x1800, NULL, 32);
+
+  return result;
+}
+
 /* --- Test Start Up Function (mandatory, called before RTOS starts) -------- */
 
 void vTestStartUpFunction(void)
@@ -86,6 +115,8 @@ const TestFunction_t gTests[] =
 {
   Test_Sync,
   Test_ReadSignature,
+  Test_ReadPc,
+  Test_ReadRegs,
 };
 
 U32 uiTestsGetCount(void)

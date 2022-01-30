@@ -7,53 +7,16 @@
 #define ICEMKII_DEBUG
 
 #ifdef ICEMKII_DEBUG
-#  define ICEMKII_LOG    DBG
+#  define ICEMKII_LOG                DBG
+#  define ICEMKII_LOG_FIELD(p,f,s)   DBG("%-33s= %0"#s"X\r\n", #f, p->f)
 #else
 #  define ICEMKII_LOG(...)
+#  define ICEMKII_LOG_FIELD(p,f,s)
 #endif
 //#define ISP_LOG_FUNC_START()      ISP_LOG("--- ISP Start ----------------\r\n")
 //#define ISP_LOG_FUNC_END()        ISP_LOG("--- ISP End ------------------\r\n")
 //#define ISP_LOG_SUCCESS()         ISP_LOG(" - Success\r\n")
 //#define ISP_LOG_ERROR()           ISP_LOG(" - Fail\r\n")
-
-/*----------------------------------------------------------------------------*/
-
-typedef __packed struct DEVICE_DESCRIPTOR_s
-{
-  U8  ucReadIO[8]; //LSB = IOloc 0, MSB = IOloc63
-  U8  ucReadIOShadow[8]; //LSB = IOloc 0, MSB = IOloc63
-  U8  ucWriteIO[8]; //LSB = IOloc 0, MSB = IOloc63
-  U8  ucWriteIOShadow[8]; //LSB = IOloc 0, MSB = IOloc63
-  U8  ucReadExtIO[52]; //LSB = IOloc 96, MSB = IOloc511
-  U8  ucReadIOExtShadow[52]; //LSB = IOloc 96, MSB = IOloc511
-  U8  ucWriteExtIO[52]; //LSB = IOloc 96, MSB = IOloc511
-  U8  ucWriteIOExtShadow[52];//LSB = IOloc 96, MSB = IOloc511
-  U8  ucIDRAddress; //IDR address
-  U8  ucSPMCRAddress; //SPMCR Register address and dW BasePC
-  U32 ulBootAddress; //Device Boot Loader Start Address
-  U8  ucRAMPZAddress; //RAMPZ Register address in SRAM I/O space
-  U16 uiFlashPageSize; //Device Flash Page Size, Size = 2 exp ucFlashPageSize
-  U8  ucEepromPageSize; //Device Eeprom Page Size in bytes
-  U16 uiUpperExtIOLoc; //Topmost (last) extended I/O location, 0 if no external I/O
-  U32 ulFlashSize; //Device Flash Size
-  U8  ucEepromInst[20]; //Instructions for W/R EEPROM
-  U8  ucFlashInst[3]; //Instructions for W/R FLASH
-  U8  ucSPHaddr; // Stack pointer high
-  U8  ucSPLaddr; // Stack pointer low
-  U16 uiFlashpages; // number of pages in flash
-  U8  ucDWDRAddress; // DWDR register address
-  U8  ucDWBasePC; // Base/mask value of the PC
-  U8  ucAllowFullPageBitstream; // FALSE on ALL new parts
-  U16 uiStartSmallestBootLoaderSection; //
-  U8  EnablePageProgramming; // For JTAG parts only, default TRUE
-  U8  ucCacheType; // CacheType_Normal 0x00, CacheType_CAN 0x01, CacheType_HEIMDALL 0x02
-  U16 uiSramStartAddr; // Start of SRAM
-  U8  ucResetType; // Selects reset type. 0x00
-  U8  ucPCMaskExtended; // For parts with extended PC
-  U8  ucPCMaskHigh; // PC high mask
-  U8  ucEindAddress; // EIND IO address
-  U16 EECRAddress; // EECR IO address
-} DEVICE_DESCRIPTOR_t;
 
 /*----------------------------------------------------------------------------*/
 
@@ -72,6 +35,7 @@ typedef __packed struct DEVICE_DESCRIPTOR_s
 #define CMND_READ_PC                   (0x07)
 #define CMND_RESTORE_TARGET            (0x23)
 #define CMND_SINGLE_STEP               (0x09)
+#define CMND_SPI_ENABLE_DW_FUSE        (0x1D)
 
 #define RSP_OK                         (0x80)
 #define RSP_PARAMETER                  (0x81)
@@ -273,22 +237,65 @@ typedef __packed struct ICEMKII_REQ_SINGLE_STEP_s
 
 /*----------------------------------------------------------------------------*/
 
+typedef __packed struct ICEMKII_REQ_SET_DEVICE_DESCRIPTOR_s
+{
+  U8  ucReadIO[8];            // LSB = IOloc 0,  MSB = IOloc63
+  U8  ucReadIOShadow[8];      // LSB = IOloc 0,  MSB = IOloc63
+  U8  ucWriteIO[8];           // LSB = IOloc 0,  MSB = IOloc63
+  U8  ucWriteIOShadow[8];     // LSB = IOloc 0,  MSB = IOloc63
+  U8  ucReadExtIO[52];        // LSB = IOloc 96, MSB = IOloc511
+  U8  ucReadIOExtShadow[52];  // LSB = IOloc 96, MSB = IOloc511
+  U8  ucWriteExtIO[52];       // LSB = IOloc 96, MSB = IOloc511
+  U8  ucWriteIOExtShadow[52]; // LSB = IOloc 96, MSB = IOloc511
+  U8  ucIDRAddress;           // IDR Address
+  U8  ucSPMCRAddress;         // SPMCR Register Address and dW BasePC
+  U32 ulBootAddress;          // Device Boot Loader Start Address
+  U8  ucRAMPZAddress;         // RAMPZ Register Address in SRAM I/O space
+  U16 uiFlashPageSize;  // Device Flash Page Size, Size = 2 exp ucFlashPageSize
+  U8  ucEepromPageSize; // Device Eeprom Page Size in bytes
+  U16 uiUpperExtIOLoc;  // TopMost (last) extended I/O location,
+                        //  0 if no extended I/O
+  U32 ulFlashSize;      // Device Flash Size
+  U8  ucEepromInst[20]; // Instructions for W/R Eeprom
+  U8  ucFlashInst[3];   // Instructions for W/R Flash
+  U8  ucSPHaddr;        // Stack pointer high
+  U8  ucSPLaddr;        // Stack pointer low
+  U16 uiFlashpages;     // Number of pages in flash
+  U8  ucDWDRAddress;    // DWDR register address
+  U8  ucDWBasePC;       // Base/mask value of the PC
+  U8  ucAllowFullPageBitstream;         // FALSE on ALL new parts
+  U16 uiStartSmallestBootLoaderSection; //
+  U8  ucEnablePageProgramming;          // For JTAG parts only, default TRUE
+  U8  ucCacheType;                      // CacheType_Normal 0x00,
+                                        // CacheType_CAN    0x01,
+                                        // CacheType_HEIMDALL 0x02
+  U16 uiSramStartAddr;                  // Start of SRAM
+  U8  ucResetType;                      // Selects reset type. 0x00
+  U8  ucPCMaskExtended;                 // For parts with extended PC
+  U8  ucPCMaskHigh;                     // PC high mask
+  U8  ucEindAddress;                    // EIND IO address
+  U16 EECRAddress;                      // EECR IO address
+} ICEMKII_REQ_SET_DEVICE_DESCRIPTOR_t, * ICEMKII_REQ_SET_DEVICE_DESCRIPTOR_p;
+
+/*----------------------------------------------------------------------------*/
+
 typedef __packed struct ICEMKII_MSG_BODY_s
 {
   U8 MESSAGE_ID;
   union
   {
-    ICEMKII_REQ_SET_PARAMETER_t reqSetParameter;
-    ICEMKII_REQ_RESET_t         reqReset;
-    ICEMKII_REQ_GET_PARAMETER_t reqGetParameter;
-    ICEMKII_REQ_FORCED_STOP_t   reqForcedStop;
-    ICEMKII_REQ_READ_MEMORY_t   reqReadMemory;
-    ICEMKII_ISP_t               isp;
-    ICEMKII_RSP_SIGN_ON_t       rspSignOn;
-    ICEMKII_RSP_GET_PARAMETER_t rspGetParameter;
-    ICEMKII_RSP_MEMORY_t        rspMemory;
-    ICEMKII_RSP_PC_t            rspPc;
-    ICEMKII_EVT_BREAK_t         evtBreak;
+    ICEMKII_REQ_SET_PARAMETER_t         reqSetParameter;
+    ICEMKII_REQ_RESET_t                 reqReset;
+    ICEMKII_REQ_GET_PARAMETER_t         reqGetParameter;
+    ICEMKII_REQ_FORCED_STOP_t           reqForcedStop;
+    ICEMKII_REQ_READ_MEMORY_t           reqReadMemory;
+    ICEMKII_REQ_SET_DEVICE_DESCRIPTOR_t reqSetDeviceDescr;
+    ICEMKII_ISP_t                       isp;
+    ICEMKII_RSP_SIGN_ON_t               rspSignOn;
+    ICEMKII_RSP_GET_PARAMETER_t         rspGetParameter;
+    ICEMKII_RSP_MEMORY_t                rspMemory;
+    ICEMKII_RSP_PC_t                    rspPc;
+    ICEMKII_EVT_BREAK_t                 evtBreak;
   };
 } ICEMKII_MSG_BODY_t, * ICEMKII_MSG_BODY_p;
 
@@ -465,6 +472,8 @@ static void icemkii_Reset
 
   switch (pReq->reqReset.FLAG)
   {
+    case RESET_FLAG_DBG_WIRE_DSBL:
+      (void)DWire_Disable();
     case RESET_FLAG_LOW_LEVEL:
     case RESET_FLAG_HIGH_LEVEL:
       pRsp->MESSAGE_ID = RSP_OK;
@@ -502,43 +511,43 @@ static void icemkii_SetDvcDescr
 {
   ICEMKII_LOG("ICE Rx: Set Device Descriptor:\r\n");
   ICEMKII_LOG(" Rcvd  = %d\r\n", (*pSize - 1));
-  ICEMKII_LOG(" Fact  = %d\r\n", sizeof(DEVICE_DESCRIPTOR_t));
+  ICEMKII_LOG(" Fact  = %d\r\n", sizeof(ICEMKII_REQ_SET_DEVICE_DESCRIPTOR_t));
 
-  DEVICE_DESCRIPTOR_t * dsc = (DEVICE_DESCRIPTOR_t *)(pReq + 1);
+  ICEMKII_REQ_SET_DEVICE_DESCRIPTOR_p dsc = &pReq->reqSetDeviceDescr;
 
-  ICEMKII_LOG(" ucReadIO[0]                      = %08X\r\n", dsc->ucReadIO[0]);
-  ICEMKII_LOG(" ucReadIOShadow[0]                = %08X\r\n", dsc->ucReadIOShadow[0]);
-  ICEMKII_LOG(" ucWriteIO[0]                     = %08X\r\n", dsc->ucWriteIO[0]);
-  ICEMKII_LOG(" ucWriteIOShadow[0]               = %08X\r\n", dsc->ucWriteIOShadow[0]);
-  ICEMKII_LOG(" ucReadExtIO[0]                   = %08X\r\n", dsc->ucReadExtIO[0]);
-  ICEMKII_LOG(" ucReadIOExtShadow[0]             = %08X\r\n", dsc->ucReadIOExtShadow[0]);
-  ICEMKII_LOG(" ucWriteExtIO[0]                  = %08X\r\n", dsc->ucWriteExtIO[0]);
-  ICEMKII_LOG(" ucWriteIOExtShadow[0]            = %08X\r\n", dsc->ucWriteIOExtShadow[0]);
-  ICEMKII_LOG(" ucIDRAddress                     = %08X\r\n", dsc->ucIDRAddress);
-  ICEMKII_LOG(" ucSPMCRAddress                   = %08X\r\n", dsc->ucSPMCRAddress);
-  ICEMKII_LOG(" ulBootAddress                    = %08X\r\n", dsc->ulBootAddress);
-  ICEMKII_LOG(" ucRAMPZAddress                   = %08X\r\n", dsc->ucRAMPZAddress);
-  ICEMKII_LOG(" uiFlashPageSize                  = %08X\r\n", dsc->uiFlashPageSize);
-  ICEMKII_LOG(" ucEepromPageSize                 = %08X\r\n", dsc->ucEepromPageSize);
-  ICEMKII_LOG(" uiUpperExtIOLoc                  = %08X\r\n", dsc->uiUpperExtIOLoc);
-  ICEMKII_LOG(" ulFlashSize                      = %08X\r\n", dsc->ulFlashSize);
-  ICEMKII_LOG(" ucEepromInst[0]                  = %08X\r\n", dsc->ucEepromInst[0]);
-  ICEMKII_LOG(" ucFlashInst[0]                   = %08X\r\n", dsc->ucFlashInst[0]);
-  ICEMKII_LOG(" ucSPHaddr                        = %08X\r\n", dsc->ucSPHaddr);
-  ICEMKII_LOG(" ucSPLaddr                        = %08X\r\n", dsc->ucSPLaddr);
-  ICEMKII_LOG(" uiFlashpages                     = %08X\r\n", dsc->uiFlashpages);
-  ICEMKII_LOG(" ucDWDRAddress                    = %08X\r\n", dsc->ucDWDRAddress);
-  ICEMKII_LOG(" ucDWBasePC                       = %08X\r\n", dsc->ucDWBasePC);
-  ICEMKII_LOG(" ucAllowFullPageBitstream         = %08X\r\n", dsc->ucAllowFullPageBitstream);
-  ICEMKII_LOG(" uiStartSmallestBootLoaderSection = %08X\r\n", dsc->uiStartSmallestBootLoaderSection);
-  ICEMKII_LOG(" EnablePageProgramming            = %08X\r\n", dsc->EnablePageProgramming);
-  ICEMKII_LOG(" ucCacheType                      = %08X\r\n", dsc->ucCacheType);
-  ICEMKII_LOG(" uiSramStartAddr                  = %08X\r\n", dsc->uiSramStartAddr);
-  ICEMKII_LOG(" ucResetType                      = %08X\r\n", dsc->ucResetType);
-  ICEMKII_LOG(" ucPCMaskExtended                 = %08X\r\n", dsc->ucPCMaskExtended);
-  ICEMKII_LOG(" ucPCMaskHigh                     = %08X\r\n", dsc->ucPCMaskHigh);
-  ICEMKII_LOG(" ucEindAddress                    = %08X\r\n", dsc->ucEindAddress);
-  ICEMKII_LOG(" EECRAddress                      = %08X\r\n", dsc->EECRAddress);
+  ICEMKII_LOG_FIELD(dsc, ucReadIO[0]                      , 2);
+  ICEMKII_LOG_FIELD(dsc, ucReadIOShadow[0]                , 2);
+  ICEMKII_LOG_FIELD(dsc, ucWriteIO[0]                     , 2);
+  ICEMKII_LOG_FIELD(dsc, ucWriteIOShadow[0]               , 2);
+  ICEMKII_LOG_FIELD(dsc, ucReadExtIO[0]                   , 2);
+  ICEMKII_LOG_FIELD(dsc, ucReadIOExtShadow[0]             , 2);
+  ICEMKII_LOG_FIELD(dsc, ucWriteExtIO[0]                  , 2);
+  ICEMKII_LOG_FIELD(dsc, ucWriteIOExtShadow[0]            , 2);
+  ICEMKII_LOG_FIELD(dsc, ucIDRAddress                     , 2);
+  ICEMKII_LOG_FIELD(dsc, ucSPMCRAddress                   , 2);
+  ICEMKII_LOG_FIELD(dsc, ulBootAddress                    , 8);
+  ICEMKII_LOG_FIELD(dsc, ucRAMPZAddress                   , 2);
+  ICEMKII_LOG_FIELD(dsc, uiFlashPageSize                  , 4);
+  ICEMKII_LOG_FIELD(dsc, ucEepromPageSize                 , 2);
+  ICEMKII_LOG_FIELD(dsc, uiUpperExtIOLoc                  , 4);
+  ICEMKII_LOG_FIELD(dsc, ulFlashSize                      , 8);
+  ICEMKII_LOG_FIELD(dsc, ucEepromInst[0]                  , 2);
+  ICEMKII_LOG_FIELD(dsc, ucFlashInst[0]                   , 2);
+  ICEMKII_LOG_FIELD(dsc, ucSPHaddr                        , 2);
+  ICEMKII_LOG_FIELD(dsc, ucSPLaddr                        , 2);
+  ICEMKII_LOG_FIELD(dsc, uiFlashpages                     , 4);
+  ICEMKII_LOG_FIELD(dsc, ucDWDRAddress                    , 2);
+  ICEMKII_LOG_FIELD(dsc, ucDWBasePC                       , 2);
+  ICEMKII_LOG_FIELD(dsc, ucAllowFullPageBitstream         , 2);
+  ICEMKII_LOG_FIELD(dsc, uiStartSmallestBootLoaderSection , 4);
+  ICEMKII_LOG_FIELD(dsc, ucEnablePageProgramming          , 2);
+  ICEMKII_LOG_FIELD(dsc, ucCacheType                      , 2);
+  ICEMKII_LOG_FIELD(dsc, uiSramStartAddr                  , 4);
+  ICEMKII_LOG_FIELD(dsc, ucResetType                      , 2);
+  ICEMKII_LOG_FIELD(dsc, ucPCMaskExtended                 , 2);
+  ICEMKII_LOG_FIELD(dsc, ucPCMaskHigh                     , 2);
+  ICEMKII_LOG_FIELD(dsc, ucEindAddress                    , 2);
+  ICEMKII_LOG_FIELD(dsc, EECRAddress                      , 4);
 
   pRsp->MESSAGE_ID = RSP_OK;
   *pSize = 1;

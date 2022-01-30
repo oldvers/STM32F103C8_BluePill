@@ -45,7 +45,7 @@
   (port->BSRR = (1 << pin))
 
 #define GPIO_Lo(port,pin) \
-  (port->BSRR = (1 << (pin + 16)))
+  (port->BSRR = (U32)(1 << (pin + 16)))
 
 #define GPIO_In(port,pin) \
   ((port->IDR >> pin) & 1)

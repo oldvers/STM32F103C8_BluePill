@@ -83,6 +83,7 @@ typedef struct
   };
   U8                 txBuffer[DWIRE_BUFFER_SIZE];
   U32                txLen;
+  U32                txCnt;
   U8                 rxBuffer[DWIRE_BUFFER_SIZE];
   U32                rxLen;
   /* RTOS objects */
@@ -157,10 +158,13 @@ static FW_BOOLEAN uart_RxComplete(U8 * pByte)
 
 static FW_BOOLEAN uart_TxByte(U8 * pByte)
 {
-  if (0 < gDWire.txLen)
+  //if (0 < gDWire.txLen)
+  if (gDWire.txCnt < gDWire.txLen)
   {
-    gDWire.txLen--;
-    *pByte = gDWire.txBuffer[gDWire.txLen];
+    //gDWire.txLen--;
+    //*pByte = gDWire.txBuffer[gDWire.txLen];
+    *pByte = gDWire.txBuffer[gDWire.txCnt];
+    gDWire.txCnt++;
     return FW_TRUE;
   }
   else
@@ -281,6 +285,7 @@ static FW_BOOLEAN uart_WriteRead(void) //U8 * pBuffer, U32 size)
   U32 i = 0; //, len = gTxLen;
 
   gDWire.rxLen = 0;
+  gDWire.txCnt = 0;
   gDWire.txInProgress = FW_TRUE;
   gDWire.txOk = FW_TRUE;
 
@@ -327,6 +332,161 @@ static FW_BOOLEAN uart_WriteRead(void) //U8 * pBuffer, U32 size)
   return result;
 }
 
+static FW_BOOLEAN uart_Write(void)
+{
+  U32 i = 0;
+
+  gDWire.rxLen = 0;
+  gDWire.txCnt = 0;
+  gDWire.txInProgress = FW_TRUE;
+  gDWire.txOk = FW_TRUE;
+
+  DWIRE_LOG("DWire --> ");
+  for (i = 0; i < gDWire.txLen; i++)
+  {
+    DWIRE_LOG("%02X ", gDWire.txBuffer[i]);
+  }
+  DWIRE_LOG("\r\n");
+
+  UART_TxStart(UART2);
+
+  return uart_WaitForComplete(DWIRE_TX_COMPLETE);
+}
+
+
+
+
+
+
+
+
+static void dwire_Begin(void)
+{
+  memset(gDWire.txBuffer, 0, sizeof(gDWire.txBuffer));
+  memset(gDWire.rxBuffer, 0, sizeof(gDWire.rxBuffer));
+  gDWire.txLen = 0;
+}
+
+static void dwire_AddSetPC(U16 value)
+{
+  //DWire_Send(dwire, BYTES(DWIRE_SET_PC, ADDR(pc)));
+  gDWire.txBuffer[gDWire.txLen++] = DWIRE_SET_PC;
+  gDWire.txBuffer[gDWire.txLen++] = (value >> 8);
+  gDWire.txBuffer[gDWire.txLen++] = (value & 0xFF);
+}
+
+static void dwire_AddSetBP(U16 value)
+{
+  //DWire_Send(dwire, BYTES(DWIRE_SET_BP, ADDR(bp)));
+  gDWire.txBuffer[gDWire.txLen++] = DWIRE_SET_BP;
+  gDWire.txBuffer[gDWire.txLen++] = (value >> 8);
+  gDWire.txBuffer[gDWire.txLen++] = (value & 0xFF);
+}
+
+static void dwire_Add(U8 value)
+{
+  gDWire.txBuffer[gDWire.txLen++] = value;
+}
+
+static void dwire_AddBuffer(U8 * pBuffer, U16 length)
+{
+  memcpy(&gDWire.txBuffer[gDWire.txLen], pBuffer, length);
+  gDWire.txLen += length;
+}
+
+static void dwire_AddPreInst(void)
+{
+  gDWire.txBuffer[gDWire.txLen++] = DWIRE_FLAG_INST;
+}
+
+static void dwire_AddPreFlashInst(void)
+{
+  gDWire.txBuffer[gDWire.txLen++] = DWIRE_FLAG_FLASH_INST;
+}
+
+static void dwire_AddInst(U16 value)
+{
+  //DWire_Send(dwire, BYTES(DWIRE_SET_IR, WORD(inst), DWIRE_SS_INST));
+  gDWire.txBuffer[gDWire.txLen++] = DWIRE_SET_IR;
+  gDWire.txBuffer[gDWire.txLen++] = (value >> 8);
+  gDWire.txBuffer[gDWire.txLen++] = (value & 0xFF);
+  gDWire.txBuffer[gDWire.txLen++] = DWIRE_SS_INST;
+}
+
+static void dwire_AddIn(U8 reg, U16 ioreg)
+{
+  U16 value = 0xB000;
+
+  value |= ((ioreg << 5) & 0x600);
+  value |= ((reg << 4) & 0x01F0);
+  value |= (ioreg & 0x000F);
+
+  //DWire_Inst(dwire, 0xb000 | ((ioreg << 5) & 0x600) | ((reg << 4) & 0x01F0) | (ioreg & 0x000F));
+  dwire_AddInst(value);
+}
+
+static void dwire_AddOut(U16 ioreg, U8 reg)
+{
+  U16 value = 0xB800;
+
+  value |= ((ioreg << 5) & 0x600);
+  value |= ((reg << 4) & 0x01F0);
+  value |= (ioreg & 0x000F);
+
+  //DWire_Inst(dwire, 0xb800 | ((ioreg << 5) & 0x600) | ((reg << 4) & 0x01F0) | (ioreg & 0x000F));
+  dwire_AddInst(value);
+}
+
+static void dwire_AddInDWDR(U8 reg)
+{
+//  dwire_AddIn(reg, DWIRE_DEV_DWDR);
+}
+
+static void dwire_AddOutDWDR(U8 reg)
+{
+//  dwire_AddOut(DWIRE_DEV_DWDR, reg);
+}
+
+static void dwire_AddOutSPMCSR(U8 reg)
+{
+//  dwire_AddOut(DWIRE_DEV_SPMCSR, reg);
+}
+
+static void dwire_AddLPM(U8 reg)
+{
+  dwire_AddInst(0x9004 | (reg << 4));
+}
+
+static void dwire_AddSPM(void)
+{
+  dwire_AddInst(0x95E8);
+}
+
+static void dwire_AddSPMZ(void)
+{
+  dwire_AddInst(0x95F8);
+}
+
+static void dwire_AddLDI(U8 reg, U8 value)
+{
+  U16 inst = 0xE000;
+
+  inst |= ((reg << 4) & 0xF0);
+  inst |= (value & 0xF);
+  inst |= ((value << 4) & 0xF00);
+
+  //DWire_Inst(dwire, 0xe000 | ((reg << 4) & 0xf0) | (val & 0xf) | ((val << 4) & 0xf00));
+  dwire_AddInst(inst);
+}
+
+
+
+
+
+
+
+
+
 
 
 
@@ -369,10 +529,15 @@ FW_BOOLEAN DWire_Sync(void)
   U32 baudrate      = 0;
   U16 time          = 0;
 
+  GPIO_Hi(GPIOA, 8);
+
   DWIRE_LOG("DWire: Sync\r\n");
 
   memset(gDWire.baudRateValue, 0, sizeof(gDWire.baudRateValue));
   gDWire.baudRateCnt = 0;
+
+  /* Deinit the UART */
+  UART_DeInit(UART2);
 
   /* Init timer */
   TIM2_InitInputCapture(TIM_CH3, dwire_BaudCaptComplete);
@@ -472,6 +637,8 @@ FW_BOOLEAN DWire_Sync(void)
 //    vTaskDelay(500);
 //  }
 
+  GPIO_Lo(GPIOA, 8);
+
   return result;
 }
 
@@ -485,10 +652,14 @@ U16 DWire_ReadSignature(void)
 {
   U16 result = 0;
 
+  GPIO_Hi(GPIOA, 8);
+
   DWIRE_LOG("DWire: Read Signature\r\n");
 
-  gDWire.txBuffer[0] = DWIRE_GET_SIG;
-  gDWire.txLen = 1;
+  //gDWire.txBuffer[0] = DWIRE_GET_SIG;
+  //gDWire.txLen = 1;
+  dwire_Begin();
+  dwire_Add(DWIRE_GET_SIG);
   if (FW_TRUE == uart_WriteRead())
   {
     //if (2 == uart_Read(2))
@@ -499,8 +670,400 @@ U16 DWire_ReadSignature(void)
     }
   }
 
+  GPIO_Lo(GPIOA, 8);
+
   return result;
 }
+
+/* -------------------------------------------------------------------------- */
+
+U16 DWire_ReadPc(void)
+{
+  U16 result = 0;
+
+  GPIO_Hi(GPIOA, 8);
+
+  DWIRE_LOG("DWire: Read PC\r\n");
+
+  //gDWire.txBuffer[0] = DWIRE_GET_PC;
+  //gDWire.txLen = 1;
+  dwire_Begin();
+  dwire_Add(DWIRE_GET_PC);
+  if (FW_TRUE == uart_WriteRead())
+  {
+    if (2 == gDWire.rxLen)
+    {
+      result = gDWire.rxBuffer[1] + (gDWire.rxBuffer[0] << 8);
+      DWIRE_LOG("DWire: PC = %04X\r\n", result);
+    }
+  }
+
+  GPIO_Lo(GPIOA, 8);
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_Disable(void)
+{
+  FW_BOOLEAN result = FW_FALSE;
+
+  GPIO_Hi(GPIOA, 8);
+
+  DWIRE_LOG("DWire: Disable\r\n");
+
+  //gDWire.txBuffer[0] = DWIRE_DISABLE;
+  //gDWire.txLen = 1;
+  dwire_Begin();
+  dwire_Add(DWIRE_DISABLE);
+  result = uart_Write();
+  if (FW_TRUE == result)
+  {
+    DWIRE_LOG("DWire: Disabled!\r\n");
+  }
+
+  GPIO_Lo(GPIOA, 8);
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_ReadRegs(U16 first, U8 * pBuffer, U16 count)
+{
+  FW_BOOLEAN result = FW_FALSE;
+
+  GPIO_Hi(GPIOA, 8);
+
+  DWIRE_LOG("DWire: Read Regs\r\n");
+
+  dwire_Begin();
+  //DWire_SetPC(dwire, first);
+  //gDWire.txBuffer[0] = DWIRE_SET_PC;
+  //gDWire.txBuffer[1] = (first >> 8);
+  //gDWire.txBuffer[2] = (first & 0xFF);
+  dwire_AddSetPC(first);
+
+  //DWire_SetBP(dwire, first + count);
+  //gDWire.txBuffer[3] = DWIRE_SET_BP;
+  //gDWire.txBuffer[4] = ((first + count) >> 8);
+  //gDWire.txBuffer[5] = ((first + count) & 0xFF);
+  dwire_AddSetBP(first + count);
+
+  //DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_READ_REGS, DWIRE_GO));
+  //gDWire.txBuffer[6] = DWIRE_FLAG_MEMORY;
+  //gDWire.txBuffer[7] = DWIRE_RW_MODE;
+  //gDWire.txBuffer[8] = DWIRE_MODE_READ_REGS;
+  //gDWire.txBuffer[9] = DWIRE_GO;
+  //
+  //gDWire.txLen = 10;
+  dwire_Add(DWIRE_FLAG_MEMORY);
+  dwire_Add(DWIRE_RW_MODE);
+  dwire_Add(DWIRE_MODE_READ_REGS);
+  dwire_Add(DWIRE_GO);
+
+  //DWire_Receive(dwire, buf, count);
+  //gDWire.txBuffer[0] = DWIRE_GET_PC;
+  //gDWire.txLen = 1;
+  if (FW_TRUE == uart_WriteRead())
+  {
+    if (count == gDWire.rxLen)
+    {
+      result = FW_TRUE;
+      DWIRE_LOG("DWire: Success\r\n");
+    }
+  }
+
+  GPIO_Lo(GPIOA, 8);
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 DWire_GetReg(U16 reg)
+{
+  U8 result = 0;
+
+  //DWire_PreInst(dwire);
+  //DWire_Out_DWDR(dwire, reg);
+  //return DWire_ReceiveByte(dwire);
+  dwire_Begin();
+  dwire_AddPreInst();
+  dwire_AddOutDWDR(reg);
+  if (FW_TRUE == uart_WriteRead())
+  {
+    if (1 == gDWire.rxLen)
+    {
+      result = gDWire.rxBuffer[0];
+    }
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_SetReg(U16 reg, U8 value)
+{
+  //DWire_PreInst(dwire);
+  //DWire_In_DWDR(dwire, reg);
+  //DWire_SendByte(dwire, val);
+  dwire_Begin();
+  dwire_AddPreInst();
+  dwire_AddInDWDR(reg);
+  dwire_Add(value);
+  return uart_Write();
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_SetRegs(U16 first, U8 * pBuffer, U16 count)
+{
+  dwire_Begin();
+  //DWire_SetPC(dwire, first);
+  //DWire_SetBP(dwire, first + count);
+  //DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_WRITE_REGS, DWIRE_GO));
+  //DWire_Send(dwire, buf, count);
+  dwire_AddSetPC(first);
+  dwire_AddSetBP(first + count);
+  dwire_Add(DWIRE_FLAG_MEMORY);
+  dwire_Add(DWIRE_RW_MODE);
+  dwire_Add(DWIRE_MODE_WRITE_REGS);
+  dwire_Add(DWIRE_GO);
+  dwire_AddBuffer(pBuffer, count);
+  return uart_Write();
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_SetZ(U16 address)
+{
+  DWire_SetRegs(30, (U8 *)&address, 2);//BYTES(WORD_LE(addr)));
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_CacheRegs(void)
+{
+  //DWire_Send(dwire, BYTES(DWIRE_GET_PC));
+  //dwire->pc = (DWire_ReceiveWord(dwire) * 2 - 1) % DWIRE_DEV_FLASH_SIZE;
+  dwire_Begin();
+
+  //DWire_GetRegs(dwire, 28, &dwire->regs[28], 4);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_CacheAllRegs(void)
+{
+  //if (dwire->have_all_regs) return;
+  //DWire_GetRegs(dwire, 0, dwire->regs, 28);
+  //dwire->have_all_regs = true;
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_FlushCacheRegs(void)
+{
+  //if (dwire->have_all_regs)
+  //  DWire_SetRegs(dwire, 0, dwire->regs, 32);
+  //else
+  //  DWire_SetRegs(dwire, 28, &dwire->regs[28], 4);
+  //DWire_SetPC(dwire, dwire->pc/2);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_ReadAddr(U16 address, U8 * pBuffer, U16 count)
+{
+//  DWire_SetZ(dwire, addr);
+//  DWire_SetBP(dwire, 2);
+//  DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_READ_SRAM));
+//  for (int i = 0; i < count; i++) {
+//    uint16_t iaddr = addr + i;
+//    if (!CACHED_REG(iaddr) || iaddr != DWIRE_DEV_DWDR + 0x20) {
+//      DWire_SetPC(dwire, 0);
+//      DWire_Send(dwire, BYTES(DWIRE_GO));
+//      buf[i] = DWire_ReceiveByte(dwire);
+//    } else {
+//      if (CACHED_REG(iaddr)) buf[i] = dwire->regs[iaddr];
+//      else buf[i] = 0;
+//      DWire_SetZ(dwire, iaddr + 1);
+//    }
+//  }
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_WriteAddr(U16 address, U8 * pBufer, U16 count)
+{
+//  DWire_SetZ(dwire, addr);
+//  DWire_SetBP(dwire, 3);
+//  DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_WRITE_SRAM));
+//  for (int i = 0; i < count; i++) {
+//    uint16_t iaddr = addr + i;
+//    if (!CACHED_REG(iaddr) || iaddr != DWIRE_DEV_DWDR + 0x20) {
+//      DWire_SetPC(dwire, 1);
+//      DWire_Send(dwire, BYTES(DWIRE_GO, buf[i]));
+//    } else {
+//      if (CACHED_REG(iaddr)) dwire->regs[iaddr] = buf[i];
+//      DWire_SetZ(dwire, addr + i + 1);
+//    }
+//  }
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_Reset(void)
+{
+//  DWire_Send(dwire, BYTES(DWIRE_RESET));
+//  DWire_Sync(dwire);
+//  DWire_Reconnect(dwire);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_Step(void)
+{
+//  DWire_FlushCacheRegs(dwire);
+//  DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN, DWIRE_RESUME_SS));
+//  DWire_Sync(dwire);
+//  DWire_Reconnect(dwire);
+//  dwire->have_all_regs = false;
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_Run(void)
+{
+//  dwire->pc = 0;
+//  dwire->breakpoint = -1;
+//  DWire_Continue(dwire);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_Continue(void)
+{
+//  DWire_FlushCacheRegs(dwire);
+//  if (dwire->breakpoint < 0) {
+//    DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN));
+//  } else {
+//    DWire_SetBP(dwire, dwire->breakpoint / 2);
+//    DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN_TO_CURSOR));
+//  }
+//  DWire_Send(dwire, BYTES(DWIRE_RESUME));
+//  dwire->stopped = false;
+//  dwire->have_all_regs = false;
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_ReadFlash(U16 address, U8 * pBuffer, U16 count)
+{
+//  DWire_SetZ(dwire, addr);
+//  DWire_SetBP(dwire, count * 2);
+//  DWire_SetPC(dwire, 0);
+//  DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_READ_FLASH, DWIRE_GO));
+//  DWire_Receive(dwire, buf, count);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_WriteFlashPage(U16 address, U8 * pBuffer, U16 count)
+{
+//  DWire_SetZ(dwire, addr);
+//  DWire_SetPC(dwire, 0x3f00);
+//  DWire_PreInst(dwire);
+////  DWire_Inst(dwire, 0x01cf);  // movw r24,r30
+//  DWire_LDI(dwire, 29, 0x03);
+//  DWire_Out_SPMCSR(dwire, 29);
+//  DWire_SPM(dwire);
+//  osDelay(10); // TODO hack can we do without it?
+//  DWire_BreakSync(dwire);
+//  DWire_PreFlashInst(dwire);
+//  DWire_LDI(dwire, 29, 0x01);
+//  for (int i = 0; i < count; i += 2) {
+//    DWire_SetPC(dwire, 0x3f00);
+//    DWire_In_DWDR(dwire, 0);
+//    DWire_SendByte(dwire, buf[i]);
+//    DWire_In_DWDR(dwire, 1);
+//    DWire_SendByte(dwire, buf[i+1]);
+//    DWire_Out_SPMCSR(dwire, 29);
+//    DWire_SPM(dwire);
+//    DWire_Inst(dwire, 0x9632);
+//  }
+//  DWire_SetPC(dwire, 0x3f00);
+//  DWire_LDI(dwire, 31, (addr >> 8) & 0xff);
+//  DWire_LDI(dwire, 30, addr & 0xff);
+//  DWire_LDI(dwire, 29, 0x05);
+//  DWire_Out_SPMCSR(dwire, 29);
+//  DWire_SPM(dwire);
+//  osDelay(10); // TODO hack can we do without it?
+//  DWire_BreakSync(dwire);
+//  DWire_SetPC(dwire, 0x3f00);
+//  DWire_LDI(dwire, 29, 0x11);
+//  DWire_Out_SPMCSR(dwire, 29);
+//  DWire_SPM(dwire);
+//  DWire_BreakSync(dwire);
+//  // TODO: restore regs r0/r1
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 DWire_ReadFuseBits(U16 z)
+{
+//  DWire_SetZ(dwire, z);
+//  //DWire_SetRegs(dwire, 29, BYTES(0x09, WORD_LE(z)));
+//  //DWire_SetPC(dwire, 0x3f00);
+//  DWire_PreInst(dwire);
+//  DWire_LDI(dwire, 29, 0x09);
+//  DWire_Out_SPMCSR(dwire, 29);
+//  DWire_LPM(dwire, 29);
+//  DWire_Out_DWDR(dwire, 29);
+//  return DWire_ReceiveByte(dwire);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 DWire_ReadFuseBitsLow(void)
+{
+  return 0; //DWire_ReadFuseBits(dwire, 0);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 DWire_ReadFuseBitsHigh(void)
+{
+  return 0; //DWire_ReadFuseBits(dwire, 3);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 DWire_ReadFuseBitsExt(void)
+{
+  return 0; //DWire_ReadFuseBits(dwire, 2);
+}
+
+/* -------------------------------------------------------------------------- */
+
+U8 DWire_ReadLockBits(void)
+{
+  return 0; //DWire_ReadFuseBits(dwire, 1);
+}
+
+/* -------------------------------------------------------------------------- */
+
+
+
+
+
+
+
+
+
 
 /* -------------------------------------------------------------------------- */
 
@@ -588,6 +1151,7 @@ void DWire_Init(void)
   /* Init the test pin (temporarily) */
   GPIO_Init(GPIOB, 5, GPIO_TYPE_OUT_PP_50MHZ, 0);
   GPIO_Init(GPIOB, 9, GPIO_TYPE_OUT_PP_50MHZ, 0);
+  GPIO_Init(GPIOA, 8, GPIO_TYPE_OUT_PP_50MHZ, 0);
 
 //  /* FIFOs */
 //  gRxFifo = FIFO_Init(gRxBuffer, sizeof(gRxBuffer));

@@ -231,11 +231,13 @@ void UART_DeInit(UART_t aUART)
 
 void UART_IrqHandler(UART_t aUART)
 {
-  U32 sr     = gUARTCtx[aUART].HW->SR;
-  U32 cr1    = gUARTCtx[aUART].HW->CR1;
-  U32 cr3    = gUARTCtx[aUART].HW->CR3;
   U32 errors = 0;
   U16 data   = 0;
+  U32 cr1    = gUARTCtx[aUART].HW->CR1;
+  U32 cr3    = gUARTCtx[aUART].HW->CR3;
+  /* Reading the SR must be the last one to guarantee the RXNE and TC flags
+     to be both set in case of half-duplex communication */
+  U32 sr     = gUARTCtx[aUART].HW->SR;
 
 //  if ( (0 != (sr & USART_SR_TC)) && (0 != (cr1 & USART_CR1_TCIE)) &&
 //       (0 != (sr & USART_SR_RXNE)) && (0 != (cr1 & USART_CR1_RXNEIE)) )
