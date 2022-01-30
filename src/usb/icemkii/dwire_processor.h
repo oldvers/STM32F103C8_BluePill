@@ -36,13 +36,13 @@ FW_BOOLEAN DWire_Sync(void);
  *  @param None
  *  @return The signature, 0 - in case of error
  */
-U16 DWire_ReadSignature(void);
+U16 DWire_GetSignature(void);
 
 /** @brief Reads the device program counter
  *  @param None
  *  @return The program counter
  */
-U16 DWire_ReadPC(void);
+U16 DWire_GetPC(void);
 
 /** @brief Disables the dWire
  *  @param None
@@ -54,27 +54,27 @@ FW_BOOLEAN DWire_Disable(void);
  *  @param reg - Register's number (0x00..0x20)
  *  @return Register's value
  */
-U8 DWire_ReadReg(U8 reg);
+U8 DWire_GetReg(U8 reg);
 
 /** @brief Writes the device register
  *  @param reg - Register's number (0x00..0x20)
  *  @param value - Register's value
  *  @return True - in case of success
  */
-FW_BOOLEAN DWire_WriteReg(U8 reg, U8 value);
+FW_BOOLEAN DWire_SetReg(U8 reg, U8 value);
 
 /** @brief Reads the device I/O register
  *  @param reg - Register's number (0x20..0x5F)
  *  @return Register's value
  */
-U8 DWire_ReadIOReg(U8 reg);
+U8 DWire_GetIOReg(U8 reg);
 
 /** @brief Writes the device I/O register
  *  @param reg - Register's number (0x20..0x5F)
  *  @param value - Register's value
  *  @return True - in case of success
  */
-FW_BOOLEAN DWire_WriteIOReg(U8 reg, U8 value);
+FW_BOOLEAN DWire_SetIOReg(U8 reg, U8 value);
 
 /** @brief Reads the device registers
  *  @param first - The number of the first register
@@ -82,7 +82,7 @@ FW_BOOLEAN DWire_WriteIOReg(U8 reg, U8 value);
  *  @param count - The count of registers to be read
  *  @return True - in case of success
  */
-FW_BOOLEAN DWire_ReadRegs(U8 first, U8 * pRaw, U8 count);
+FW_BOOLEAN DWire_GetRegs(U8 first, U8 * pRaw, U8 count);
 
 /** @brief Writes the device registers
  *  @param first - The number of the first register
@@ -90,10 +90,23 @@ FW_BOOLEAN DWire_ReadRegs(U8 first, U8 * pRaw, U8 count);
  *  @param count - The count of registers to be written
  *  @return True - in case of success
  */
-FW_BOOLEAN DWire_WriteRegs(U8 first, U8 * pRaw, U8 count);
+FW_BOOLEAN DWire_SetRegs(U8 first, U8 * pRaw, U8 count);
 
+/** @brief Reads the device's SRAM
+ *  @param address - The address in SRAM
+ *  @param pRaw - The container for SRAM data
+ *  @param length - The count of bytes to be read
+ *  @return True - in case of success
+ */
+FW_BOOLEAN DWire_GetSRAM(U16 address, U8 * pRaw, U16 length);
 
-
+/** @brief Writes the device's SRAM
+ *  @param address - The address in SRAM
+ *  @param pRaw - The container with SRAM content
+ *  @param length - The count of bytes to be written
+ *  @return True - in case of success
+ */
+FW_BOOLEAN DWire_SetSRAM(U16 address, U8 * pRaw, U16 length);
 
 
 

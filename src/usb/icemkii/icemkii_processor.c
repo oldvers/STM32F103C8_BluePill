@@ -422,7 +422,7 @@ static void icemkii_GetParameter
       break;
     case PARAMETER_ID_TARGET_SIGNATURE:
       ICEMKII_LOG(" - Target signature\r\n");
-      pRsp->rspGetParameter.targetSign.value = DWire_ReadSignature();
+      pRsp->rspGetParameter.targetSign.value = DWire_GetSignature();
       *pSize = 3;
       break;
     default:

@@ -41,7 +41,7 @@ static FW_BOOLEAN Test_ReadSignature(void)
 
   DBG("*** dWire Test Read Signature ***\r\n");
 
-  sign = DWire_ReadSignature();
+  sign = DWire_GetSignature();
 
   result = (FW_BOOLEAN)(0 != sign);
 
@@ -57,7 +57,7 @@ static FW_BOOLEAN Test_ReadPc(void)
 
   DBG("*** dWire Test Read PC ***\r\n");
 
-  sign = DWire_ReadPC();
+  sign = DWire_GetPC();
 
   result = (FW_BOOLEAN)(0 != sign);
 
@@ -74,7 +74,7 @@ static FW_BOOLEAN Test_ReadReg(void)
   DBG("*** dWire Test Read Reg ***\r\n");
 
   /* Read PORTC */
-  value = DWire_ReadReg(0x08);
+  value = DWire_GetReg(0x08);
   DBG(" - Value = %02X\r\n", value);
 
   return result;
@@ -90,11 +90,11 @@ static FW_BOOLEAN Test_WriteReg(void)
   DBG("*** dWire Test Write Reg ***\r\n");
 
   /* Write 1 to PORTC */
-  result = DWire_WriteReg(0x08, 0x01);
+  result = DWire_SetReg(0x08, 0x01);
   /* Read PORTC */
   if (FW_TRUE == result)
   {
-    value = DWire_ReadReg(0x08);
+    value = DWire_GetReg(0x08);
     result = (FW_BOOLEAN)(0x01 == value);
     DBG(" - Value = %02X\r\n", value);
   }
@@ -115,20 +115,20 @@ static FW_BOOLEAN Test_WriteRegSequence(void)
   do
   {
     /* Write 1 to DDRC - set PC0..PC2 as output */
-    result = DWire_WriteIOReg(0x27, 0x07);
+    result = DWire_SetIOReg(0x27, 0x07);
     if (FW_FALSE == result) break;
 
     /* Read DDRC */
-    value = DWire_ReadIOReg(0x27);
+    value = DWire_GetIOReg(0x27);
     result = (FW_BOOLEAN)(0x07 == value);
     if (FW_FALSE == result) break;
 
     /* Write 1 to PORTC - set PC0..PC2 to 1 - LED off */
-    result = DWire_WriteIOReg(0x28, 0x00);
+    result = DWire_SetIOReg(0x28, 0x00);
     if (FW_FALSE == result) break;
 
     /* Read PORTC */
-    value = DWire_ReadIOReg(0x28);
+    value = DWire_GetIOReg(0x28);
     result = (FW_BOOLEAN)(0x00 == value);
     if (FW_FALSE == result) break;
 
@@ -137,7 +137,7 @@ static FW_BOOLEAN Test_WriteRegSequence(void)
     for (i = 0; i < 10; i++)
     {
       /* Write X to PORTC - set PCx to X - LED on/off */
-      result = DWire_WriteIOReg(0x28, value);
+      result = DWire_SetIOReg(0x28, value);
       if (FW_FALSE == result) break;
       value ^= 0x01;
       vTaskDelay(500);
@@ -147,7 +147,7 @@ static FW_BOOLEAN Test_WriteRegSequence(void)
     for (i = 0; i < 10; i++)
     {
       /* Write X to PORTC - set PCx to X - LED on/off */
-      result = DWire_WriteIOReg(0x28, value);
+      result = DWire_SetIOReg(0x28, value);
       if (FW_FALSE == result) break;
       value ^= 0x02;
       vTaskDelay(500);
@@ -157,7 +157,7 @@ static FW_BOOLEAN Test_WriteRegSequence(void)
     for (i = 0; i < 9; i++)
     {
       /* Write X to PORTC - set PCx to X - LED on/off */
-      result = DWire_WriteIOReg(0x28, value);
+      result = DWire_SetIOReg(0x28, value);
       if (FW_FALSE == result) break;
       value ^= 0x04;
       vTaskDelay(500);
@@ -177,7 +177,7 @@ static FW_BOOLEAN Test_ReadRegs(void)
 
   DBG("*** dWire Test Read Regs ***\r\n");
 
-  result = DWire_ReadRegs(0, raw, sizeof(raw));
+  result = DWire_GetRegs(0, raw, sizeof(raw));
 
   return result;
 }
@@ -193,12 +193,48 @@ static FW_BOOLEAN Test_WriteRegs(void)
   DBG("*** dWire Test Write Regs ***\r\n");
 
   for (i = 0; i < sizeof(raw); i++) raw[i] = 0x37;
-  result = DWire_WriteRegs(0, raw, sizeof(raw));
+  result = DWire_SetRegs(0, raw, sizeof(raw));
 
   if (FW_TRUE == result)
   {
-    result = DWire_ReadRegs(0, raw, sizeof(raw));
+    result = DWire_GetRegs(0, raw, sizeof(raw));
     for (i = 0; i < sizeof(raw); i++) result &= (FW_BOOLEAN)(raw[i] == 0x37);
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_ReadSram(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 raw[32] = {0};
+
+  DBG("*** dWire Test Read SRAM ***\r\n");
+
+  result = DWire_GetSRAM(0x0100, raw, sizeof(raw));
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_WriteSram(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 raw[32] = {0};
+  U8 i = 0;
+
+  DBG("*** dWire Test Write SRAM ***\r\n");
+
+  for (i = 0; i < sizeof(raw); i++) raw[i] = i;
+  result = DWire_SetSRAM(0x0100, raw, sizeof(raw));
+
+  if (FW_TRUE == result)
+  {
+    result = DWire_GetSRAM(0x0100, raw, sizeof(raw));
+    for (i = 0; i < sizeof(raw); i++) result &= (FW_BOOLEAN)(raw[i] == i);
   }
 
   return result;
@@ -252,6 +288,8 @@ const TestFunction_t gTests[] =
   Test_WriteRegSequence,
   Test_ReadRegs,
   Test_WriteRegs,
+  Test_ReadSram,
+  Test_WriteSram,
 };
 
 U32 uiTestsGetCount(void)

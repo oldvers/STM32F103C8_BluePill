@@ -428,7 +428,7 @@ FW_BOOLEAN DWire_Sync(void)
 
 /* -------------------------------------------------------------------------- */
 
-U16 DWire_ReadSignature(void)
+U16 DWire_GetSignature(void)
 {
   U16 result = 0;
 
@@ -451,7 +451,7 @@ U16 DWire_ReadSignature(void)
 
 /* -------------------------------------------------------------------------- */
 
-U16 DWire_ReadPC(void)
+U16 DWire_GetPC(void)
 {
   U16 result = 0;
 
@@ -498,7 +498,7 @@ FW_BOOLEAN DWire_Disable(void)
 
 /* -------------------------------------------------------------------------- */
 
-U8 DWire_ReadReg(U8 reg)
+U8 DWire_GetReg(U8 reg)
 {
   U8 result = 0;
 
@@ -519,7 +519,7 @@ U8 DWire_ReadReg(U8 reg)
 
 /* -------------------------------------------------------------------------- */
 
-FW_BOOLEAN DWire_WriteReg(U8 reg, U8 value)
+FW_BOOLEAN DWire_SetReg(U8 reg, U8 value)
 {
   if (REG_NUM_HI < reg) return FW_FALSE;
 
@@ -534,7 +534,7 @@ FW_BOOLEAN DWire_WriteReg(U8 reg, U8 value)
 
 /* -------------------------------------------------------------------------- */
 
-U8 DWire_ReadIOReg(U8 reg)
+U8 DWire_GetIOReg(U8 reg)
 {
   U8 result = 0;
 
@@ -559,7 +559,7 @@ U8 DWire_ReadIOReg(U8 reg)
 
 /* -------------------------------------------------------------------------- */
 
-FW_BOOLEAN DWire_WriteIOReg(U8 reg, U8 value)
+FW_BOOLEAN DWire_SetIOReg(U8 reg, U8 value)
 {
   FW_BOOLEAN result = FW_FALSE;
 
@@ -588,7 +588,7 @@ FW_BOOLEAN DWire_WriteIOReg(U8 reg, U8 value)
 
 /* -------------------------------------------------------------------------- */
 
-FW_BOOLEAN DWire_ReadRegs(U8 first, U8 * pRaw, U8 count)
+FW_BOOLEAN DWire_GetRegs(U8 first, U8 * pRaw, U8 count)
 {
   FW_BOOLEAN result = FW_FALSE;
 
@@ -626,7 +626,7 @@ FW_BOOLEAN DWire_ReadRegs(U8 first, U8 * pRaw, U8 count)
 
 /* -------------------------------------------------------------------------- */
 
-FW_BOOLEAN DWire_WriteRegs(U8 first, U8 * pRaw, U8 count)
+FW_BOOLEAN DWire_SetRegs(U8 first, U8 * pRaw, U8 count)
 {
   if ((REG_NUM_HI < first) || (REG_NUM_HI < (first + count - 1)))
   {
@@ -650,27 +650,18 @@ FW_BOOLEAN DWire_WriteRegs(U8 first, U8 * pRaw, U8 count)
 
 /* -------------------------------------------------------------------------- */
 
-
-
-
-
-
-
-
-
-
-FW_BOOLEAN DWire_SetZ(U16 address)
+FW_BOOLEAN DWire_GetSRAM(U16 address, U8 * pRaw, U16 length)
 {
-  return DWire_WriteRegs(30, (U8 *)&address, 2); // BYTES(WORD_LE(addr)));
-}
-
-/* -------------------------------------------------------------------------- */
-
-FW_BOOLEAN DWire_ReadAddr(U16 address, U8 * pBuffer, U16 count)
-{
+  FW_BOOLEAN result = FW_FALSE;
   U32 i = 0;
-  U16 iaddr = 0;
-  FW_BOOLEAN result = DWire_SetZ(address);
+//  U16 iaddr = 0;
+
+  if (REG_NUM_HI >= address) return result;
+
+
+
+
+  //DWire_SetZ(address);
 
 //  DWire_SetBP(dwire, 2);
 //  DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_READ_SRAM));
@@ -687,48 +678,223 @@ FW_BOOLEAN DWire_ReadAddr(U16 address, U8 * pBuffer, U16 count)
 //    }
 //  }
 
-  if (FW_TRUE == result)
+
+
+//  if (FW_TRUE == result)
+//  {
+//    dwire_Clear();
+//    dwire_Append_SetBP(2);
+//    dwire_Append(DWIRE_FLAG_MEMORY);
+//    dwire_Append(DWIRE_RW_MODE);
+//    dwire_Append(DWIRE_MODE_READ_SRAM);
+//    result = uart_Write();
+//  }
+
+//  if (FW_TRUE == result)
+//  {
+//    for (i = 0; i < count; i++)
+//    {
+//      iaddr = address + i;
+//
+//
+//      if ( !((iaddr) >= 28 && (iaddr) <= 31) ||
+//            (iaddr != (gDWire.dwdr + 0x20)) )
+//      {
+//        dwire_Clear();
+//        dwire_Append_SetPC(0);
+//        dwire_Append(DWIRE_GO);
+////      buf[i] = DWire_ReceiveByte(dwire);
+//      }
+//      else
+//      {
+//        if ((iaddr) >= 28 && (iaddr) <= 31)
+//        {
+////          buf[i] = dwire->regs[iaddr];
+//        }
+//        else
+//        {
+////          buf[i] = 0;
+//        }
+//        DWire_SetZ(iaddr + 1);
+//      }
+//    }
+//  }
+
+
+
+//Reading SRAM
+//66 D0 00 1E D1 00 20 C2 05 20 ll hh D0 00 00 C2 00 D1 00 02 20 xx
+//
+// 66
+// D0 00 1E D1 00 20 C2 05 20 ll hh -- Z = hhll
+//
+// D0 00 00
+// C2 00 -- Read SRAM
+// D1 00 02
+// 20 -- GO, start reading.
+// xx -- byte from target
+//
+// C0 00 20 xx will read the next location.
+//
+// 0000: ld r16,Z+
+// 0001: out DWDR,r16
+
+  do
   {
+    /* Set Z register to the address */
+    result = DWire_SetRegs(30, (U8 *)&address, 2);
+    if (FW_FALSE == result) break;
+
+    /* Prepare for reading the memory */
     dwire_Clear();
+    dwire_Append_SetPC(0);
     dwire_Append_SetBP(2);
     dwire_Append(DWIRE_FLAG_MEMORY);
     dwire_Append(DWIRE_RW_MODE);
     dwire_Append(DWIRE_MODE_READ_SRAM);
     result = uart_Write();
-  }
+    if (FW_FALSE == result) break;
 
-  if (FW_TRUE == result)
-  {
-    for (i = 0; i < count; i++)
+    for (i = 0; i < length; i++)
     {
-      iaddr = address + i;
+      //rdAddr = address + i;
 
+      pRaw[i] = 0;
 
-      if ( !((iaddr) >= 28 && (iaddr) <= 31) ||
-            (iaddr != (gDWire.dwdr + 0x20)) )
+      if ((address + i) != (gDWire.dwdr + REG_IO_NUM_LO))
       {
         dwire_Clear();
-        dwire_Append_SetPC(0);
+        dwire_Append(DWIRE_SET_PC_LOW);
+        dwire_Append(0);
         dwire_Append(DWIRE_GO);
-//      buf[i] = DWire_ReceiveByte(dwire);
-      }
-      else
-      {
-        if ((iaddr) >= 28 && (iaddr) <= 31)
-        {
-//          buf[i] = dwire->regs[iaddr];
-        }
-        else
-        {
-//          buf[i] = 0;
-        }
-        DWire_SetZ(iaddr + 1);
+
+        result = uart_WriteRead(1);
+        if (FW_FALSE == result) break;
+
+        pRaw[i] = gDWire.rxBuffer[0];
       }
     }
+//      else
+//      {
+//
+//      }
+//      {
+//        if ((iaddr) >= 28 && (iaddr) <= 31)
+//        {
+////          buf[i] = dwire->regs[iaddr];
+//        }
+//        else
+//        {
+////          buf[i] = 0;
+//        }
+//        DWire_SetZ(iaddr + 1);
+//      }
+//    }
+//  }
   }
+  while (FW_FALSE);
 
   return result;
 }
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_SetSRAM(U16 address, U8 * pRaw, U16 length)
+{
+  FW_BOOLEAN result = FW_FALSE;
+  U32 i = 0;
+
+  if (REG_NUM_HI >= address) return result;
+
+//  Writing SRAM
+//66 D0 00 1E D1 00 20 C2 05 20 ll hh C2 04 D0 00 01 D1 00 03 20 xx
+//
+// 66 D0 00 1E D1 00 20 C2 05 20 ll hh -- Z = hhll
+//
+// C2 04 -- Write SRAM
+// D0 00 01
+// D1 00 03
+// 20 -- GO, start writing.
+// xx -- byte to target.
+//
+// C0 01 20 xx will write the next location ???
+//
+// 0001: in r16,DWDR
+// 0002: st Z+,r16
+
+//  DWire_SetZ(dwire, addr);
+//  DWire_SetBP(dwire, 3);
+//  DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_WRITE_SRAM));
+//  for (int i = 0; i < count; i++) {
+//    uint16_t iaddr = addr + i;
+//    if (!CACHED_REG(iaddr) || iaddr != DWIRE_DEV_DWDR + 0x20) {
+//      DWire_SetPC(dwire, 1);
+//      DWire_Send(dwire, BYTES(DWIRE_GO, buf[i]));
+//    } else {
+//      if (CACHED_REG(iaddr)) dwire->regs[iaddr] = buf[i];
+//      DWire_SetZ(dwire, addr + i + 1);
+//    }
+//  }
+
+  do
+  {
+    /* Set Z register to the address */
+    result = DWire_SetRegs(30, (U8 *)&address, 2);
+    if (FW_FALSE == result) break;
+
+    /* Prepare for writing the memory */
+    dwire_Clear();
+    dwire_Append_SetPC(1);
+    dwire_Append_SetBP(3);
+    dwire_Append(DWIRE_FLAG_MEMORY);
+    dwire_Append(DWIRE_RW_MODE);
+    dwire_Append(DWIRE_MODE_WRITE_SRAM);
+    result = uart_Write();
+    if (FW_FALSE == result) break;
+
+    for (i = 0; i < length; i++)
+    {
+      if ((address + i) != (gDWire.dwdr + REG_IO_NUM_LO))
+      {
+        dwire_Clear();
+        dwire_Append(DWIRE_SET_PC_LOW);
+        dwire_Append(1);
+        dwire_Append(DWIRE_GO);
+        dwire_Append(pRaw[i]);
+
+        result = uart_Write();
+        if (FW_FALSE == result) break;
+      }
+    }
+  }
+  while (FW_FALSE);
+
+  return result;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+FW_BOOLEAN dwire_Set_Z(U16 address)
+{
+  return DWire_SetRegs(30, (U8 *)&address, 2); // BYTES(WORD_LE(addr)));
+}
+
+/* -------------------------------------------------------------------------- */
+
+
 
 
 
@@ -1234,25 +1400,6 @@ void DWire_FlushCacheRegs(void)
   //else
   //  DWire_SetRegs(dwire, 28, &dwire->regs[28], 4);
   //DWire_SetPC(dwire, dwire->pc/2);
-}
-
-/* -------------------------------------------------------------------------- */
-
-void DWire_WriteAddr(U16 address, U8 * pBufer, U16 count)
-{
-//  DWire_SetZ(dwire, addr);
-//  DWire_SetBP(dwire, 3);
-//  DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_WRITE_SRAM));
-//  for (int i = 0; i < count; i++) {
-//    uint16_t iaddr = addr + i;
-//    if (!CACHED_REG(iaddr) || iaddr != DWIRE_DEV_DWDR + 0x20) {
-//      DWire_SetPC(dwire, 1);
-//      DWire_Send(dwire, BYTES(DWIRE_GO, buf[i]));
-//    } else {
-//      if (CACHED_REG(iaddr)) dwire->regs[iaddr] = buf[i];
-//      DWire_SetZ(dwire, addr + i + 1);
-//    }
-//  }
 }
 
 /* -------------------------------------------------------------------------- */
