@@ -53,7 +53,7 @@ static FW_BOOLEAN Test_ReadPc(void)
 
   DBG("*** dWire Test Read PC ***\r\n");
 
-  sign = DWire_ReadPc();
+  sign = DWire_ReadPC();
 
   result = (FW_BOOLEAN)(0 != sign);
 
