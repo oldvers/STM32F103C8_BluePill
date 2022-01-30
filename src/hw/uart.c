@@ -253,7 +253,6 @@ void UART_IrqHandler(UART_t aUART)
     if ((0 != (sr & USART_SR_RXNE)) && (0 != (cr1 & USART_CR1_RXNEIE)))
     {
       data = gUARTCtx[aUART].HW->DR;
-      GPIO_Hi(GPIOB, 5);
       if (NULL != gUARTCtx[aUART].RxByteCb)
       {
         (void)gUARTCtx[aUART].RxByteCb((U8 *)&data);
@@ -407,15 +406,11 @@ void UART_IrqHandler(UART_t aUART)
   {
     /* Disable UART Tx Interrupts */
     gUARTCtx[aUART].HW->CR1 &= ~(USART_CR1_TE | USART_CR1_TCIE);
-    GPIO_Hi(GPIOB, 9);
     if (NULL != gUARTCtx[aUART].TxCmpltCb)
     {
       (void)gUARTCtx[aUART].TxCmpltCb(NULL);
     }
   }
-
-  GPIO_Lo(GPIOB, 5);
-  GPIO_Lo(GPIOB, 9);
 }
 
 //-----------------------------------------------------------------------------

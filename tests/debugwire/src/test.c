@@ -22,6 +22,10 @@ static FW_BOOLEAN Test_Sync(void)
   DBG("*** dWire Test Sync ***\r\n");
 
   DWire_Init();
+  /* ATmega48: DWDR = 0x31, SPMCSR = 0x37, BasePC = 0x1800 */
+  DWire_SetParams(0x31, 0x37, 0x1800);
+  /* ATmega48: rSize = 512, fSize = 4096, fPage = 64, eSize = 256 */
+  DWire_SetMemParams(512, 4096, 64, 56);
 
   result = DWire_Sync();
 
@@ -59,6 +63,116 @@ static FW_BOOLEAN Test_ReadPc(void)
 
   return result;
 }
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_ReadReg(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 value = 0;
+
+  DBG("*** dWire Test Read Reg ***\r\n");
+
+  /* Read PORTC */
+  value = DWire_ReadReg(0x08);
+  DBG(" - Value = %02X\r\n", value);
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_WriteReg(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 value = 0;
+
+  DBG("*** dWire Test Write Reg ***\r\n");
+
+  /* Write 1 to PORTC */
+  result = DWire_WriteReg(0x08, 0x01);
+  /* Read PORTC */
+  if (FW_TRUE == result)
+  {
+    value = DWire_ReadReg(0x08);
+    result = (FW_BOOLEAN)(0x01 == value);
+    DBG(" - Value = %02X\r\n", value);
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_WriteRegSequence(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 value = 0;
+  U8 i = 0;
+
+  DBG("*** dWire Test Write Reg Sequence ***\r\n");
+
+  do
+  {
+    /* Write 1 to DDRC - set PC0..PC2 as output */
+    result = DWire_WriteIOReg(0x27, 0x07);
+    if (FW_FALSE == result) break;
+
+    /* Read DDRC */
+    value = DWire_ReadIOReg(0x27);
+    result = (FW_BOOLEAN)(0x07 == value);
+    if (FW_FALSE == result) break;
+
+    /* Write 1 to PORTC - set PC0..PC2 to 1 - LED off */
+    result = DWire_WriteIOReg(0x28, 0x00);
+    if (FW_FALSE == result) break;
+
+    /* Read PORTC */
+    value = DWire_ReadIOReg(0x28);
+    result = (FW_BOOLEAN)(0x00 == value);
+    if (FW_FALSE == result) break;
+
+    /* Blink LED */
+    value = 0x00;
+    for (i = 0; i < 10; i++)
+    {
+      /* Write X to PORTC - set PCx to X - LED on/off */
+      result = DWire_WriteIOReg(0x28, value);
+      if (FW_FALSE == result) break;
+      value ^= 0x01;
+      vTaskDelay(500);
+    }
+
+    value = 0x00;
+    for (i = 0; i < 10; i++)
+    {
+      /* Write X to PORTC - set PCx to X - LED on/off */
+      result = DWire_WriteIOReg(0x28, value);
+      if (FW_FALSE == result) break;
+      value ^= 0x02;
+      vTaskDelay(500);
+    }
+
+    value = 0x00;
+    for (i = 0; i < 9; i++)
+    {
+      /* Write X to PORTC - set PCx to X - LED on/off */
+      result = DWire_WriteIOReg(0x28, value);
+      if (FW_FALSE == result) break;
+      value ^= 0x04;
+      vTaskDelay(500);
+    }
+  }
+  while (FW_FALSE);
+
+  return result;
+}
+
+
+
+
+
+
 
 /* -------------------------------------------------------------------------- */
 
@@ -116,6 +230,9 @@ const TestFunction_t gTests[] =
   Test_Sync,
   Test_ReadSignature,
   Test_ReadPc,
+  Test_ReadReg,
+  Test_WriteReg,
+  Test_WriteRegSequence,
   Test_ReadRegs,
 };
 
