@@ -634,7 +634,7 @@ void ICEMKII_Init(void)
   (
     icemkii_Task,
     "ICEMKII",
-    4* configMINIMAL_STACK_SIZE,
+    5 * configMINIMAL_STACK_SIZE,
     NULL,
     tskIDLE_PRIORITY + 1,
     NULL

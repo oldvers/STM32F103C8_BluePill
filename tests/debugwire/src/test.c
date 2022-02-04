@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "types.h"
 #include "debug.h"
@@ -240,6 +241,66 @@ static FW_BOOLEAN Test_WriteSram(void)
   return result;
 }
 
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_ReadIoRegs(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 raw[64] = {0};
+
+  DBG("*** dWire Test Read IO Registers ***\r\n");
+
+  result = DWire_GetSRAM(0x0020, raw, sizeof(raw));
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_WriteIoRegs(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 sRaw[64] = {0}, rRaw[64] = {0};
+  U16 sZ = 0, rZ = 0;
+
+  DBG("*** dWire Test Write IO Registers ***\r\n");
+
+  /* Set Z register to some magic value */
+  sZ = 0x1313;
+  DBG("--- Set Z to %04X\r\n", sZ);
+  result = DWire_SetRegs(30, (U8 *)&sZ, 2);
+  if (FW_FALSE == result) return FW_FALSE;
+
+  result = DWire_GetRegs(30, (U8 *)&rZ, 2);
+  if ((FW_FALSE == result) || (rZ != sZ)) return FW_FALSE;
+
+  /* Read the I/O registers */
+  DBG("--- Read I/O registers\r\n");
+  result = DWire_GetSRAM(0x0020, sRaw, sizeof(sRaw));
+  if (FW_FALSE == result) return FW_FALSE;
+
+  /* Set the PORTC bit 0 to turn  the LED on. Write the I/O registers */
+  DBG("--- Write I/O registers\r\n");
+  sRaw[8] |= 1;
+  result = DWire_SetSRAM(0x0028, &sRaw[8], 1);
+  if (FW_FALSE == result) return FW_FALSE;
+
+  /* Read back the I/O registers and compare */
+  DBG("--- Read I/O registers\r\n");
+  result = DWire_GetSRAM(0x0020, rRaw, sizeof(rRaw));
+  if (FW_FALSE == result) return FW_FALSE;
+  if (rRaw[8] != sRaw[8]) return FW_FALSE;
+
+  /* Get Z register to check if it was restored correctly  */
+  result = DWire_GetRegs(30, (U8 *)&rZ, 2);
+  if (FW_FALSE == result) return FW_FALSE;
+
+  DBG("--- Get Z = %04X\r\n", rZ);
+  result = (FW_BOOLEAN)(rZ == sZ);
+
+  return result;
+}
+
 /* --- Test Start Up Function (mandatory, called before RTOS starts) -------- */
 
 void vTestStartUpFunction(void)
@@ -290,6 +351,8 @@ const TestFunction_t gTests[] =
   Test_WriteRegs,
   Test_ReadSram,
   Test_WriteSram,
+  Test_ReadIoRegs,
+  Test_WriteIoRegs,
 };
 
 U32 uiTestsGetCount(void)

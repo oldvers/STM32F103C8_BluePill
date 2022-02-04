@@ -24,7 +24,7 @@
 #define DWIRE_TX_COMPLETE              (1 << 0)
 #define DWIRE_RX_COMPLETE              (1 << 1)
 #define DWIRE_BAUD_COMPLETE            (1 << 2)
-#define DWIRE_TIMEOUT                  (100)
+#define DWIRE_TIMEOUT                  (500)
 #define DWIRE_BAUD_MEAS_COUNT          (6)
 #define DWIRE_BAUD_MEAS_START_IDX      (2)
 
@@ -74,6 +74,12 @@
 
 /* -------------------------------------------------------------------------- */
 
+typedef enum
+{
+  Get = 0,
+  Set,
+} Xet_t;
+
 typedef struct
 {
   /* Sync parameters */
@@ -102,6 +108,7 @@ typedef struct
   U16                basePC;
   /* dWire parameters */
   U16                pc;
+  U16                z;
 } DWire_t, * DWire_p;
 
 /* -------------------------------------------------------------------------- */
@@ -196,18 +203,6 @@ static void dwire_Append(U8 value);
  */
 static void dwire_Append_Raw(U8 * pRaw, U16 count);
 
-/** @brief Adds the instruction flags to the dWire Tx buffer
- *  @param None
- *  @return None
- */
-//static void dwire_Append_FlagInstr(void);
-
-/** @brief Adds the flash instruction flags to the dWire Tx buffer
- *  @param None
- *  @return None
- */
-//static void dwire_Append_FlagFlashInstr(void);
-
 /** @brief Adds the instruction sequence to the dWire Tx buffer
  *  @param value - Instruction
  *  @return None
@@ -270,6 +265,29 @@ static void dwire_Append_SPM_Z(void);
  *  @return None
  */
 static void dwire_Append_LDI(U8 reg, U8 value);
+
+/** @brief Starts the operation with the SRAM (loads address)
+ *  @param xet - The type of operation
+ *  @param address - The address in the SRAM
+ *  @return TRUE in case of success
+ */
+FW_BOOLEAN dwire_Start_SRAM(Xet_t xet, U16 address);
+
+/** @brief Performs the next operation with the SRAM
+ *  @param xet - The type of operation
+ *  @param pValue - The container for the value used by the operation
+ *  @return TRUE in case of success
+ */
+FW_BOOLEAN dwire_Next_SRAM(Xet_t xet, U8 * pValue);
+
+/** @brief Performs the operation with the SRAM
+ *  @param xet - The type of operation
+ *  @param address - The address in the SRAM
+ *  @param pRaw - The container for the data used by the operation
+ *  @param length - The length of the data
+ *  @return TRUE in case of success
+ */
+FW_BOOLEAN dwire_SRAM(Xet_t xet, U16 address, U8 * pRaw, U16 length);
 
 /* -------------------------------------------------------------------------- */
 
@@ -432,8 +450,6 @@ U16 DWire_GetSignature(void)
 {
   U16 result = 0;
 
-  GPIO_Hi(GPIOA, 8);
-
   DWIRE_LOG("DWire: Read Signature\r\n");
 
   dwire_Clear();
@@ -444,8 +460,6 @@ U16 DWire_GetSignature(void)
     DWIRE_LOG("DWire: Signature = %04X\r\n", result);
   }
 
-  GPIO_Lo(GPIOA, 8);
-
   return result;
 }
 
@@ -454,8 +468,6 @@ U16 DWire_GetSignature(void)
 U16 DWire_GetPC(void)
 {
   U16 result = 0;
-
-  GPIO_Hi(GPIOA, 8);
 
   DWIRE_LOG("DWire: Read PC\r\n");
 
@@ -468,8 +480,6 @@ U16 DWire_GetPC(void)
     DWIRE_LOG("DWire: PC = %04X\r\n", result);
   }
 
-  GPIO_Lo(GPIOA, 8);
-
   return result;
 }
 
@@ -478,8 +488,6 @@ U16 DWire_GetPC(void)
 FW_BOOLEAN DWire_Disable(void)
 {
   FW_BOOLEAN result = FW_FALSE;
-
-  GPIO_Hi(GPIOA, 8);
 
   DWIRE_LOG("DWire: Disable\r\n");
 
@@ -490,8 +498,6 @@ FW_BOOLEAN DWire_Disable(void)
   {
     DWIRE_LOG("DWire: Disabled!\r\n");
   }
-
-  GPIO_Lo(GPIOA, 8);
 
   return result;
 }
@@ -601,8 +607,6 @@ FW_BOOLEAN DWire_GetRegs(U8 first, U8 * pRaw, U8 count)
     return result;
   }
 
-  GPIO_Hi(GPIOA, 8);
-
   DWIRE_LOG("DWire: Read Regs\r\n");
 
   dwire_Clear();
@@ -618,8 +622,6 @@ FW_BOOLEAN DWire_GetRegs(U8 first, U8 * pRaw, U8 count)
     memcpy(pRaw, gDWire.rxBuffer, count);
     result = FW_TRUE;
   }
-
-  GPIO_Lo(GPIOA, 8);
 
   return result;
 }
@@ -637,6 +639,8 @@ FW_BOOLEAN DWire_SetRegs(U8 first, U8 * pRaw, U8 count)
     return FW_FALSE;
   }
 
+  DWIRE_LOG("DWire: Write Regs\r\n");
+
   dwire_Clear();
   dwire_Append_SetPC(first);
   dwire_Append_SetBP(first + count);
@@ -652,225 +656,21 @@ FW_BOOLEAN DWire_SetRegs(U8 first, U8 * pRaw, U8 count)
 
 FW_BOOLEAN DWire_GetSRAM(U16 address, U8 * pRaw, U16 length)
 {
-  FW_BOOLEAN result = FW_FALSE;
-  U32 i = 0;
-//  U16 iaddr = 0;
+  DWIRE_LOG("DWire: Read SRAM\r\n");
 
-  if (REG_NUM_HI >= address) return result;
-
-
-
-
-  //DWire_SetZ(address);
-
-//  DWire_SetBP(dwire, 2);
-//  DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_READ_SRAM));
-//  for (int i = 0; i < count; i++) {
-//    uint16_t iaddr = addr + i;
-//    if (!CACHED_REG(iaddr) || iaddr != DWIRE_DEV_DWDR + 0x20) {
-//      DWire_SetPC(dwire, 0);
-//      DWire_Send(dwire, BYTES(DWIRE_GO));
-//      buf[i] = DWire_ReceiveByte(dwire);
-//    } else {
-//      if (CACHED_REG(iaddr)) buf[i] = dwire->regs[iaddr];
-//      else buf[i] = 0;
-//      DWire_SetZ(dwire, iaddr + 1);
-//    }
-//  }
-
-
-
-//  if (FW_TRUE == result)
-//  {
-//    dwire_Clear();
-//    dwire_Append_SetBP(2);
-//    dwire_Append(DWIRE_FLAG_MEMORY);
-//    dwire_Append(DWIRE_RW_MODE);
-//    dwire_Append(DWIRE_MODE_READ_SRAM);
-//    result = uart_Write();
-//  }
-
-//  if (FW_TRUE == result)
-//  {
-//    for (i = 0; i < count; i++)
-//    {
-//      iaddr = address + i;
-//
-//
-//      if ( !((iaddr) >= 28 && (iaddr) <= 31) ||
-//            (iaddr != (gDWire.dwdr + 0x20)) )
-//      {
-//        dwire_Clear();
-//        dwire_Append_SetPC(0);
-//        dwire_Append(DWIRE_GO);
-////      buf[i] = DWire_ReceiveByte(dwire);
-//      }
-//      else
-//      {
-//        if ((iaddr) >= 28 && (iaddr) <= 31)
-//        {
-////          buf[i] = dwire->regs[iaddr];
-//        }
-//        else
-//        {
-////          buf[i] = 0;
-//        }
-//        DWire_SetZ(iaddr + 1);
-//      }
-//    }
-//  }
-
-
-
-//Reading SRAM
-//66 D0 00 1E D1 00 20 C2 05 20 ll hh D0 00 00 C2 00 D1 00 02 20 xx
-//
-// 66
-// D0 00 1E D1 00 20 C2 05 20 ll hh -- Z = hhll
-//
-// D0 00 00
-// C2 00 -- Read SRAM
-// D1 00 02
-// 20 -- GO, start reading.
-// xx -- byte from target
-//
-// C0 00 20 xx will read the next location.
-//
-// 0000: ld r16,Z+
-// 0001: out DWDR,r16
-
-  do
-  {
-    /* Set Z register to the address */
-    result = DWire_SetRegs(30, (U8 *)&address, 2);
-    if (FW_FALSE == result) break;
-
-    /* Prepare for reading the memory */
-    dwire_Clear();
-    dwire_Append_SetPC(0);
-    dwire_Append_SetBP(2);
-    dwire_Append(DWIRE_FLAG_MEMORY);
-    dwire_Append(DWIRE_RW_MODE);
-    dwire_Append(DWIRE_MODE_READ_SRAM);
-    result = uart_Write();
-    if (FW_FALSE == result) break;
-
-    for (i = 0; i < length; i++)
-    {
-      //rdAddr = address + i;
-
-      pRaw[i] = 0;
-
-      if ((address + i) != (gDWire.dwdr + REG_IO_NUM_LO))
-      {
-        dwire_Clear();
-        dwire_Append(DWIRE_SET_PC_LOW);
-        dwire_Append(0);
-        dwire_Append(DWIRE_GO);
-
-        result = uart_WriteRead(1);
-        if (FW_FALSE == result) break;
-
-        pRaw[i] = gDWire.rxBuffer[0];
-      }
-    }
-//      else
-//      {
-//
-//      }
-//      {
-//        if ((iaddr) >= 28 && (iaddr) <= 31)
-//        {
-////          buf[i] = dwire->regs[iaddr];
-//        }
-//        else
-//        {
-////          buf[i] = 0;
-//        }
-//        DWire_SetZ(iaddr + 1);
-//      }
-//    }
-//  }
-  }
-  while (FW_FALSE);
-
-  return result;
+  return dwire_SRAM(Get, address, pRaw, length);
 }
 
 /* -------------------------------------------------------------------------- */
 
 FW_BOOLEAN DWire_SetSRAM(U16 address, U8 * pRaw, U16 length)
 {
-  FW_BOOLEAN result = FW_FALSE;
-  U32 i = 0;
+  DWIRE_LOG("DWire: Write SRAM\r\n");
 
-  if (REG_NUM_HI >= address) return result;
-
-//  Writing SRAM
-//66 D0 00 1E D1 00 20 C2 05 20 ll hh C2 04 D0 00 01 D1 00 03 20 xx
-//
-// 66 D0 00 1E D1 00 20 C2 05 20 ll hh -- Z = hhll
-//
-// C2 04 -- Write SRAM
-// D0 00 01
-// D1 00 03
-// 20 -- GO, start writing.
-// xx -- byte to target.
-//
-// C0 01 20 xx will write the next location ???
-//
-// 0001: in r16,DWDR
-// 0002: st Z+,r16
-
-//  DWire_SetZ(dwire, addr);
-//  DWire_SetBP(dwire, 3);
-//  DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_WRITE_SRAM));
-//  for (int i = 0; i < count; i++) {
-//    uint16_t iaddr = addr + i;
-//    if (!CACHED_REG(iaddr) || iaddr != DWIRE_DEV_DWDR + 0x20) {
-//      DWire_SetPC(dwire, 1);
-//      DWire_Send(dwire, BYTES(DWIRE_GO, buf[i]));
-//    } else {
-//      if (CACHED_REG(iaddr)) dwire->regs[iaddr] = buf[i];
-//      DWire_SetZ(dwire, addr + i + 1);
-//    }
-//  }
-
-  do
-  {
-    /* Set Z register to the address */
-    result = DWire_SetRegs(30, (U8 *)&address, 2);
-    if (FW_FALSE == result) break;
-
-    /* Prepare for writing the memory */
-    dwire_Clear();
-    dwire_Append_SetPC(1);
-    dwire_Append_SetBP(3);
-    dwire_Append(DWIRE_FLAG_MEMORY);
-    dwire_Append(DWIRE_RW_MODE);
-    dwire_Append(DWIRE_MODE_WRITE_SRAM);
-    result = uart_Write();
-    if (FW_FALSE == result) break;
-
-    for (i = 0; i < length; i++)
-    {
-      if ((address + i) != (gDWire.dwdr + REG_IO_NUM_LO))
-      {
-        dwire_Clear();
-        dwire_Append(DWIRE_SET_PC_LOW);
-        dwire_Append(1);
-        dwire_Append(DWIRE_GO);
-        dwire_Append(pRaw[i]);
-
-        result = uart_Write();
-        if (FW_FALSE == result) break;
-      }
-    }
-  }
-  while (FW_FALSE);
-
-  return result;
+  return dwire_SRAM(Set, address, pRaw, length);
 }
+
+/* -------------------------------------------------------------------------- */
 
 
 
@@ -978,6 +778,8 @@ static FW_BOOLEAN uart_RxComplete(U8 * pByte)
           &xHigherPriorityTaskWoken
         );
 
+  GPIO_Hi(GPIOA, 8);
+
   if (xHigherPriorityTaskWoken)
   {
     taskYIELD();
@@ -1057,6 +859,7 @@ static FW_BOOLEAN uart_WaitForComplete(U32 eventMask)
   {
     result = FW_FALSE;
   }
+  if (0 != (events & DWIRE_RX_COMPLETE)) GPIO_Lo(GPIOA, 8);
 
   return result;
 }
@@ -1219,20 +1022,6 @@ static void dwire_Append_Raw(U8 * pRaw, U16 count)
 
 /* -------------------------------------------------------------------------- */
 
-//static void dwire_Append_FlagInstr(void)
-//{
-//  gDWire.txBuffer[gDWire.txLen++] = DWIRE_FLAG_INST;
-//}
-
-/* -------------------------------------------------------------------------- */
-
-//static void dwire_Append_FlagFlashInstr(void)
-//{
-//  gDWire.txBuffer[gDWire.txLen++] = DWIRE_FLAG_FLASH_INST;
-//}
-
-/* -------------------------------------------------------------------------- */
-
 static void dwire_Append_Instr(U16 value)
 {
   gDWire.txBuffer[gDWire.txLen++] = DWIRE_SET_IR;
@@ -1339,6 +1128,121 @@ static void dwire_Append_LDI(U8 reg, U8 value)
    */
   dwire_Append_Instr(inst);
 }
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN dwire_Start_SRAM(Xet_t xet, U16 address)
+{
+  /* Set Z register to the address */
+  if (FW_FALSE == DWire_SetRegs(30, (U8 *)&address, 2))
+  {
+    return FW_FALSE;
+  }
+
+  dwire_Clear();
+  dwire_Append(DWIRE_FLAG_MEMORY);
+
+  if (Set == xet)
+  {
+    dwire_Append_SetPC(1);
+    dwire_Append_SetBP(3);
+    dwire_Append(DWIRE_RW_MODE);
+    dwire_Append(DWIRE_MODE_WRITE_SRAM);
+  }
+  else
+  {
+    dwire_Append_SetPC(0);
+    dwire_Append_SetBP(2);
+    dwire_Append(DWIRE_RW_MODE);
+    dwire_Append(DWIRE_MODE_READ_SRAM);
+  }
+
+  return uart_Write();
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN dwire_Next_SRAM(Xet_t xet, U8 * pValue)
+{
+  FW_BOOLEAN result = FW_FALSE;
+
+  dwire_Clear();
+  dwire_Append(DWIRE_SET_PC_LOW);
+
+  if (Set == xet)
+  {
+    dwire_Append(1);
+    dwire_Append(DWIRE_GO);
+    dwire_Append(*pValue);
+
+    result = uart_Write();
+  }
+  else
+  {
+    dwire_Append(0);
+    dwire_Append(DWIRE_GO);
+
+    *pValue = 0;
+    result = uart_WriteRead(1);
+    if (FW_TRUE == result)
+    {
+      *pValue = gDWire.rxBuffer[0];
+    }
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN dwire_SRAM(Xet_t xet, U16 address, U8 * pRaw, U16 length)
+{
+  FW_BOOLEAN result = FW_FALSE;
+  U32 i = 0;
+
+  if (REG_NUM_HI >= address)
+  {
+    return result;
+  }
+
+  /* Store Z register */
+  if (FW_FALSE == DWire_GetRegs(30, (U8 *)&gDWire.z, 2))
+  {
+    return FW_FALSE;
+  }
+
+  if (FW_FALSE == dwire_Start_SRAM(xet, address))
+  {
+    return result;
+  }
+
+  for (i = 0; i < length; i++)
+  {
+    if ((address + i) == (gDWire.dwdr + REG_IO_NUM_LO))
+    {
+      /* Skip get/setting the DWDR register */
+      /* Set Z register to the next SRAM address */
+      result = dwire_Start_SRAM(xet, (address + i + 1));
+      if (FW_FALSE == result) break;
+    }
+    else
+    {
+      result = dwire_Next_SRAM(xet, &pRaw[i]);
+      if (FW_FALSE == result) break;
+    }
+  }
+
+  if (FW_TRUE == result)
+  {
+    /* Retore Z register */
+    result = DWire_SetRegs(30, (U8 *)&gDWire.z, 2);
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
 
 
 

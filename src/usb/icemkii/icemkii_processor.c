@@ -215,6 +215,16 @@ typedef __packed struct ICEMKII_RSP_MEMORY_s
 
 /*----------------------------------------------------------------------------*/
 
+typedef __packed struct ICEMKII_REQ_WRITE_MEMORY_s
+{
+  U8  MEMORY_TYPE;
+  U32 BYTE_COUNT;
+  U32 START_ADDRESS;
+  U8  DATA[1];
+} ICEMKII_REQ_WRITE_MEMORY_t, * ICEMKII_REQ_WRITE_MEMORY_p;
+
+/*----------------------------------------------------------------------------*/
+
 typedef __packed struct ICEMKII_RSP_PC_s
 {
   U32 PROGRAM_COUNTER;
@@ -260,7 +270,7 @@ typedef __packed struct ICEMKII_REQ_SET_DEVICE_DESCRIPTOR_s
   U8  ucFlashInst[3];   // Instructions for W/R Flash
   U8  ucSPHaddr;        // Stack pointer high
   U8  ucSPLaddr;        // Stack pointer low
-  U16 uiFlashpages;     // Number of pages in flash
+  U16 uiFlashPages;     // Number of pages in flash
   U8  ucDWDRAddress;    // DWDR register address
   U8  ucDWBasePC;       // Base/mask value of the PC
   U8  ucAllowFullPageBitstream;         // FALSE on ALL new parts
@@ -290,6 +300,7 @@ typedef __packed struct ICEMKII_MSG_BODY_s
     ICEMKII_REQ_FORCED_STOP_t           reqForcedStop;
     ICEMKII_REQ_READ_MEMORY_t           reqReadMemory;
     ICEMKII_REQ_SET_DEVICE_DESCRIPTOR_t reqSetDeviceDescr;
+    ICEMKII_REQ_WRITE_MEMORY_t          reqWriteMemory;
     ICEMKII_ISP_t                       isp;
     ICEMKII_RSP_SIGN_ON_t               rspSignOn;
     ICEMKII_RSP_GET_PARAMETER_t         rspGetParameter;
@@ -535,7 +546,7 @@ static void icemkii_SetDvcDescr
   ICEMKII_LOG_FIELD(dsc, ucFlashInst[0]                   , 2);
   ICEMKII_LOG_FIELD(dsc, ucSPHaddr                        , 2);
   ICEMKII_LOG_FIELD(dsc, ucSPLaddr                        , 2);
-  ICEMKII_LOG_FIELD(dsc, uiFlashpages                     , 4);
+  ICEMKII_LOG_FIELD(dsc, uiFlashPages                     , 4);
   ICEMKII_LOG_FIELD(dsc, ucDWDRAddress                    , 2);
   ICEMKII_LOG_FIELD(dsc, ucDWBasePC                       , 2);
   ICEMKII_LOG_FIELD(dsc, ucAllowFullPageBitstream         , 2);
@@ -548,6 +559,21 @@ static void icemkii_SetDvcDescr
   ICEMKII_LOG_FIELD(dsc, ucPCMaskHigh                     , 2);
   ICEMKII_LOG_FIELD(dsc, ucEindAddress                    , 2);
   ICEMKII_LOG_FIELD(dsc, EECRAddress                      , 4);
+
+  DWire_SetParams
+  (
+    dsc->ucDWDRAddress,
+    0x37,
+    (dsc->ucDWBasePC << 8)
+  );
+
+  DWire_SetMemParams
+  (
+    512,
+    dsc->ulFlashSize,
+    dsc->ulFlashSize / dsc->uiFlashPages,
+    256
+  );
 
   pRsp->MESSAGE_ID = RSP_OK;
   *pSize = 1;
@@ -562,13 +588,44 @@ static void icemkii_ReadMemory
   U32 * pSize
 )
 {
+  FW_BOOLEAN result = FW_FALSE;
+
   ICEMKII_LOG("ICE Rx: Read Memory\r\n");
   pRsp->MESSAGE_ID = RSP_FAILED;
 
   switch (pReq->reqReadMemory.MEMORY_TYPE)
   {
-    case MEMORY_TYPE_IO_SHADOW:
     case MEMORY_TYPE_SRAM:
+      if (0x0020 > pReq->reqReadMemory.START_ADDRESS)
+      {
+        result = DWire_GetRegs
+                 (
+                   pReq->reqReadMemory.START_ADDRESS,
+                   pRsp->rspMemory.DATA,
+                   pReq->reqReadMemory.BYTE_COUNT
+                 );
+      }
+      else
+      {
+        result = DWire_GetSRAM
+                 (
+                   pReq->reqReadMemory.START_ADDRESS,
+                   pRsp->rspMemory.DATA,
+                   pReq->reqReadMemory.BYTE_COUNT
+                 );
+      }
+      if (FW_TRUE == result)
+      {
+        pRsp->MESSAGE_ID = RSP_MEMORY;
+        //memset(pRsp->rspMemory.DATA, 0, pReq->reqReadMemory.BYTE_COUNT);
+        *pSize = (1 + pReq->reqReadMemory.BYTE_COUNT);
+      }
+      else
+      {
+        *pSize = 1;
+      }
+      break;
+    case MEMORY_TYPE_IO_SHADOW:
     case MEMORY_TYPE_EEPROM:
     case MEMORY_TYPE_EVENT:
     case MEMORY_TYPE_SPM:
@@ -586,6 +643,71 @@ static void icemkii_ReadMemory
       pRsp->MESSAGE_ID = RSP_MEMORY;
       memset(pRsp->rspMemory.DATA, 0, pReq->reqReadMemory.BYTE_COUNT);
       *pSize = (1 + pReq->reqReadMemory.BYTE_COUNT);
+      break;
+    default:
+      *pSize = 1;
+      break;
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void icemkii_WriteMemory
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
+{
+  FW_BOOLEAN result = FW_FALSE;
+
+  ICEMKII_LOG("ICE Rx: Write Memory\r\n");
+  pRsp->MESSAGE_ID = RSP_OK;
+
+  switch (pReq->reqWriteMemory.MEMORY_TYPE)
+  {
+    case MEMORY_TYPE_SRAM:
+      if (0x0020 > pReq->reqWriteMemory.START_ADDRESS)
+      {
+        result = DWire_SetRegs
+                 (
+                   pReq->reqWriteMemory.START_ADDRESS,
+                   pReq->reqWriteMemory.DATA,
+                   pReq->reqWriteMemory.BYTE_COUNT
+                 );
+      }
+      else
+      {
+        result = DWire_SetSRAM
+                 (
+                   pReq->reqWriteMemory.START_ADDRESS,
+                   pReq->reqWriteMemory.DATA,
+                   pReq->reqWriteMemory.BYTE_COUNT
+                 );
+      }
+      if (FW_FALSE == result)
+      {
+        pRsp->MESSAGE_ID = RSP_FAILED;
+      }
+      *pSize = 1;
+      break;
+    case MEMORY_TYPE_IO_SHADOW:
+    case MEMORY_TYPE_EEPROM:
+    case MEMORY_TYPE_EVENT:
+    case MEMORY_TYPE_SPM:
+    case MEMORY_TYPE_FLASH_PAGE:
+    case MEMORY_TYPE_EEPROM_PAGE:
+    case MEMORY_TYPE_FUSE_BITS:
+    case MEMORY_TYPE_LOCK_BITS:
+    case MEMORY_TYPE_SIGN_JTAG:
+    case MEMORY_TYPE_OSCCAL_BYTE:
+    case MEMORY_TYPE_CAN:
+    case MEMORY_TYPE_XMEGA_APPLICATION_FLASH:
+    case MEMORY_TYPE_XMEGA_BOOT_FLASH:
+    case MEMORY_TYPE_XMEGA_USER_SIGNATURE:
+    case MEMORY_TYPE_XMEGA_CALIBRATION_SIGNATURE:
+      pRsp->MESSAGE_ID = RSP_OK;
+      *pSize = 1;
       break;
     default:
       *pSize = 1;
@@ -658,8 +780,10 @@ void ICEMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
     case CMND_READ_PC:
       icemkii_ReadPc(req, rsp, pSize);
       break;
-    case CMND_FORCED_STOP:
     case CMND_WRITE_MEMORY:
+      icemkii_WriteMemory(req, rsp, pSize);
+      break;
+    case CMND_FORCED_STOP:
     case CMND_CLEAR_EVENTS:
     case CMND_RESTORE_TARGET:
     case CMND_SINGLE_STEP:
@@ -707,6 +831,33 @@ static void icemkii_Event
 
 /*----------------------------------------------------------------------------*/
 
+static FW_BOOLEAN icemkii_ForcedStop
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
+{
+  if (FW_TRUE == DWire_Sync())
+  {
+    ICEMKII_LOG("ICE Rx: Break Event\r\n");
+
+    pRsp->MESSAGE_ID               = EVT_BREAK;
+    pRsp->evtBreak.PROGRAM_COUNTER = 0;
+    pRsp->evtBreak.BREAK_CAUSE     = BREAK_CAUSE_PROGRAM;
+    *pSize = 6;
+
+    return FW_TRUE;
+  }
+  else
+  {
+    *pSize = 0;
+    return FW_FALSE;
+  }
+}
+
+/*----------------------------------------------------------------------------*/
+
 FW_BOOLEAN ICEMKII_CheckForEvents(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
 {
   FW_BOOLEAN result = FW_FALSE;
@@ -717,6 +868,8 @@ FW_BOOLEAN ICEMKII_CheckForEvents(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
   switch ( ((ICEMKII_MSG_BODY_p)pReqBody)->MESSAGE_ID )
   {
     case CMND_FORCED_STOP:
+      result = icemkii_ForcedStop(req, rsp, pSize);
+      break;
     case CMND_SINGLE_STEP:
       icemkii_Event(req, rsp, pSize);
       result = FW_TRUE;
