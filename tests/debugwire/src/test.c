@@ -301,6 +301,52 @@ static FW_BOOLEAN Test_WriteIoRegs(void)
   return result;
 }
 
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_ReadFlash(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 raw[64] = {0};
+
+  DBG("*** dWire Test Read Flash ***\r\n");
+
+  result = DWire_GetFlash(0x0000, raw, sizeof(raw));
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_WriteFlash(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 raw[64] = {0}, regs[32] = {0};
+  //U16 sZ = 0, rZ = 0;
+  U16 i = 0;
+
+  DBG("*** dWire Test Write Flash ***\r\n");
+
+  /* Set registers to some magic value */
+  for (i = 0; i < sizeof(regs); i++) regs[i] = 0x13;
+  DBG("--- Set registers to %02X\r\n", regs[0]);
+  result = DWire_SetRegs(0, regs, sizeof(regs));
+  if (FW_FALSE == result) return FW_FALSE;
+
+  /* Write the Flash */
+  DBG("--- Write the Flash\r\n");
+  for (i = 0; i < sizeof(raw); i++) raw[i] = (sizeof(raw) - i - 1);
+  result = DWire_SetFlash(0x0080, raw, sizeof(raw));
+  if (FW_FALSE == result) return FW_FALSE;
+
+  /* Read back the registers and compare */
+  DBG("--- Read the registers\r\n");
+  result = DWire_GetRegs(0, raw, sizeof(regs));
+  if (FW_FALSE == result) return FW_FALSE;
+  if (0 != memcmp(raw, regs, sizeof(regs))) return FW_FALSE;
+
+  return result;
+}
+
 /* --- Test Start Up Function (mandatory, called before RTOS starts) -------- */
 
 void vTestStartUpFunction(void)
@@ -342,17 +388,19 @@ void vTestHelpTaskFunction(void * pvParameters)
 const TestFunction_t gTests[] =
 {
   Test_Sync,
-  Test_ReadSignature,
-  Test_ReadPc,
-  Test_ReadReg,
-  Test_WriteReg,
-  Test_WriteRegSequence,
-  Test_ReadRegs,
-  Test_WriteRegs,
-  Test_ReadSram,
-  Test_WriteSram,
-  Test_ReadIoRegs,
-  Test_WriteIoRegs,
+//  Test_ReadSignature,
+//  Test_ReadPc,
+//  Test_ReadReg,
+//  Test_WriteReg,
+//  Test_WriteRegSequence,
+//  Test_ReadRegs,
+//  Test_WriteRegs,
+//  Test_ReadSram,
+//  Test_WriteSram,
+//  Test_ReadIoRegs,
+//  Test_WriteIoRegs,
+//  Test_ReadFlash,
+  Test_WriteFlash,
 };
 
 U32 uiTestsGetCount(void)

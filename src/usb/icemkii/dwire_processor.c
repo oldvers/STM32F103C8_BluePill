@@ -224,19 +224,25 @@ static void dwire_Append_I_Instr(U8 reg, U16 ioreg);
 static void dwire_Append_O_Instr(U16 ioreg, U8 reg);
 
 /** @brief Adds the In DWDR sequence to the dWire Tx buffer
- *  @param reg - Source register
+ *  @param reg - Destination register
  *  @return None
  */
 static void dwire_Append_I_DWDR(U8 reg);
 
 /** @brief Adds the Out DWDR sequence to the dWire Tx buffer
- *  @param reg - Destination register
+ *  @param reg - Source register
  *  @return None
  */
 static void dwire_Append_O_DWDR(U8 reg);
 
-/** @brief Adds the Out SPM CSR sequence to the dWire Tx buffer
+/** @brief Adds the In SPMCSR sequence to the dWire Tx buffer
  *  @param reg - Destination register
+ *  @return None
+ */
+static void dwire_Append_I_SPMCSR(U8 reg);
+
+/** @brief Adds the Out SPMCSR sequence to the dWire Tx buffer
+ *  @param reg - Source register
  *  @return None
  */
 static void dwire_Append_O_SPMCSR(U8 reg);
@@ -271,14 +277,14 @@ static void dwire_Append_LDI(U8 reg, U8 value);
  *  @param address - The address in the SRAM
  *  @return TRUE in case of success
  */
-FW_BOOLEAN dwire_Start_SRAM(Xet_t xet, U16 address);
+static FW_BOOLEAN dwire_Start_SRAM(Xet_t xet, U16 address);
 
 /** @brief Performs the next operation with the SRAM
  *  @param xet - The type of operation
  *  @param pValue - The container for the value used by the operation
  *  @return TRUE in case of success
  */
-FW_BOOLEAN dwire_Next_SRAM(Xet_t xet, U8 * pValue);
+static FW_BOOLEAN dwire_Next_SRAM(Xet_t xet, U8 * pValue);
 
 /** @brief Performs the operation with the SRAM
  *  @param xet - The type of operation
@@ -287,7 +293,26 @@ FW_BOOLEAN dwire_Next_SRAM(Xet_t xet, U8 * pValue);
  *  @param length - The length of the data
  *  @return TRUE in case of success
  */
-FW_BOOLEAN dwire_SRAM(Xet_t xet, U16 address, U8 * pRaw, U16 length);
+static FW_BOOLEAN dwire_SRAM(Xet_t xet, U16 address, U8 * pRaw, U16 length);
+
+/** @brief Performs erasing the page in Flash and prepares the commands in
+ *         the buffer to fill the page
+ *  @param None
+ *  @return TRUE in case of success
+ */
+static FW_BOOLEAN dwire_Start_Flash(void);
+
+/** @brief Performs filling the Flash page with the word value (16 bits)
+ *  @param value - The link to the value
+ *  @return TRUE in case of success
+ */
+static FW_BOOLEAN dwire_Next_Flash(U8 * value);
+
+/** @brief Performs the Flash page write
+ *  @param None
+ *  @return TRUE in case of success
+ */
+static FW_BOOLEAN dwire_Finish_Flash(void);
 
 /* -------------------------------------------------------------------------- */
 
@@ -671,6 +696,124 @@ FW_BOOLEAN DWire_SetSRAM(U16 address, U8 * pRaw, U16 length)
 }
 
 /* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_GetFlash(U16 address, U8 * pRaw, U16 length)
+{
+  FW_BOOLEAN result = FW_FALSE;
+
+  if (address >= gDWire.flashSize) return FW_FALSE;
+  if ((address + length - 1) >= gDWire.flashSize) return FW_FALSE;
+  if ( (NULL == pRaw) || (0 == length) ) return FW_FALSE;
+
+  DWIRE_LOG("DWire: Read Flash\r\n");
+
+  /* Store Z register */
+  result = DWire_GetRegs(30, (U8 *)&gDWire.z, 2);
+  if (FW_FALSE == result) return FW_FALSE;
+
+  do
+  {
+    /* Set Z register to the address */
+    result = DWire_SetRegs(30, (U8 *)&address, 2);
+    if (FW_FALSE == result) break;
+
+    /* Read the flash */
+    dwire_Clear();
+    dwire_Append_SetPC(0);
+    dwire_Append_SetBP(2 * length);
+    dwire_Append(DWIRE_FLAG_MEMORY);
+    dwire_Append(DWIRE_RW_MODE);
+    dwire_Append(DWIRE_MODE_READ_FLASH);
+    dwire_Append(DWIRE_GO);
+    result = uart_WriteRead(length);
+    if (FW_FALSE == result) break;
+    memcpy(pRaw, gDWire.rxBuffer, length);
+  }
+  while (FW_FALSE);
+
+  /* Retore Z register */
+  if (FW_TRUE == result)
+  {
+    result = DWire_SetRegs(30, (U8 *)&gDWire.z, 2);
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_SetFlash(U16 address, U8 * pRaw, U16 length)
+{
+  FW_BOOLEAN result = FW_FALSE;
+  U8 regs[32] = {0};
+  U32 i = 0;
+
+  if (address >= gDWire.flashSize) return FW_FALSE;
+  if ((address + length - 1) >= gDWire.flashSize) return FW_FALSE;
+  if ( (NULL == pRaw) || (0 == length) ) return FW_FALSE;
+
+  DWIRE_LOG("DWire: Write Flash\r\n");
+
+  /* Store registers */
+  result = DWire_GetRegs(0, regs, sizeof(regs));
+  if (FW_FALSE == result) return FW_FALSE;
+
+  do
+  {
+    /* Set Z register to the address */
+    result = DWire_SetRegs(30, (U8 *)&address, 2);
+    if (FW_FALSE == result) break;
+
+    /* Erase the Flash page, prepare the commands for filling the page */
+    result = dwire_Start_Flash();
+    if (FW_FALSE == result) break;
+
+    /* Fill the page */
+    for (i = 0; i < length; i += 2)
+    {
+      result = dwire_Next_Flash(&pRaw[i]);
+      if (FW_FALSE == result) break;
+    }
+    if (FW_FALSE == result) break;
+
+    /* Set Z register to the address */
+    result = DWire_SetRegs(30, (U8 *)&address, 2);
+    if (FW_FALSE == result) break;
+
+    /* Program the page */
+    result = dwire_Finish_Flash();
+    if (FW_FALSE == result) break;
+
+    /* Verify the page */
+    dwire_Clear();
+    dwire_Append_SetPC(0);
+    dwire_Append_SetBP(2 * length);
+    dwire_Append(DWIRE_FLAG_MEMORY);
+    dwire_Append(DWIRE_RW_MODE);
+    dwire_Append(DWIRE_MODE_READ_FLASH);
+    dwire_Append(DWIRE_GO);
+    result = uart_WriteRead(length);
+    if (FW_FALSE == result) break;
+    result = (FW_BOOLEAN)(0 == memcmp(pRaw, gDWire.rxBuffer, length));
+  }
+  while (FW_FALSE);
+
+  /* Retore registers */
+  if (FW_TRUE == result)
+  {
+    result = DWire_SetRegs(0, regs, sizeof(regs));
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+
+
+
+
+
 
 
 
@@ -1084,6 +1227,13 @@ static void dwire_Append_O_DWDR(U8 reg)
 
 /* -------------------------------------------------------------------------- */
 
+static void dwire_Append_I_SPMCSR(U8 reg)
+{
+  dwire_Append_I_Instr(reg, gDWire.spmcsr);
+}
+
+/* -------------------------------------------------------------------------- */
+
 static void dwire_Append_O_SPMCSR(U8 reg)
 {
   dwire_Append_O_Instr(gDWire.spmcsr, reg);
@@ -1243,19 +1393,107 @@ FW_BOOLEAN dwire_SRAM(Xet_t xet, U16 address, U8 * pRaw, U16 length)
 
 /* -------------------------------------------------------------------------- */
 
+static FW_BOOLEAN dwire_Start_Flash(void)
+{
+  FW_BOOLEAN result = FW_FALSE;
+
+  /* Erase the page */
+  dwire_Clear();
+  /* Set PC to the adress of the No-Read-While-Write section - to enable SPM */
+  dwire_Append_SetPC(0);  //TODO - set to Bootloader
+  dwire_Append(DWIRE_FLAG_INST);
+  /* ldi r29,0x03 -> SPMCSR -> (PGERS | SELFPRGEN) */
+  dwire_Append_LDI(29, 0x03);
+  /* out SPMCSR,r29 */
+  dwire_Append_O_SPMCSR(29);
+  /* spm */
+  dwire_Append_SPM();
+  result = uart_Write();
+  if (FW_FALSE == result) return result;
+
+  vTaskDelay(10);
+
+  result = DWire_Sync();
+  if (FW_FALSE == result) return result;
 
 
+  /* Prepare the command for filling the page */
+  dwire_Clear();
+  dwire_Append(DWIRE_FLAG_FLASH_INST);
+  /* ldi r29,0x01 -> SPMCSR -> (SELFPRGEN) */
+  dwire_Append_LDI(29, 0x01);
+  result = uart_Write();
+  if (FW_FALSE == result) return result;
 
+  dwire_Clear();
+  dwire_Append_SetPC(0);  // 0..2 - TODO - set to Bootloader
+  /* in r0,DWDR (ll) */
+  dwire_Append_I_DWDR(0); // 3..6
+  dwire_Append(0);        // 7  (ll)
+  /* in r1,DWDR (hh) */
+  dwire_Append_I_DWDR(1); // 8..11
+  dwire_Append(0);        // 12 (hh)
+  /* out SPMCSR,r29 -> SPMCSR -> (SELFPRGEN) */
+  dwire_Append_O_SPMCSR(29);
+  /* spm */
+  dwire_Append_SPM();
+  /* adiw Z,2 */
+  dwire_Append_Instr(0x9632);
 
+  return result;
+}
 
+/* -------------------------------------------------------------------------- */
 
+static FW_BOOLEAN dwire_Next_Flash(U8 * value)
+{
+  /* Fill the page */
+  gDWire.txBuffer[7]  = value[0];
+  gDWire.txBuffer[12] = value[1];
+  return uart_Write();
+}
 
+/* -------------------------------------------------------------------------- */
 
+static FW_BOOLEAN dwire_Finish_Flash(void)
+{
+  FW_BOOLEAN result = FW_FALSE;
 
+  /* Program the page */
+  dwire_Clear();
+  dwire_Append_SetPC(0); //TODO - set to Bootloader
+  /* ldi r29,0x05 -> SPMCSR -> (PGWRT | SELFPRGEN) */
+  dwire_Append_LDI(29, 0x05);
+  /* out SPMCSR,r29 -> SPMCSR -> (PGWRT | SELFPRGEN) */
+  dwire_Append_O_SPMCSR(29);
+  /* spm */
+  dwire_Append_SPM();
+  result = uart_Write();
+  if (FW_FALSE == result) return result;
 
+  vTaskDelay(10);
 
+  result = DWire_Sync();
+  if (FW_FALSE == result) return result;
 
+  /* Read-While-Write section read enable  */
+  dwire_Clear();
+  dwire_Append_SetPC(0); //TODO - set to Bootloader
+  /* ldi r29,0x11 -> SPMCSR -> (RWWSRE | SELFPRGEN) */
+  dwire_Append_LDI(29, 0x11);
+  /* out SPMCSR,r29 -> SPMCSR -> (RWWSRE | SELFPRGEN) */
+  dwire_Append_O_SPMCSR(29);
+  /* spm */
+  dwire_Append_SPM();
+  result = uart_Write();
+  if (FW_FALSE == result) return result;
 
+  result = DWire_Sync();
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
 
 
 
@@ -1349,58 +1587,6 @@ void DWire_Continue(void)
 //  DWire_Send(dwire, BYTES(DWIRE_RESUME));
 //  dwire->stopped = false;
 //  dwire->have_all_regs = false;
-}
-
-/* -------------------------------------------------------------------------- */
-
-void DWire_ReadFlash(U16 address, U8 * pBuffer, U16 count)
-{
-//  DWire_SetZ(dwire, addr);
-//  DWire_SetBP(dwire, count * 2);
-//  DWire_SetPC(dwire, 0);
-//  DWire_Send(dwire, BYTES(DWIRE_FLAG_MEMORY, DWIRE_RW_MODE, DWIRE_MODE_READ_FLASH, DWIRE_GO));
-//  DWire_Receive(dwire, buf, count);
-}
-
-/* -------------------------------------------------------------------------- */
-
-void DWire_WriteFlashPage(U16 address, U8 * pBuffer, U16 count)
-{
-//  DWire_SetZ(dwire, addr);
-//  DWire_SetPC(dwire, 0x3f00);
-//  DWire_PreInst(dwire);
-////  DWire_Inst(dwire, 0x01cf);  // movw r24,r30
-//  DWire_LDI(dwire, 29, 0x03);
-//  DWire_Out_SPMCSR(dwire, 29);
-//  DWire_SPM(dwire);
-//  osDelay(10); // TODO hack can we do without it?
-//  DWire_BreakSync(dwire);
-//  DWire_PreFlashInst(dwire);
-//  DWire_LDI(dwire, 29, 0x01);
-//  for (int i = 0; i < count; i += 2) {
-//    DWire_SetPC(dwire, 0x3f00);
-//    DWire_In_DWDR(dwire, 0);
-//    DWire_SendByte(dwire, buf[i]);
-//    DWire_In_DWDR(dwire, 1);
-//    DWire_SendByte(dwire, buf[i+1]);
-//    DWire_Out_SPMCSR(dwire, 29);
-//    DWire_SPM(dwire);
-//    DWire_Inst(dwire, 0x9632);
-//  }
-//  DWire_SetPC(dwire, 0x3f00);
-//  DWire_LDI(dwire, 31, (addr >> 8) & 0xff);
-//  DWire_LDI(dwire, 30, addr & 0xff);
-//  DWire_LDI(dwire, 29, 0x05);
-//  DWire_Out_SPMCSR(dwire, 29);
-//  DWire_SPM(dwire);
-//  osDelay(10); // TODO hack can we do without it?
-//  DWire_BreakSync(dwire);
-//  DWire_SetPC(dwire, 0x3f00);
-//  DWire_LDI(dwire, 29, 0x11);
-//  DWire_Out_SPMCSR(dwire, 29);
-//  DWire_SPM(dwire);
-//  DWire_BreakSync(dwire);
-//  // TODO: restore regs r0/r1
 }
 
 /* -------------------------------------------------------------------------- */

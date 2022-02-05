@@ -108,6 +108,23 @@ FW_BOOLEAN DWire_GetSRAM(U16 address, U8 * pRaw, U16 length);
  */
 FW_BOOLEAN DWire_SetSRAM(U16 address, U8 * pRaw, U16 length);
 
+/** @brief Reads the device's FLASH
+ *  @param address - The address in FLASH
+ *  @param pRaw - The container for FLASH data
+ *  @param length - The count of bytes to be read
+ *  @return True - in case of success
+ */
+FW_BOOLEAN DWire_GetFlash(U16 address, U8 * pRaw, U16 length);
+
+/** @brief Writes the device's FLASH
+ *  @param address - The address in FLASH
+ *  @param pRaw - The container with FLASH content
+ *  @param length - The count of bytes to be written
+ *  @return True - in case of success
+ */
+FW_BOOLEAN DWire_SetFlash(U16 address, U8 * pRaw, U16 length);
+
+
 
 
 
