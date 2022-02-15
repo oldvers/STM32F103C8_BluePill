@@ -164,4 +164,11 @@ FW_BOOLEAN DWire_StepInto(void);
  */
 FW_BOOLEAN DWire_StepOver(void);
 
+/** @brief Performs the step out operation on the target
+ *  @param None
+ *  @return True - in case of success
+ *  @note The DWire_GetPC must be called before this function
+ */
+FW_BOOLEAN DWire_StepOut(void);
+
 #endif /* __DWIRE_PROCESSOR_H__ */

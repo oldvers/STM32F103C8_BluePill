@@ -1018,20 +1018,27 @@ FW_BOOLEAN DWire_StepOver(void)
 
   return uart_Write();
 }
-//  v := $1800 + PC;
-//
-//  tx[0] := $D0;
-//  tx[1] := (v shr 8) and $FF;
-//  tx[2] := (v and $FF);
-//
-//  v := $1800 + PC + 1;
-//
-//  tx[3] := $D1;
-//  tx[4] := (v shr 8) and $FF;
-//  tx[5] := (v and $FF);
-//
-//  tx[6] := $7A;
-//  tx[7] := $30;
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_StepOut(void)
+{
+  U16 pc = gDWire.pc + gDWire.basePC;
+
+  DWIRE_LOG("DWire: Step Oot PC = 0x%04X\r\n", pc);
+
+  dwire_Clear();
+  dwire_Append(DWIRE_SET_PC);
+  dwire_Append((pc >> 8) & 0xFF);
+  dwire_Append(pc & 0xFF);
+  dwire_Append(DWIRE_SET_BP);
+  dwire_Append(0);
+  dwire_Append(0);
+  dwire_Append(DWIRE_FLAG_STEP_OUT);
+  dwire_Append(DWIRE_RESUME);
+
+  return uart_Write();
+}
 
 /* -------------------------------------------------------------------------- */
 
