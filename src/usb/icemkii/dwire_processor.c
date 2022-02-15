@@ -531,30 +531,11 @@ FW_BOOLEAN DWire_Sync(void)
 
 void DWire_Break(void)
 {
-//  FW_BOOLEAN result = FW_TRUE;
-//  U32 idx           = 0;
-//  U32 baudrate      = 0;
-//  U16 time          = 0;
-
   DWIRE_LOG("DWire: Break\r\n");
 
   /*  Send Break */
   UART_SetBreakCallback(UART2, uart_BreakReceived);
   UART_Break(UART2);
-
-//  /* Wait for the Break and Sync are complete */
-//  result = uart_WaitForBreak(DWIRE_TIMEOUT);
-//
-//  if (FW_TRUE == result)
-//  {
-//    DWIRE_LOG("DWire: In sync!\r\n");
-//  }
-//  else
-//  {
-//    DWIRE_LOG("DWire: Sync error!\r\n");
-//  }
-//
-//  return result;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -564,12 +545,6 @@ FW_BOOLEAN DWire_CheckForBreak(void)
   FW_BOOLEAN result = FW_TRUE;
   EventBits_t events = 0;
   U32 eventMask = (DWIRE_BREAK_RECEIVED | DWIRE_RX_COMPLETE);
-//  IRQ_SAFE_AREA();
-//
-//  IRQ_DISABLE();
-//  gDWire.rxLen   = 0;
-//  gDWire.xxBreak = FW_TRUE;
-//  IRQ_RESTORE();
 
   events = xEventGroupWaitBits
            (
@@ -592,45 +567,13 @@ FW_BOOLEAN DWire_CheckForBreak(void)
 
 FW_BOOLEAN DWire_Reset(void)
 {
-//*  FW_BOOLEAN result = FW_FALSE;
+  DWIRE_LOG("DWire: Reset\r\n");
 
   UART_SetBreakCallback(UART2, uart_BreakReceived);
 
-//  (void)xEventGroupClearBits
-//  (
-//    gDWire.events,
-//    (DWIRE_RX_COMPLETE | DWIRE_BREAK_RECEIVED)
-//  );
-//
-//  GPIO_Lo(GPIOA, 8);
-
   dwire_Clear();
   dwire_Append(DWIRE_RESET);
-//*  result =
   return uart_Write();
-//*  if (FW_FALSE == result) return FW_FALSE;
-
-//  /* Wait for the Break and Sync from target */
-//  result = uart_WaitFor
-//           (
-//             (DWIRE_RX_COMPLETE | DWIRE_BREAK_RECEIVED),
-//             DWIRE_TIMEOUT
-//           );
-//  if (FW_FALSE == result) return FW_FALSE;
-//
-////  /* Wait for the Sync from target */
-////  result = uart_WaitForComplete(DWIRE_RX_COMPLETE);
-////  if (FW_FALSE == result) return FW_FALSE;
-//  if ( (1 != gDWire.rxLen) || (0x55 != gDWire.rxBuffer[0]) ) return FW_FALSE;
-
-//*  result = uart_WaitForBreak(DWIRE_TIMEOUT);
-//*  if (FW_FALSE == result) return FW_FALSE;
-//*
-//*  return DWire_Sync();
-
-//  DWire_Send(dwire, BYTES(DWIRE_RESET));
-//  DWire_Sync(dwire);
-//  DWire_Reconnect(dwire);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1025,7 +968,7 @@ FW_BOOLEAN DWire_StepOut(void)
 {
   U16 pc = gDWire.pc + gDWire.basePC;
 
-  DWIRE_LOG("DWire: Step Oot PC = 0x%04X\r\n", pc);
+  DWIRE_LOG("DWire: Step Out PC = 0x%04X\r\n", pc);
 
   dwire_Clear();
   dwire_Append(DWIRE_SET_PC);
@@ -1044,9 +987,6 @@ FW_BOOLEAN DWire_StepOut(void)
 
 FW_BOOLEAN DWire_Run(void)
 {
-//  dwire->pc = 0;
-//  dwire->breakpoint = -1;
-//  DWire_Continue(dwire);
   dwire_Clear();
   dwire_Append(DWIRE_FLAG_RUN);
   dwire_Append(DWIRE_RESUME);
@@ -1055,39 +995,28 @@ FW_BOOLEAN DWire_Run(void)
 
 /* -------------------------------------------------------------------------- */
 
-FW_BOOLEAN DWire_RunToCursor(U16 address, U32 timeout)
+FW_BOOLEAN DWire_RunToCursor(U16 address)
 {
-//  dwire->pc = 0;
-//  dwire->breakpoint = -1;
-//  DWire_Continue(dwire);
+  U16 pc = gDWire.pc + gDWire.basePC;
+
+  address += gDWire.basePC;
+
+  DWIRE_LOG("DWire: Run PC = 0x%04X to Cursor = 0x%04X\r\n", pc, address);
+
   dwire_Clear();
-  dwire_Append(DWIRE_FLAG_RUN);
-  dwire_Append_SetBP(address / 2);
+  dwire_Append(DWIRE_SET_PC);
+  dwire_Append((pc >> 8) & 0xFF);
+  dwire_Append(pc & 0xFF);
+  dwire_Append(DWIRE_SET_BP);
+  dwire_Append((address >> 8) & 0xFF);
+  dwire_Append(address & 0xFF);
   dwire_Append(DWIRE_FLAG_RUN_TO_CURSOR);
   dwire_Append(DWIRE_RESUME);
-  if (FW_FALSE == uart_Write()) return FW_FALSE;
 
-  return uart_WaitForBreak(timeout);
+  return uart_Write();
 }
 
 /* -------------------------------------------------------------------------- */
-
-void DWire_Continue(void)
-{
-//  DWire_FlushCacheRegs(dwire);
-//  if (dwire->breakpoint < 0) {
-//    DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN));
-//  } else {
-//    DWire_SetBP(dwire, dwire->breakpoint / 2);
-//    DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN_TO_CURSOR));
-//  }
-//  DWire_Send(dwire, BYTES(DWIRE_RESUME));
-//  dwire->stopped = false;
-//  dwire->have_all_regs = false;
-}
-
-/* -------------------------------------------------------------------------- */
-
 
 
 

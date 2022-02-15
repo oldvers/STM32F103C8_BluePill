@@ -625,6 +625,31 @@ static FW_BOOLEAN Test_StepOut(void)
 static FW_BOOLEAN Test_RunToCursor(void)
 {
   FW_BOOLEAN result = FW_TRUE;
+  U32 i = 0, time = 0;
+
+  result = Test_Reset();
+  if (FW_FALSE == result) return FW_FALSE;
+
+  DBG("*** dWire Test Run To Cursor ***\r\n");
+
+  time = xTaskGetTickCount();
+
+  result = DWire_RunToCursor(0x000B);
+  if (FW_FALSE == result) return FW_FALSE;
+
+  for (i = 0; i < 100; i++)
+  {
+    result = DWire_CheckForBreak();
+    if (FW_TRUE == result) break;
+    vTaskDelay(5);
+  }
+  if (FW_FALSE == result) return FW_FALSE;
+  DBG(" - Stopped after %d ms\r\n", (xTaskGetTickCount() - time));
+
+  gPC = DWire_GetPC();
+  DBG(" - PC = 0x%04X\r\n", gPC);
+
+  result &= (FW_BOOLEAN)(0x000B == gPC);
 
   return result;
 }
@@ -690,6 +715,7 @@ const TestFunction_t gTests[] =
   Test_StepInto,
   Test_StepOver,
   Test_StepOut,
+  Test_RunToCursor,
 };
 
 U32 uiTestsGetCount(void)

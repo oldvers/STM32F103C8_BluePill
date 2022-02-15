@@ -171,4 +171,11 @@ FW_BOOLEAN DWire_StepOver(void);
  */
 FW_BOOLEAN DWire_StepOut(void);
 
+/** @brief Performs the run to cursor operation on the target
+ *  @param address - The address of the cursor
+ *  @return True - in case of success
+ *  @note The DWire_GetPC must be called before this function
+ */
+FW_BOOLEAN DWire_RunToCursor(U16 address);
+
 #endif /* __DWIRE_PROCESSOR_H__ */
