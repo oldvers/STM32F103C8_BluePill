@@ -2,12 +2,11 @@
 #include "system.h"
 #include "interrupts.h"
 #include "uart.h"
-#include "gpio.h"
 #include "debug.h"
 
 //-----------------------------------------------------------------------------
 
-#define UART_DEBUG
+//#define UART_DEBUG
 
 #ifdef UART_DEBUG
 #  define UART_LOG           DBG
@@ -27,6 +26,7 @@ typedef struct UART_Context_s
   UART_CbByte     RxCmpltCb;
   UART_CbByte     TxByteCb;
   UART_CbByte     TxCmpltCb;
+  UART_CbByte     BreakCb;
 } UART_Context_t, * UART_Context_p;
 
 //-----------------------------------------------------------------------------
@@ -35,21 +35,30 @@ static UART_Context_t gUARTCtx[UARTS_COUNT] =
 {
   {
     .HW = USART1,
-    .BaudRate = UART_BAUDRATE,
-    .RxByteCb = NULL,
-    .TxByteCb = NULL
+    .BaudRate  = UART_BAUDRATE,
+    .RxByteCb  = NULL,
+    .RxCmpltCb = NULL,
+    .TxByteCb  = NULL,
+    .TxCmpltCb = NULL,
+    .BreakCb   = NULL,
   },
   {
     .HW = USART2,
-    .BaudRate = UART_BAUDRATE,
-    .RxByteCb = NULL,
-    .TxByteCb = NULL
+    .BaudRate  = UART_BAUDRATE,
+    .RxByteCb  = NULL,
+    .RxCmpltCb = NULL,
+    .TxByteCb  = NULL,
+    .TxCmpltCb = NULL,
+    .BreakCb   = NULL,
   },
   {
     .HW = USART3,
-    .BaudRate = UART_BAUDRATE,
-    .RxByteCb = NULL,
-    .TxByteCb = NULL
+    .BaudRate  = UART_BAUDRATE,
+    .RxByteCb  = NULL,
+    .RxCmpltCb = NULL,
+    .TxByteCb  = NULL,
+    .TxCmpltCb = NULL,
+    .BreakCb   = NULL,
   },
 };
 
@@ -220,7 +229,10 @@ void UART_DeInit(UART_t aUART)
 
   gUARTCtx[aUART].BaudRate = UART_BAUDRATE;
   gUARTCtx[aUART].RxByteCb = NULL;
+  gUARTCtx[aUART].RxCmpltCb = NULL;
   gUARTCtx[aUART].TxByteCb = NULL;
+  gUARTCtx[aUART].TxCmpltCb = NULL;
+  gUARTCtx[aUART].BreakCb = NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -234,16 +246,11 @@ void UART_IrqHandler(UART_t aUART)
   U32 errors = 0;
   U16 data   = 0;
   U32 cr1    = gUARTCtx[aUART].HW->CR1;
+  U32 cr2    = gUARTCtx[aUART].HW->CR2;
   U32 cr3    = gUARTCtx[aUART].HW->CR3;
   /* Reading the SR must be the last one to guarantee the RXNE and TC flags
      to be both set in case of half-duplex communication */
   U32 sr     = gUARTCtx[aUART].HW->SR;
-
-//  if ( (0 != (sr & USART_SR_TC)) && (0 != (cr1 & USART_CR1_TCIE)) &&
-//       (0 != (sr & USART_SR_RXNE)) && (0 != (cr1 & USART_CR1_RXNEIE)) )
-//  {
-//
-//  }
 
   /* If no error occurs */
   errors = (sr & (USART_SR_PE | USART_SR_FE | USART_SR_ORE | USART_SR_NE));
@@ -273,19 +280,19 @@ void UART_IrqHandler(UART_t aUART)
   {
     if (0 != (sr & USART_SR_PE))
     {
-      UART_LOG("UART: Parity Error!\r\n");
+      //UART_LOG("UART: Parity Error!\r\n");
     }
     if (0 != (sr & USART_SR_NE))
     {
-      UART_LOG("UART: Noise Error!\r\n");
+      //UART_LOG("UART: Noise Error!\r\n");
     }
     if (0 != (sr & USART_SR_FE))
     {
-      UART_LOG("UART: Frame Error!\r\n");
+      //UART_LOG("UART: Frame Error!\r\n");
     }
     if (0 != (sr & USART_SR_ORE))
     {
-      UART_LOG("UART: Overrun Error!\r\n");
+      //UART_LOG("UART: Overrun Error!\r\n");
     }
     data = gUARTCtx[aUART].HW->DR;
 
@@ -411,6 +418,22 @@ void UART_IrqHandler(UART_t aUART)
       (void)gUARTCtx[aUART].TxCmpltCb(NULL);
     }
   }
+
+  /* Break detected */
+  if ((0 != (sr & USART_SR_LBD)) && (0 != (cr2 & USART_CR2_LBDIE)))
+  {
+    /* Clear Break flag */
+    gUARTCtx[aUART].HW->SR &= ~(USART_SR_LBD);
+    /* Disable the transmitter */
+    gUARTCtx[aUART].HW->CR1 &= ~(USART_CR1_TE);
+    /* Read the Data register */
+    data = gUARTCtx[aUART].HW->DR;
+
+    if (NULL != gUARTCtx[aUART].BreakCb)
+    {
+      (void)gUARTCtx[aUART].BreakCb(NULL);
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -426,8 +449,8 @@ void UART_TxStart(UART_t aUART)
   /* Check if transmission is in progress */
   if (0 != (gUARTCtx[aUART].HW->CR1 & USART_CR1_TE)) return;
 
-  gUARTCtx[aUART].HW->CR1 |= (USART_CR1_TE | USART_CR1_TXEIE);
   UART_LOG("UART: Tx Start\r\n");
+  gUARTCtx[aUART].HW->CR1 |= (USART_CR1_TE | USART_CR1_TXEIE);
 }
 
 //-----------------------------------------------------------------------------
@@ -443,9 +466,9 @@ void UART_RxStart(UART_t aUART)
   /* Check if reception is in progress */
   if (0 != (gUARTCtx[aUART].HW->CR1 & USART_CR1_RE)) return;
 
+  UART_LOG("UART: Rx Start\r\n");
   gUARTCtx[aUART].HW->CR1 |= (USART_CR1_RXNEIE | USART_CR1_IDLEIE);
   gUARTCtx[aUART].HW->CR1 |= (USART_CR1_RE);
-  UART_LOG("UART: Rx Start\r\n");
 }
 
 //-----------------------------------------------------------------------------
@@ -453,6 +476,32 @@ void UART_RxStart(UART_t aUART)
 void UART_BiDirModeEn(UART_t aUART)
 {
   gUARTCtx[aUART].HW->CR3 |= USART_CR3_HDSEL;
+}
+
+//-----------------------------------------------------------------------------
+
+void UART_SetBreakCallback(UART_t aUART, UART_CbByte pCb)
+{
+  if (NULL != pCb)
+  {
+    gUARTCtx[aUART].HW->CR2 |= USART_CR2_LBDIE;
+  }
+  else
+  {
+    gUARTCtx[aUART].HW->CR2 &= ~(USART_CR2_LBDIE);
+  }
+  gUARTCtx[aUART].BreakCb = pCb;
+}
+
+//-----------------------------------------------------------------------------
+
+void UART_Break(UART_t aUART)
+{
+  if (0 != (gUARTCtx[aUART].HW->CR1 & USART_CR1_TE)) return;
+
+  UART_LOG("UART: Break\r\n");
+  gUARTCtx[aUART].HW->CR1 |= (USART_CR1_TE);
+  gUARTCtx[aUART].HW->CR1 |= (USART_CR1_SBK);
 }
 
 //-----------------------------------------------------------------------------

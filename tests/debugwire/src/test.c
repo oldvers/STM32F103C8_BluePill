@@ -16,9 +16,14 @@ typedef FW_BOOLEAN (* TestFunction_t)(void);
 
 /* -------------------------------------------------------------------------- */
 
+static U16 gPC = 0;
+
+/* -------------------------------------------------------------------------- */
+
 static FW_BOOLEAN Test_Sync(void)
 {
   FW_BOOLEAN result = FW_TRUE;
+  U32 i = 0;
 
   DBG("*** dWire Test Sync ***\r\n");
 
@@ -28,7 +33,27 @@ static FW_BOOLEAN Test_Sync(void)
   /* ATmega48: rSize = 512, fSize = 4096, fPage = 64, eSize = 256 */
   DWire_SetMemParams(512, 4096, 64, 56);
 
+  DBG(" - Sync\r\n");
   result = DWire_Sync();
+  if (FW_FALSE == result) return FW_FALSE;
+
+  DBG(" - Break\r\n");
+  DWire_Break();
+
+  DBG(" - Wait for Break event\r\n");
+  for (i = 0; i < 100; i++)
+  {
+    result = DWire_CheckForBreak();
+    if (FW_TRUE == result) break;
+    vTaskDelay(5);
+  }
+  if (FW_TRUE == result)
+  {
+    DBG(" - Break received after %d ms\r\n", (i + 1) * 5);
+
+    gPC = DWire_GetPC();
+    DBG(" - PC = 0x%04X\r\n", gPC);
+  }
 
   return result;
 }
@@ -347,6 +372,173 @@ static FW_BOOLEAN Test_WriteFlash(void)
   return result;
 }
 
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_WriteBlinkProgramToFlash(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U8 blinky[64] =
+  {
+    0x0F, 0xEF, 0x0D, 0xBF, 0x02, 0xE0, 0x0E, 0xBF,
+    0x01, 0xE0, 0x07, 0xB9, 0x40, 0x9A, 0x07, 0xD0,
+    0x06, 0xD0, 0x05, 0xD0, 0x40, 0x98, 0x03, 0xD0,
+    0x02, 0xD0, 0x01, 0xD0, 0xF7, 0xCF, 0xEE, 0x27,
+    0xFF, 0x27, 0x31, 0x97, 0xF1, 0xF7, 0x08, 0x95,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+  };
+
+  DBG("*** dWire Test Write Blink Program to Flash ***\r\n");
+
+  /* Write the Flash */
+  DBG("--- Write the Flash\r\n");
+  result = DWire_SetFlash(0x0000, blinky, sizeof(blinky));
+  if (FW_FALSE == result) return FW_FALSE;
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_Reset(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U32 i = 0;
+
+  DBG("*** dWire Test Reset ***\r\n");
+
+  DBG(" - Send the Reset command\r\n");
+  result = DWire_Reset();
+  if (FW_FALSE == result) return FW_FALSE;
+
+  DBG(" - Wait for Break event\r\n");
+  for (i = 0; i < 100; i++)
+  {
+    vTaskDelay(5);
+    result = DWire_CheckForBreak();
+    if (FW_TRUE == result) break;
+  }
+  if (FW_TRUE == result)
+  {
+    DBG(" - Break received after %d ms\r\n", (i + 1) * 5);
+
+    gPC = DWire_GetPC();
+    DBG(" - PC = 0x%04X\r\n", gPC);
+
+    result = (FW_BOOLEAN)(0 == gPC);
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_Run(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+
+  DBG("*** dWire Test Run ***\r\n");
+
+  result = DWire_Run();
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_Stop(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  U32 i = 0, t = 0;
+
+  DBG("*** dWire Test Stop ***\r\n");
+
+  /* Let the blinky program run about 5 seconds */
+  vTaskDelay(5000);
+
+  /* Stop the program */
+  DBG("--- Stop the program\r\n");
+  t = xTaskGetTickCount();
+  DWire_Break();
+  for (i = 0; i < 100; i++)
+  {
+    vTaskDelay(5);
+    result = DWire_CheckForBreak();
+    if (FW_TRUE == result) break;
+  }
+  if (FW_FALSE == result) return FW_FALSE;
+  DBG(" - Stopped after %d ms\r\n", (xTaskGetTickCount() - t));
+
+  /* Read the PC */
+  gPC = DWire_GetPC();
+  DBG(" - PC = 0x%04X\r\n", gPC);
+
+//  /* Run to the address before the LED on instruction */
+//  DBG("--- Run to cursor\r\n");
+//  result = DWire_RunToCursor(16, 10000);
+//  if (FW_FALSE == result) return FW_FALSE;
+//
+//  /* Read the PC */
+//  pc = DWire_GetPC();
+//  DBG(" -  PC = 0x%04X\r\n", pc);
+//
+//  vTaskDelay(2000);
+//
+//  /* Make the step to for LED on */
+//  DBG("--- Do the step\r\n");
+//  result = DWire_Step();
+//  if (FW_FALSE == result) return FW_FALSE;
+//
+//  /* Read the PC */
+//  pc = DWire_GetPC();
+//  DBG(" -  PC = 0x%04X\r\n", pc);
+//
+//  vTaskDelay(2000);
+//
+//  /* Run the program */
+//  DBG("--- Run the program\r\n");
+//  result = DWire_Run();
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_StepInto(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_StepOver(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_StepOut(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN Test_RunToCursor(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+
+  return result;
+}
+
 /* --- Test Start Up Function (mandatory, called before RTOS starts) -------- */
 
 void vTestStartUpFunction(void)
@@ -400,7 +592,13 @@ const TestFunction_t gTests[] =
 //  Test_ReadIoRegs,
 //  Test_WriteIoRegs,
 //  Test_ReadFlash,
-  Test_WriteFlash,
+//  Test_WriteFlash,
+//  Test_WriteBlinkProgramToFlash,
+  Test_Reset,
+  Test_Run,
+  Test_Stop,
+//  Test_Reset,
+//  Test_StepInto,
 };
 
 U32 uiTestsGetCount(void)

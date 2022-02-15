@@ -6,6 +6,7 @@
 #include "uart.h"
 #include "debug.h"
 #include "tim.h"
+#include "interrupts.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -24,6 +25,7 @@
 #define DWIRE_TX_COMPLETE              (1 << 0)
 #define DWIRE_RX_COMPLETE              (1 << 1)
 #define DWIRE_BAUD_COMPLETE            (1 << 2)
+#define DWIRE_BREAK_RECEIVED           (1 << 3)
 #define DWIRE_TIMEOUT                  (500)
 #define DWIRE_BAUD_MEAS_COUNT          (6)
 #define DWIRE_BAUD_MEAS_START_IDX      (2)
@@ -90,6 +92,7 @@ typedef struct
   {
     FW_BOOLEAN       txInProgress : 1;
     FW_BOOLEAN       txOk : 1;
+    FW_BOOLEAN       xxBreak : 1;
   };
   U8                 txBuffer[DWIRE_BUFFER_SIZE];
   U32                txLen;
@@ -143,9 +146,10 @@ static FW_BOOLEAN uart_TxComplete(U8 * pByte);
 
 /** @brief Waits for dWire events
  *  @param eventMask - The set of events to wait
+ *  @param timeout - Timeout
  *  @return True - if all the events were set, False - in case of timeout
  */
-static FW_BOOLEAN uart_WaitForComplete(U32 eventMask);
+static FW_BOOLEAN uart_WaitFor(U32 eventMask, U32 timeout);
 
 /** @brief Performs the dWire read operation
  *  @param count - Count of bytes expected to be read
@@ -314,6 +318,20 @@ static FW_BOOLEAN dwire_Next_Flash(U8 * value);
  */
 static FW_BOOLEAN dwire_Finish_Flash(void);
 
+/** @brief Callback function for the Break event
+ *  @param pByte - The container for the byte received
+ *  @return TRUE in case of success
+ */
+static FW_BOOLEAN uart_BreakReceived(U8 * pByte);
+
+/** @brief Waits for Break reception
+ *  @param timeout - Timeout
+ *  @return TRUE in case of success
+ */
+static FW_BOOLEAN uart_WaitForBreak(U32 timeout);
+
+static FW_BOOLEAN uart_WriteBreak(U32 timeout);
+
 /* -------------------------------------------------------------------------- */
 
 void DWire_Init(void)
@@ -327,6 +345,7 @@ void DWire_Init(void)
   /* Init some fields */
   gDWire.txInProgress  = FW_FALSE;
   gDWire.txOk          = FW_FALSE;
+  gDWire.xxBreak       = FW_FALSE;
   gDWire.txLen         = 0;
   gDWire.txCnt         = 0;
   gDWire.rxLen         = 0;
@@ -343,6 +362,9 @@ void DWire_Init(void)
   GPIO_Init(GPIOB, 5, GPIO_TYPE_OUT_PP_50MHZ, 0);
   GPIO_Init(GPIOB, 9, GPIO_TYPE_OUT_PP_50MHZ, 0);
   GPIO_Init(GPIOA, 8, GPIO_TYPE_OUT_PP_50MHZ, 0);
+  GPIO_Init(GPIOA, 0, GPIO_TYPE_OUT_PP_50MHZ, 0);
+  GPIO_Init(GPIOA, 1, GPIO_TYPE_OUT_PP_50MHZ, 0);
+  GPIO_Init(GPIOA, 4, GPIO_TYPE_OUT_PP_50MHZ, 0);
 
   /* Create the Debug Wire task */
   /* xTaskCreate
@@ -399,7 +421,7 @@ FW_BOOLEAN DWire_Sync(void)
 
   /* Activate the Reset pin */
   GPIO_Init(TIM2_CH3_PORT, TIM2_CH3_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
-  vTaskDelay(5);
+  vTaskDelay(2);
 
   /* Enable the timer */
   TIM2_Enable();
@@ -408,7 +430,7 @@ FW_BOOLEAN DWire_Sync(void)
   GPIO_Init(TIM2_CH3_PORT, TIM2_CH3_PIN, GPIO_TYPE_IN_FLOATING, 0);
 
   /* Wait for measurement is complete */
-  result = uart_WaitForComplete(DWIRE_BAUD_COMPLETE);
+  result = uart_WaitFor(DWIRE_BAUD_COMPLETE, DWIRE_TIMEOUT);
 
   /* Disable the timer */
   TIM2_Disable();
@@ -443,30 +465,172 @@ FW_BOOLEAN DWire_Sync(void)
     /* Enable the bidirectional mode */
     UART_BiDirModeEn(UART2);
 
-    /* Activate the Reset pin */
-    GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
-    vTaskDelay(5);
+    /* Start receiving */
+    UART_RxStart(UART2);
 
-    /* Release the Reset pin */
+//    /* Activate the Reset pin */
+//    GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
+//    vTaskDelay(2);
+//
+//    /* Release the Reset pin */
+//    GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_ALT_OD_2MHZ, 1);
+//
+//    /* Wait for the Sync byte from the target */
+//    idx = uart_Read(1);
+
+    /* Setup the Reset pin */
     GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_ALT_OD_2MHZ, 1);
 
-    /* Wait for the Sync byte from the target */
-    idx = uart_Read(1);
-
-    if ( (1 == idx) && (0x55 == gDWire.rxBuffer[0]) )
-    {
-      DWIRE_LOG("DWire: In sync!\r\n");
-    }
-    else
-    {
-      result = FW_FALSE;
-      DWIRE_LOG("DWire: Sync error!\r\n");
-    }
+//*     /*  Send Break */
+//*     UART_SetBreakCallback(UART2, uart_BreakReceived);
+//* //    (void)xEventGroupClearBits
+//* //    (
+//* //      gDWire.events,
+//* //      (DWIRE_RX_COMPLETE | DWIRE_BREAK_RECEIVED)
+//* //    );
+//* //
+//* //    GPIO_Lo(GPIOA, 8);
+//*
+//*     UART_Break(UART2);
+//*
+//*     /* Wait for the Break and Sync are complete */
+//*     result = uart_WaitForBreak(DWIRE_TIMEOUT);
+//*
+//*
+//* //    result = uart_WaitFor
+//* //            (
+//* //              (DWIRE_RX_COMPLETE | DWIRE_BREAK_RECEIVED),
+//* //              DWIRE_TIMEOUT
+//* //            );
+//* //    if (FW_FALSE == result) return FW_FALSE;
+//* //
+//* ////    /* Wait for the Sync reception */
+//* ////    result = uart_WaitForComplete(DWIRE_RX_COMPLETE);
+//* ////    if (FW_FALSE == result) return FW_FALSE;
+//* //
+//* //    if ( (1 == gDWire.rxLen) || (0x55 == gDWire.rxBuffer[0]) )
+//* ////return FW_FALSE;
+//* ////    if ( (1 == idx) && (0x55 == gDWire.rxBuffer[0]) )
+//*     if (FW_TRUE == result)
+//*     {
+//*       DWIRE_LOG("DWire: In sync!\r\n");
+//*     }
+//*     else
+//*     {
+//* //      result = FW_FALSE;
+//*       DWIRE_LOG("DWire: Sync error!\r\n");
+//*     }
   }
 
   GPIO_Lo(GPIOA, 8);
 
   return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_Break(void)
+{
+//  FW_BOOLEAN result = FW_TRUE;
+//  U32 idx           = 0;
+//  U32 baudrate      = 0;
+//  U16 time          = 0;
+
+  DWIRE_LOG("DWire: Break\r\n");
+
+  /*  Send Break */
+  UART_SetBreakCallback(UART2, uart_BreakReceived);
+  UART_Break(UART2);
+
+//  /* Wait for the Break and Sync are complete */
+//  result = uart_WaitForBreak(DWIRE_TIMEOUT);
+//
+//  if (FW_TRUE == result)
+//  {
+//    DWIRE_LOG("DWire: In sync!\r\n");
+//  }
+//  else
+//  {
+//    DWIRE_LOG("DWire: Sync error!\r\n");
+//  }
+//
+//  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_CheckForBreak(void)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  EventBits_t events = 0;
+  U32 eventMask = (DWIRE_BREAK_RECEIVED | DWIRE_RX_COMPLETE);
+//  IRQ_SAFE_AREA();
+//
+//  IRQ_DISABLE();
+//  gDWire.rxLen   = 0;
+//  gDWire.xxBreak = FW_TRUE;
+//  IRQ_RESTORE();
+
+  events = xEventGroupWaitBits
+           (
+             gDWire.events,
+             eventMask,
+             pdTRUE, /* Clear bits   */
+             pdTRUE, /* Wait for all */
+             0
+           );
+
+  result = (FW_BOOLEAN)(eventMask == (events & eventMask));
+  result &= (FW_BOOLEAN)((1 == gDWire.rxLen) && (0x55 == gDWire.rxBuffer[0]));
+
+  if (0 != (events & DWIRE_RX_COMPLETE)) GPIO_Lo(GPIOA, 8);
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_Reset(void)
+{
+//*  FW_BOOLEAN result = FW_FALSE;
+
+  UART_SetBreakCallback(UART2, uart_BreakReceived);
+
+//  (void)xEventGroupClearBits
+//  (
+//    gDWire.events,
+//    (DWIRE_RX_COMPLETE | DWIRE_BREAK_RECEIVED)
+//  );
+//
+//  GPIO_Lo(GPIOA, 8);
+
+  dwire_Clear();
+  dwire_Append(DWIRE_RESET);
+//*  result =
+  return uart_Write();
+//*  if (FW_FALSE == result) return FW_FALSE;
+
+//  /* Wait for the Break and Sync from target */
+//  result = uart_WaitFor
+//           (
+//             (DWIRE_RX_COMPLETE | DWIRE_BREAK_RECEIVED),
+//             DWIRE_TIMEOUT
+//           );
+//  if (FW_FALSE == result) return FW_FALSE;
+//
+////  /* Wait for the Sync from target */
+////  result = uart_WaitForComplete(DWIRE_RX_COMPLETE);
+////  if (FW_FALSE == result) return FW_FALSE;
+//  if ( (1 != gDWire.rxLen) || (0x55 != gDWire.rxBuffer[0]) ) return FW_FALSE;
+
+//*  result = uart_WaitForBreak(DWIRE_TIMEOUT);
+//*  if (FW_FALSE == result) return FW_FALSE;
+//*
+//*  return DWire_Sync();
+
+//  DWire_Send(dwire, BYTES(DWIRE_RESET));
+//  DWire_Sync(dwire);
+//  DWire_Reconnect(dwire);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -492,7 +656,7 @@ U16 DWire_GetSignature(void)
 
 U16 DWire_GetPC(void)
 {
-  U16 result = 0;
+  U16 result = 0xFFFF;
 
   DWIRE_LOG("DWire: Read PC\r\n");
 
@@ -809,6 +973,126 @@ FW_BOOLEAN DWire_SetFlash(U16 address, U8 * pRaw, U16 length)
 
 /* -------------------------------------------------------------------------- */
 
+FW_BOOLEAN DWire_StepOver(void)
+{
+//  DWire_FlushCacheRegs(dwire);
+//  DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN, DWIRE_RESUME_SS));
+//  DWire_Sync(dwire);
+//  DWire_Reconnect(dwire);
+//  dwire->have_all_regs = false;
+  dwire_Clear();
+  dwire_Append(DWIRE_FLAG_RUN);
+  dwire_Append(DWIRE_RESUME_SS);
+//  if (FW_FALSE == uart_Write()) return FW_FALSE;
+
+//  return DWire_Sync();
+//  return FW_TRUE;
+  return uart_WriteBreak(DWIRE_TIMEOUT);
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_Run(void)
+{
+//  dwire->pc = 0;
+//  dwire->breakpoint = -1;
+//  DWire_Continue(dwire);
+  dwire_Clear();
+  dwire_Append(DWIRE_FLAG_RUN);
+  dwire_Append(DWIRE_RESUME);
+  return uart_Write();
+}
+
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_RunToCursor(U16 address, U32 timeout)
+{
+//  dwire->pc = 0;
+//  dwire->breakpoint = -1;
+//  DWire_Continue(dwire);
+  dwire_Clear();
+  dwire_Append(DWIRE_FLAG_RUN);
+  dwire_Append_SetBP(address / 2);
+  dwire_Append(DWIRE_FLAG_RUN_TO_CURSOR);
+  dwire_Append(DWIRE_RESUME);
+  if (FW_FALSE == uart_Write()) return FW_FALSE;
+
+  return uart_WaitForBreak(timeout);
+}
+
+/* -------------------------------------------------------------------------- */
+
+void DWire_Continue(void)
+{
+//  DWire_FlushCacheRegs(dwire);
+//  if (dwire->breakpoint < 0) {
+//    DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN));
+//  } else {
+//    DWire_SetBP(dwire, dwire->breakpoint / 2);
+//    DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN_TO_CURSOR));
+//  }
+//  DWire_Send(dwire, BYTES(DWIRE_RESUME));
+//  dwire->stopped = false;
+//  dwire->have_all_regs = false;
+}
+
+/* -------------------------------------------------------------------------- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+static FW_BOOLEAN uart_BreakReceived(U8 * pByte)
+{
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+  GPIO_Hi(GPIOA, 0);
+
+  (void)xEventGroupSetBitsFromISR
+        (
+          gDWire.events,
+          DWIRE_BREAK_RECEIVED,
+          &xHigherPriorityTaskWoken
+        );
+
+  if (xHigherPriorityTaskWoken)
+  {
+    taskYIELD();
+  }
+  gDWire.xxBreak = FW_TRUE;
+  gDWire.rxLen   = 0;
+
+  GPIO_Lo(GPIOA, 0);
+
+  return FW_TRUE;
+}
+
+
+
+/* -------------------------------------------------------------------------- */
 
 
 
@@ -914,19 +1198,23 @@ static FW_BOOLEAN uart_RxComplete(U8 * pByte)
 
   GPIO_Hi(GPIOB, 5);
 
-  (void)xEventGroupSetBitsFromISR
-        (
-          gDWire.events,
-          DWIRE_RX_COMPLETE,
-          &xHigherPriorityTaskWoken
-        );
-
-  GPIO_Hi(GPIOA, 8);
-
-  if (xHigherPriorityTaskWoken)
+  if (FW_FALSE == gDWire.xxBreak)
   {
-    taskYIELD();
+    (void)xEventGroupSetBitsFromISR
+          (
+            gDWire.events,
+            DWIRE_RX_COMPLETE,
+            &xHigherPriorityTaskWoken
+          );
+
+    GPIO_Hi(GPIOA, 8);
+
+    if (xHigherPriorityTaskWoken)
+    {
+      taskYIELD();
+    }
   }
+  gDWire.xxBreak = FW_FALSE;
 
   GPIO_Lo(GPIOB, 5);
 
@@ -984,7 +1272,7 @@ static FW_BOOLEAN uart_TxComplete(U8 * pByte)
 
 /* -------------------------------------------------------------------------- */
 
-static FW_BOOLEAN uart_WaitForComplete(U32 eventMask)
+static FW_BOOLEAN uart_WaitFor(U32 eventMask, U32 timeout)
 {
   FW_BOOLEAN result = FW_TRUE;
   EventBits_t events = 0;
@@ -995,13 +1283,44 @@ static FW_BOOLEAN uart_WaitForComplete(U32 eventMask)
              eventMask,
              pdTRUE, /* Clear bits   */
              pdTRUE, /* Wait for all */
-             DWIRE_TIMEOUT
+             timeout
            );
 
   if (eventMask != (events & eventMask))
   {
     result = FW_FALSE;
   }
+  if (0 != (events & DWIRE_RX_COMPLETE)) GPIO_Lo(GPIOA, 8);
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN uart_WaitForBreak(U32 timeout)
+{
+  FW_BOOLEAN result = FW_TRUE;
+  EventBits_t events = 0;
+  U32 eventMask = (DWIRE_BREAK_RECEIVED | DWIRE_RX_COMPLETE);
+//  IRQ_SAFE_AREA();
+//
+//  IRQ_DISABLE();
+//  gDWire.rxLen   = 0;
+//  gDWire.xxBreak = FW_TRUE;
+//  IRQ_RESTORE();
+
+  events = xEventGroupWaitBits
+           (
+             gDWire.events,
+             eventMask,
+             pdTRUE, /* Clear bits   */
+             pdTRUE, /* Wait for all */
+             timeout
+           );
+
+  result = (FW_BOOLEAN)(eventMask == (events & eventMask));
+  result &= (FW_BOOLEAN)((1 == gDWire.rxLen) && (0x55 == gDWire.rxBuffer[0]));
+
   if (0 != (events & DWIRE_RX_COMPLETE)) GPIO_Lo(GPIOA, 8);
 
   return result;
@@ -1018,7 +1337,7 @@ static FW_BOOLEAN uart_Read(U32 count)
 
   UART_RxStart(UART2);
 
-  if (FW_TRUE == uart_WaitForComplete(DWIRE_RX_COMPLETE))
+  if (FW_TRUE == uart_WaitFor(DWIRE_RX_COMPLETE, DWIRE_TIMEOUT))
   {
     DWIRE_LOG("DWire <-- ");
     for (i = 0; i < gDWire.rxLen; i++)
@@ -1053,7 +1372,7 @@ static FW_BOOLEAN uart_Write(void)
 
   UART_TxStart(UART2);
 
-  return uart_WaitForComplete(DWIRE_TX_COMPLETE | DWIRE_RX_COMPLETE);
+  return uart_WaitFor(DWIRE_TX_COMPLETE | DWIRE_RX_COMPLETE, DWIRE_TIMEOUT);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1077,7 +1396,7 @@ static FW_BOOLEAN uart_WriteRead(U32 count)
 
   UART_TxStart(UART2);
 
-  result = uart_WaitForComplete(DWIRE_TX_COMPLETE | DWIRE_RX_COMPLETE);
+  result = uart_WaitFor(DWIRE_TX_COMPLETE | DWIRE_RX_COMPLETE, DWIRE_TIMEOUT);
 
   if ( (FW_TRUE == result) && (0 < gDWire.rxLen) )
   {
@@ -1090,6 +1409,48 @@ static FW_BOOLEAN uart_WriteRead(U32 count)
   }
 
   result &= (FW_BOOLEAN)(gDWire.rxLen == count);
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */
+
+static FW_BOOLEAN uart_WriteBreak(U32 timeout)
+{
+  FW_BOOLEAN result = FW_FALSE;
+  U32 i = 0;
+
+  gDWire.rxLen = 0;
+  gDWire.txCnt = 0;
+  gDWire.txInProgress = FW_TRUE;
+  gDWire.txOk = FW_TRUE;
+
+  DWIRE_LOG("DWire --> ");
+  for (i = 0; i < gDWire.txLen; i++)
+  {
+    DWIRE_LOG("%02X ", gDWire.txBuffer[i]);
+  }
+  DWIRE_LOG("\r\n");
+
+  UART_TxStart(UART2);
+
+  result = uart_WaitFor
+           (
+             (DWIRE_TX_COMPLETE | DWIRE_RX_COMPLETE | DWIRE_BREAK_RECEIVED),
+             timeout
+           );
+
+  if ( (FW_TRUE == result) && (0 < gDWire.rxLen) )
+  {
+    DWIRE_LOG("DWire <-- ");
+    for (i = 0; i < gDWire.rxLen; i++)
+    {
+      DWIRE_LOG("%02X ", gDWire.rxBuffer[i]);
+    }
+    DWIRE_LOG("\r\n");
+  }
+
+  result &= (FW_BOOLEAN)((1 == gDWire.rxLen) && (0x55 == gDWire.rxBuffer[0]));
 
   return result;
 }
@@ -1511,8 +1872,6 @@ static FW_BOOLEAN dwire_Finish_Flash(void)
 
 
 
-
-
 /* -------------------------------------------------------------------------- */
 
 void DWire_CacheRegs(void)
@@ -1542,51 +1901,6 @@ void DWire_FlushCacheRegs(void)
   //else
   //  DWire_SetRegs(dwire, 28, &dwire->regs[28], 4);
   //DWire_SetPC(dwire, dwire->pc/2);
-}
-
-/* -------------------------------------------------------------------------- */
-
-void DWire_Reset(void)
-{
-//  DWire_Send(dwire, BYTES(DWIRE_RESET));
-//  DWire_Sync(dwire);
-//  DWire_Reconnect(dwire);
-}
-
-/* -------------------------------------------------------------------------- */
-
-void DWire_Step(void)
-{
-//  DWire_FlushCacheRegs(dwire);
-//  DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN, DWIRE_RESUME_SS));
-//  DWire_Sync(dwire);
-//  DWire_Reconnect(dwire);
-//  dwire->have_all_regs = false;
-}
-
-/* -------------------------------------------------------------------------- */
-
-void DWire_Run(void)
-{
-//  dwire->pc = 0;
-//  dwire->breakpoint = -1;
-//  DWire_Continue(dwire);
-}
-
-/* -------------------------------------------------------------------------- */
-
-void DWire_Continue(void)
-{
-//  DWire_FlushCacheRegs(dwire);
-//  if (dwire->breakpoint < 0) {
-//    DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN));
-//  } else {
-//    DWire_SetBP(dwire, dwire->breakpoint / 2);
-//    DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN_TO_CURSOR));
-//  }
-//  DWire_Send(dwire, BYTES(DWIRE_RESUME));
-//  dwire->stopped = false;
-//  dwire->have_all_regs = false;
 }
 
 /* -------------------------------------------------------------------------- */

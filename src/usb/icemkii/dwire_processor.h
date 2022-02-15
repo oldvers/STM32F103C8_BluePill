@@ -9,7 +9,7 @@
  */
 void DWire_Init(void);
 
-/** @brief Sets the dWire device parameters
+/** @brief Sets the dWire target parameters
  *  @param dwdr - Address of the DWDR register
  *  @param spmcsr - Address of the SPMCSR register
  *  @param basePC - Base address of the PC register
@@ -17,7 +17,7 @@ void DWire_Init(void);
  */
 void DWire_SetParams(U8 dwdr, U8 spmcsr, U16 basePC);
 
-/** @brief Sets the dWire device memory parameters
+/** @brief Sets the dWire target memory parameters
  *  @param rSize - SRAM size
  *  @param fSize - FLASH size
  *  @param rPageSize - FLASH page size
@@ -32,13 +32,13 @@ void DWire_SetMemParams(U16 rSize, U16 fSize, U16 fPageSize, U16 eSize);
  */
 FW_BOOLEAN DWire_Sync(void);
 
-/** @brief Reads the device signature
+/** @brief Reads the target signature
  *  @param None
  *  @return The signature, 0 - in case of error
  */
 U16 DWire_GetSignature(void);
 
-/** @brief Reads the device program counter
+/** @brief Reads the target program counter
  *  @param None
  *  @return The program counter
  */
@@ -50,33 +50,33 @@ U16 DWire_GetPC(void);
  */
 FW_BOOLEAN DWire_Disable(void);
 
-/** @brief Reads the device register
+/** @brief Reads the target register
  *  @param reg - Register's number (0x00..0x20)
  *  @return Register's value
  */
 U8 DWire_GetReg(U8 reg);
 
-/** @brief Writes the device register
+/** @brief Writes the target register
  *  @param reg - Register's number (0x00..0x20)
  *  @param value - Register's value
  *  @return True - in case of success
  */
 FW_BOOLEAN DWire_SetReg(U8 reg, U8 value);
 
-/** @brief Reads the device I/O register
+/** @brief Reads the target I/O register
  *  @param reg - Register's number (0x20..0x5F)
  *  @return Register's value
  */
 U8 DWire_GetIOReg(U8 reg);
 
-/** @brief Writes the device I/O register
+/** @brief Writes the target I/O register
  *  @param reg - Register's number (0x20..0x5F)
  *  @param value - Register's value
  *  @return True - in case of success
  */
 FW_BOOLEAN DWire_SetIOReg(U8 reg, U8 value);
 
-/** @brief Reads the device registers
+/** @brief Reads the target registers
  *  @param first - The number of the first register
  *  @param pRaw - The container for registers' values
  *  @param count - The count of registers to be read
@@ -84,7 +84,7 @@ FW_BOOLEAN DWire_SetIOReg(U8 reg, U8 value);
  */
 FW_BOOLEAN DWire_GetRegs(U8 first, U8 * pRaw, U8 count);
 
-/** @brief Writes the device registers
+/** @brief Writes the target registers
  *  @param first - The number of the first register
  *  @param pRaw - The container with registers' values
  *  @param count - The count of registers to be written
@@ -92,7 +92,7 @@ FW_BOOLEAN DWire_GetRegs(U8 first, U8 * pRaw, U8 count);
  */
 FW_BOOLEAN DWire_SetRegs(U8 first, U8 * pRaw, U8 count);
 
-/** @brief Reads the device's SRAM
+/** @brief Reads the target's SRAM
  *  @param address - The address in SRAM
  *  @param pRaw - The container for SRAM data
  *  @param length - The count of bytes to be read
@@ -100,7 +100,7 @@ FW_BOOLEAN DWire_SetRegs(U8 first, U8 * pRaw, U8 count);
  */
 FW_BOOLEAN DWire_GetSRAM(U16 address, U8 * pRaw, U16 length);
 
-/** @brief Writes the device's SRAM
+/** @brief Writes the target's SRAM
  *  @param address - The address in SRAM
  *  @param pRaw - The container with SRAM content
  *  @param length - The count of bytes to be written
@@ -108,7 +108,7 @@ FW_BOOLEAN DWire_GetSRAM(U16 address, U8 * pRaw, U16 length);
  */
 FW_BOOLEAN DWire_SetSRAM(U16 address, U8 * pRaw, U16 length);
 
-/** @brief Reads the device's FLASH
+/** @brief Reads the target's FLASH
  *  @param address - The address in FLASH
  *  @param pRaw - The container for FLASH data
  *  @param length - The count of bytes to be read
@@ -116,7 +116,7 @@ FW_BOOLEAN DWire_SetSRAM(U16 address, U8 * pRaw, U16 length);
  */
 FW_BOOLEAN DWire_GetFlash(U16 address, U8 * pRaw, U16 length);
 
-/** @brief Writes the device's FLASH
+/** @brief Writes the target's FLASH
  *  @param address - The address in FLASH
  *  @param pRaw - The container with FLASH content
  *  @param length - The count of bytes to be written
@@ -124,18 +124,28 @@ FW_BOOLEAN DWire_GetFlash(U16 address, U8 * pRaw, U16 length);
  */
 FW_BOOLEAN DWire_SetFlash(U16 address, U8 * pRaw, U16 length);
 
-
-
-
-
-
-
-
-/** @brief Sets the device Z register
- *  @param address - The value of Z register
+/** @brief Resets the target
+ *  @param None
  *  @return True - in case of success
  */
-FW_BOOLEAN DWire_SetZ(U16 address);
+FW_BOOLEAN DWire_Reset(void);
 
+/** @brief Runs the target
+ *  @param None
+ *  @return True - in case of success
+ */
+FW_BOOLEAN DWire_Run(void);
+
+/** @brief Stops the target
+ *  @param None
+ *  @return None
+ */
+void DWire_Break(void);
+
+/** @brief Checks if the target was stopped
+ *  @param None
+ *  @return True - in case of success
+ */
+FW_BOOLEAN DWire_CheckForBreak(void);
 
 #endif /* __DWIRE_PROCESSOR_H__ */
