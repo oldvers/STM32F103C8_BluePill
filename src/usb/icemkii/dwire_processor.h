@@ -41,6 +41,8 @@ U16 DWire_GetSignature(void);
 /** @brief Reads the target program counter
  *  @param None
  *  @return The program counter
+ *  @note The PC is also stored internally into the global variable for using
+ *        with step into/over/out functions
  */
 U16 DWire_GetPC(void);
 
@@ -147,5 +149,12 @@ void DWire_Break(void);
  *  @return True - in case of success
  */
 FW_BOOLEAN DWire_CheckForBreak(void);
+
+/** @brief Performs the step into operation on the target
+ *  @param None
+ *  @return True - in case of success
+ *  @note The DWire_GetPC must be called before this function
+ */
+FW_BOOLEAN DWire_StepInto(void);
 
 #endif /* __DWIRE_PROCESSOR_H__ */

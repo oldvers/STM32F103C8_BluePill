@@ -508,6 +508,29 @@ static FW_BOOLEAN Test_Stop(void)
 static FW_BOOLEAN Test_StepInto(void)
 {
   FW_BOOLEAN result = FW_TRUE;
+  U32 i = 0, time = 0, step = 0;
+
+  time = xTaskGetTickCount();
+  for (step = 0; step < 8; step++)
+  {
+    DBG("--- Do the step %d into\r\n", step);
+    result = DWire_StepInto();
+    if (FW_FALSE == result) return FW_FALSE;
+
+    for (i = 0; i < 100; i++)
+    {
+      result = DWire_CheckForBreak();
+      if (FW_TRUE == result) break;
+      vTaskDelay(1);
+    }
+    if (FW_FALSE == result) return FW_FALSE;
+    DBG(" - Stopped after %d ms\r\n", (xTaskGetTickCount() - time));
+
+    gPC = DWire_GetPC();
+    DBG(" - PC = 0x%04X\r\n", gPC);
+  }
+
+  result &= (FW_BOOLEAN)(0x000F == gPC);
 
   return result;
 }
@@ -580,25 +603,25 @@ void vTestHelpTaskFunction(void * pvParameters)
 const TestFunction_t gTests[] =
 {
   Test_Sync,
-//  Test_ReadSignature,
-//  Test_ReadPc,
-//  Test_ReadReg,
-//  Test_WriteReg,
-//  Test_WriteRegSequence,
-//  Test_ReadRegs,
-//  Test_WriteRegs,
-//  Test_ReadSram,
-//  Test_WriteSram,
-//  Test_ReadIoRegs,
-//  Test_WriteIoRegs,
-//  Test_ReadFlash,
-//  Test_WriteFlash,
-//  Test_WriteBlinkProgramToFlash,
+  Test_ReadSignature,
+  Test_ReadPc,
+  Test_ReadReg,
+  Test_WriteReg,
+  Test_WriteRegSequence,
+  Test_ReadRegs,
+  Test_WriteRegs,
+  Test_ReadSram,
+  Test_WriteSram,
+  Test_ReadIoRegs,
+  Test_WriteIoRegs,
+  Test_ReadFlash,
+  Test_WriteFlash,
+  Test_WriteBlinkProgramToFlash,
   Test_Reset,
   Test_Run,
   Test_Stop,
-//  Test_Reset,
-//  Test_StepInto,
+  Test_Reset,
+  Test_StepInto,
 };
 
 U32 uiTestsGetCount(void)
