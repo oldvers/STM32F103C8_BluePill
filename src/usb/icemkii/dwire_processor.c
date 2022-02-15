@@ -994,39 +994,44 @@ FW_BOOLEAN DWire_StepInto(void)
   return uart_Write();
 }
 
-//var tx : array[0..7]of Byte; v : Word;
-//begin
+/* -------------------------------------------------------------------------- */
+
+FW_BOOLEAN DWire_StepOver(void)
+{
+  U16 pc = gDWire.pc + gDWire.basePC;
+
+  DWIRE_LOG("DWire: Step Over PC = 0x%04X\r\n", pc);
+
+  dwire_Clear();
+  dwire_Append(DWIRE_SET_PC);
+  dwire_Append((pc >> 8) & 0xFF);
+  dwire_Append(pc & 0xFF);
+
+  pc++;
+
+  dwire_Append(DWIRE_SET_BP);
+  dwire_Append((pc >> 8) & 0xFF);
+  dwire_Append(pc & 0xFF);
+
+  dwire_Append(DWIRE_FLAG_SINGLE_STEP);
+  dwire_Append(DWIRE_RESUME);
+
+  return uart_Write();
+}
 //  v := $1800 + PC;
 //
 //  tx[0] := $D0;
 //  tx[1] := (v shr 8) and $FF;
 //  tx[2] := (v and $FF);
-//  tx[3] := $D1;
-//  tx[4] := $00;
-//  tx[5] := $00;
-//  tx[6] := $79;
-//  tx[7] := $31;
 //
-//  LogTx('Step In', tx, 8, 1, True);
-
-/* -------------------------------------------------------------------------- */
-
-FW_BOOLEAN DWire_StepOver(void)
-{
-//  DWire_FlushCacheRegs(dwire);
-//  DWire_Send(dwire, BYTES(DWIRE_FLAG_RUN, DWIRE_RESUME_SS));
-//  DWire_Sync(dwire);
-//  DWire_Reconnect(dwire);
-//  dwire->have_all_regs = false;
-  dwire_Clear();
-  dwire_Append(DWIRE_FLAG_RUN);
-  dwire_Append(DWIRE_RESUME_SS);
-//  if (FW_FALSE == uart_Write()) return FW_FALSE;
-
-//  return DWire_Sync();
-//  return FW_TRUE;
-  return uart_WriteBreak(DWIRE_TIMEOUT);
-}
+//  v := $1800 + PC + 1;
+//
+//  tx[3] := $D1;
+//  tx[4] := (v shr 8) and $FF;
+//  tx[5] := (v and $FF);
+//
+//  tx[6] := $7A;
+//  tx[7] := $30;
 
 /* -------------------------------------------------------------------------- */
 

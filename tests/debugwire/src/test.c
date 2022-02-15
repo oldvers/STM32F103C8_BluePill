@@ -510,6 +510,11 @@ static FW_BOOLEAN Test_StepInto(void)
   FW_BOOLEAN result = FW_TRUE;
   U32 i = 0, time = 0, step = 0;
 
+  result = Test_Reset();
+  if (FW_FALSE == result) return FW_FALSE;
+
+  DBG("*** dWire Test Step Into ***\r\n");
+
   time = xTaskGetTickCount();
   for (step = 0; step < 8; step++)
   {
@@ -530,6 +535,8 @@ static FW_BOOLEAN Test_StepInto(void)
     DBG(" - PC = 0x%04X\r\n", gPC);
   }
 
+  DBG(" - Spend %d ms\r\n", (xTaskGetTickCount() - time));
+
   result &= (FW_BOOLEAN)(0x000F == gPC);
 
   return result;
@@ -540,6 +547,36 @@ static FW_BOOLEAN Test_StepInto(void)
 static FW_BOOLEAN Test_StepOver(void)
 {
   FW_BOOLEAN result = FW_TRUE;
+  U32 i = 0, time = 0, step = 0;
+
+  result = Test_Reset();
+  if (FW_FALSE == result) return FW_FALSE;
+
+  DBG("*** dWire Test Step Over ***\r\n");
+
+  time = xTaskGetTickCount();
+  for (step = 0; step < 8; step++)
+  {
+    DBG("--- Do the step %d over\r\n", step);
+    result = DWire_StepOver();
+    if (FW_FALSE == result) return FW_FALSE;
+
+    for (i = 0; i < 100; i++)
+    {
+      result = DWire_CheckForBreak();
+      if (FW_TRUE == result) break;
+      vTaskDelay(1);
+    }
+    if (FW_FALSE == result) return FW_FALSE;
+    DBG(" - Stopped after %d ms\r\n", (xTaskGetTickCount() - time));
+
+    gPC = DWire_GetPC();
+    DBG(" - PC = 0x%04X\r\n", gPC);
+  }
+
+  DBG(" - Spend %d ms\r\n", (xTaskGetTickCount() - time));
+
+  result &= (FW_BOOLEAN)(0x0008 == gPC);
 
   return result;
 }
@@ -620,8 +657,8 @@ const TestFunction_t gTests[] =
   Test_Reset,
   Test_Run,
   Test_Stop,
-  Test_Reset,
   Test_StepInto,
+  Test_StepOver,
 };
 
 U32 uiTestsGetCount(void)
