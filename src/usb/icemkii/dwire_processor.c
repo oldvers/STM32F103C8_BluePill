@@ -365,17 +365,6 @@ void DWire_Init(void)
   GPIO_Init(GPIOA, 0, GPIO_TYPE_OUT_PP_50MHZ, 0);
   GPIO_Init(GPIOA, 1, GPIO_TYPE_OUT_PP_50MHZ, 0);
   GPIO_Init(GPIOA, 4, GPIO_TYPE_OUT_PP_50MHZ, 0);
-
-  /* Create the Debug Wire task */
-  /* xTaskCreate
-  (
-    dwire_Task,
-    "DWIRE",
-    2 * configMINIMAL_STACK_SIZE,
-    NULL,
-    tskIDLE_PRIORITY + 1,
-    NULL
-  ); */
 }
 
 /* -------------------------------------------------------------------------- */
@@ -468,58 +457,8 @@ FW_BOOLEAN DWire_Sync(void)
     /* Start receiving */
     UART_RxStart(UART2);
 
-//    /* Activate the Reset pin */
-//    GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
-//    vTaskDelay(2);
-//
-//    /* Release the Reset pin */
-//    GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_ALT_OD_2MHZ, 1);
-//
-//    /* Wait for the Sync byte from the target */
-//    idx = uart_Read(1);
-
     /* Setup the Reset pin */
     GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_ALT_OD_2MHZ, 1);
-
-//*     /*  Send Break */
-//*     UART_SetBreakCallback(UART2, uart_BreakReceived);
-//* //    (void)xEventGroupClearBits
-//* //    (
-//* //      gDWire.events,
-//* //      (DWIRE_RX_COMPLETE | DWIRE_BREAK_RECEIVED)
-//* //    );
-//* //
-//* //    GPIO_Lo(GPIOA, 8);
-//*
-//*     UART_Break(UART2);
-//*
-//*     /* Wait for the Break and Sync are complete */
-//*     result = uart_WaitForBreak(DWIRE_TIMEOUT);
-//*
-//*
-//* //    result = uart_WaitFor
-//* //            (
-//* //              (DWIRE_RX_COMPLETE | DWIRE_BREAK_RECEIVED),
-//* //              DWIRE_TIMEOUT
-//* //            );
-//* //    if (FW_FALSE == result) return FW_FALSE;
-//* //
-//* ////    /* Wait for the Sync reception */
-//* ////    result = uart_WaitForComplete(DWIRE_RX_COMPLETE);
-//* ////    if (FW_FALSE == result) return FW_FALSE;
-//* //
-//* //    if ( (1 == gDWire.rxLen) || (0x55 == gDWire.rxBuffer[0]) )
-//* ////return FW_FALSE;
-//* ////    if ( (1 == idx) && (0x55 == gDWire.rxBuffer[0]) )
-//*     if (FW_TRUE == result)
-//*     {
-//*       DWIRE_LOG("DWire: In sync!\r\n");
-//*     }
-//*     else
-//*     {
-//* //      result = FW_FALSE;
-//*       DWIRE_LOG("DWire: Sync error!\r\n");
-//*     }
   }
 
   GPIO_Lo(GPIOA, 8);
@@ -1018,137 +957,6 @@ FW_BOOLEAN DWire_RunToCursor(U16 address)
 
 /* -------------------------------------------------------------------------- */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-static FW_BOOLEAN uart_BreakReceived(U8 * pByte)
-{
-  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-
-  GPIO_Hi(GPIOA, 0);
-
-  (void)xEventGroupSetBitsFromISR
-        (
-          gDWire.events,
-          DWIRE_BREAK_RECEIVED,
-          &xHigherPriorityTaskWoken
-        );
-
-  if (xHigherPriorityTaskWoken)
-  {
-    taskYIELD();
-  }
-  gDWire.xxBreak = FW_TRUE;
-  gDWire.rxLen   = 0;
-
-  GPIO_Lo(GPIOA, 0);
-
-  return FW_TRUE;
-}
-
-
-
-/* -------------------------------------------------------------------------- */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-FW_BOOLEAN dwire_Set_Z(U16 address)
-{
-  return DWire_SetRegs(30, (U8 *)&address, 2); // BYTES(WORD_LE(addr)));
-}
-
-/* -------------------------------------------------------------------------- */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//#define DWIRE_DEV_SIG 0x950f
-//#define DWIRE_DEV_IO_SIZE 224
-//#define DWIRE_DEV_SRAM_SIZE 2048
-//#define DWIRE_DEV_EEPROM_SIZE 1024
-//#define DWIRE_DEV_FLASH_SIZE 32768
-//#define DWIRE_DEV_DWDR 0x31
-//#define DWIRE_DEV_SPMCSR 0x37
-//#define DWIRE_DEV_PAGESIZE 128
-//#define DWIRE_DEV_BOOT 0x0000
-//#define DWIRE_DEV_BOOTFLAGS 0
-//#define DWIRE_DEV_EECR 0x1f
-//#define DWIRE_DEV_EEARH 0x22
-//static U8                 gTxBuffer[16]                          = {0};
-//static U32                gTxLen                                 = 0;
-//static U8                 gRxBuffer[16]                          = {0};
-//static U32                gRxLen                                 = 0;
-//static EventGroupHandle_t gEvents                                = NULL;
-//static U16                gBaudRateValue[DWIRE_BAUD_MEAS_COUNT]  = {0};
-//static U8                 gBaudRateCnt                           = 0;
-
-
-
-/* -------------------------------------------------------------------------- */
-
 static FW_BOOLEAN uart_RxByte(U8 * pByte)
 {
   GPIO_Hi(GPIOB, 5);
@@ -1251,6 +1059,33 @@ static FW_BOOLEAN uart_TxComplete(U8 * pByte)
 
 /* -------------------------------------------------------------------------- */
 
+static FW_BOOLEAN uart_BreakReceived(U8 * pByte)
+{
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+  GPIO_Hi(GPIOA, 0);
+
+  (void)xEventGroupSetBitsFromISR
+        (
+          gDWire.events,
+          DWIRE_BREAK_RECEIVED,
+          &xHigherPriorityTaskWoken
+        );
+
+  if (xHigherPriorityTaskWoken)
+  {
+    taskYIELD();
+  }
+  gDWire.xxBreak = FW_TRUE;
+  gDWire.rxLen   = 0;
+
+  GPIO_Lo(GPIOA, 0);
+
+  return FW_TRUE;
+}
+
+/* -------------------------------------------------------------------------- */
+
 static FW_BOOLEAN uart_WaitFor(U32 eventMask, U32 timeout)
 {
   FW_BOOLEAN result = FW_TRUE;
@@ -1281,12 +1116,6 @@ static FW_BOOLEAN uart_WaitForBreak(U32 timeout)
   FW_BOOLEAN result = FW_TRUE;
   EventBits_t events = 0;
   U32 eventMask = (DWIRE_BREAK_RECEIVED | DWIRE_RX_COMPLETE);
-//  IRQ_SAFE_AREA();
-//
-//  IRQ_DISABLE();
-//  gDWire.rxLen   = 0;
-//  gDWire.xxBreak = FW_TRUE;
-//  IRQ_RESTORE();
 
   events = xEventGroupWaitBits
            (
@@ -1351,7 +1180,7 @@ static FW_BOOLEAN uart_Write(void)
 
   UART_TxStart(UART2);
 
-  return uart_WaitFor(DWIRE_TX_COMPLETE /*| DWIRE_RX_COMPLETE*/, DWIRE_TIMEOUT);
+  return uart_WaitFor(DWIRE_TX_COMPLETE, DWIRE_TIMEOUT);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1834,179 +1663,3 @@ static FW_BOOLEAN dwire_Finish_Flash(void)
 }
 
 /* -------------------------------------------------------------------------- */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* -------------------------------------------------------------------------- */
-
-void DWire_CacheRegs(void)
-{
-  //DWire_Send(dwire, BYTES(DWIRE_GET_PC));
-  //dwire->pc = (DWire_ReceiveWord(dwire) * 2 - 1) % DWIRE_DEV_FLASH_SIZE;
-  dwire_Clear();
-
-  //DWire_GetRegs(dwire, 28, &dwire->regs[28], 4);
-}
-
-/* -------------------------------------------------------------------------- */
-
-void DWire_CacheAllRegs(void)
-{
-  //if (dwire->have_all_regs) return;
-  //DWire_GetRegs(dwire, 0, dwire->regs, 28);
-  //dwire->have_all_regs = true;
-}
-
-/* -------------------------------------------------------------------------- */
-
-void DWire_FlushCacheRegs(void)
-{
-  //if (dwire->have_all_regs)
-  //  DWire_SetRegs(dwire, 0, dwire->regs, 32);
-  //else
-  //  DWire_SetRegs(dwire, 28, &dwire->regs[28], 4);
-  //DWire_SetPC(dwire, dwire->pc/2);
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 DWire_ReadFuseBits(U16 z)
-{
-//  DWire_SetZ(dwire, z);
-//  //DWire_SetRegs(dwire, 29, BYTES(0x09, WORD_LE(z)));
-//  //DWire_SetPC(dwire, 0x3f00);
-//  DWire_PreInst(dwire);
-//  DWire_LDI(dwire, 29, 0x09);
-//  DWire_Out_SPMCSR(dwire, 29);
-//  DWire_LPM(dwire, 29);
-//  DWire_Out_DWDR(dwire, 29);
-//  return DWire_ReceiveByte(dwire);
-  return 0;
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 DWire_ReadFuseBitsLow(void)
-{
-  return 0; //DWire_ReadFuseBits(dwire, 0);
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 DWire_ReadFuseBitsHigh(void)
-{
-  return 0; //DWire_ReadFuseBits(dwire, 3);
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 DWire_ReadFuseBitsExt(void)
-{
-  return 0; //DWire_ReadFuseBits(dwire, 2);
-}
-
-/* -------------------------------------------------------------------------- */
-
-U8 DWire_ReadLockBits(void)
-{
-  return 0; //DWire_ReadFuseBits(dwire, 1);
-}
-
-/* -------------------------------------------------------------------------- */
-
-
-
-
-
-
-
-
-
-
-/* -------------------------------------------------------------------------- */
-
-//static void uart_Open(void)
-//{
-//  /* UART3: PB10 - Tx, PB11 - Rx */
-//  GPIO_Init(UART3_TX_PORT, UART3_TX_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
-//  GPIO_Init(UART3_RX_PORT, UART3_RX_PIN, GPIO_TYPE_IN_PUP_PDN, 1);
-//
-//  //UART_DeInit(UART2);
-//  UART_Init
-//  (
-//    UART2,
-//    86400,
-//    uart_RxByte,
-//    uart_RxComplete,
-//    uart_TxByte,
-//    uart_TxComplete
-//  );
-//
-//  /* UART3: PB10 - Tx, PB11 - Rx */
-//  GPIO_Init(UART3_TX_PORT, UART3_TX_PIN, GPIO_TYPE_ALT_PP_10MHZ, 1);
-//  GPIO_Init(UART3_RX_PORT, UART3_RX_PIN, GPIO_TYPE_IN_PUP_PDN,   1);
-//
-//  UART_RxStart(UART3);
-//}
-
-/* -------------------------------------------------------------------------- */
-
-void dwire_Task(void * pvParameters)
-{
-  DWIRE_LOG("Debug Wire Task Started...\r\n");
-
-//  (void)dwire_Sync();
-
-//  UART_Init
-//  (
-//    UART2,
-//    86400,
-//    uart_RxByte,
-//    uart_RxComplete,
-//    uart_TxByte,
-//    uart_TxComplete
-//  );
-//
-//  USART2->CR3 |= USART_CR3_HDSEL;
-//
-//  GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_OUT_OD_2MHZ, 0);
-//  //GPIO_Lo(UART2_RTX_PORT, UART2_RTX_PIN);
-//  vTaskDelay(50);
-//  //GPIO_Hi(UART2_RTX_PORT, UART2_RTX_PIN);
-//  //vTaskDelay(2);
-//
-//  GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_ALT_OD_2MHZ, 1);
-//
-//  (void)uart_Read(gRxBuffer, 1);
-//  DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
-//
-//  vTaskDelay(50);
-//
-//  gTxBuffer[0] = 0x07;
-//  gTxLen = 1;
-//  DBG("DWire: Transmit: L = %d, B[0] = %02X\r\n", gTxLen, gTxBuffer[0]);
-//  uart_Write(gTxBuffer, 1);
-//
-//  (void)uart_Read(gRxBuffer, 1);
-//  DBG("DWire: Received: L = %d, B[0] = %02X\r\n", gRxLen, gRxBuffer[0]);
-
-  while(1)
-  {
-    vTaskDelay(500);
-  }
-}
-

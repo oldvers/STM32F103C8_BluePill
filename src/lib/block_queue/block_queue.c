@@ -607,3 +607,18 @@ FW_RESULT BlockQueue_Release(BlockQueue_p pQueue)
 
     return FW_SUCCESS;
 }
+
+//-----------------------------------------------------------------------------
+/** @brief Sets the waiting timeout for the Block Queue
+ *  @param pQueue - Pointer to the Block Queue
+ *  @param timeout - The timeout value
+ *  @return None
+ */
+
+void BlockQueue_SetTimeout(BlockQueue_p pQueue, U32 timeout)
+{
+    if (NULL != pQueue)
+    {
+        pQueue->osTimeout = timeout;
+    }
+}

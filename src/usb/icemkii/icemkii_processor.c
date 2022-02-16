@@ -301,6 +301,7 @@ typedef __packed struct ICEMKII_MSG_BODY_s
     ICEMKII_REQ_READ_MEMORY_t           reqReadMemory;
     ICEMKII_REQ_SET_DEVICE_DESCRIPTOR_t reqSetDeviceDescr;
     ICEMKII_REQ_WRITE_MEMORY_t          reqWriteMemory;
+    ICEMKII_REQ_SINGLE_STEP_t           reqSingleStep;
     ICEMKII_ISP_t                       isp;
     ICEMKII_RSP_SIGN_ON_t               rspSignOn;
     ICEMKII_RSP_GET_PARAMETER_t         rspGetParameter;
@@ -487,7 +488,10 @@ static void icemkii_Reset
       (void)DWire_Disable();
     case RESET_FLAG_LOW_LEVEL:
     case RESET_FLAG_HIGH_LEVEL:
-      pRsp->MESSAGE_ID = RSP_OK;
+      if (FW_TRUE == DWire_Reset())
+      {
+        pRsp->MESSAGE_ID = RSP_OK;
+      }
       break;
     default:
       break;
@@ -507,7 +511,14 @@ static void icemkii_Go
 {
   ICEMKII_LOG("ICE Rx: Go\r\n");
 
-  pRsp->MESSAGE_ID = RSP_OK;
+  if (FW_TRUE == DWire_Run())
+  {
+    pRsp->MESSAGE_ID = RSP_OK;
+  }
+  else
+  {
+    pRsp->MESSAGE_ID = RSP_FAILED;
+  }
   *pSize = 1;
 }
 
@@ -589,47 +600,44 @@ static void icemkii_ReadMemory
 )
 {
   FW_BOOLEAN result = FW_FALSE;
+  U16 address       = pReq->reqReadMemory.START_ADDRESS;
+  U8 * pData        = pRsp->rspMemory.DATA;
+  U16 length        = pReq->reqReadMemory.BYTE_COUNT;
 
   ICEMKII_LOG("ICE Rx: Read Memory\r\n");
   pRsp->MESSAGE_ID = RSP_FAILED;
+  *pSize = 1;
 
   switch (pReq->reqReadMemory.MEMORY_TYPE)
   {
     case MEMORY_TYPE_SRAM:
+      ICEMKII_LOG(" - SRAM: A = 0x%04X S = %d\r\n", address, length);
       if (0x0020 > pReq->reqReadMemory.START_ADDRESS)
       {
-        result = DWire_GetRegs
-                 (
-                   pReq->reqReadMemory.START_ADDRESS,
-                   pRsp->rspMemory.DATA,
-                   pReq->reqReadMemory.BYTE_COUNT
-                 );
+        result = DWire_GetRegs(address, pData, length);
       }
       else
       {
-        result = DWire_GetSRAM
-                 (
-                   pReq->reqReadMemory.START_ADDRESS,
-                   pRsp->rspMemory.DATA,
-                   pReq->reqReadMemory.BYTE_COUNT
-                 );
+        result = DWire_GetSRAM(address, pData, length);
       }
       if (FW_TRUE == result)
       {
         pRsp->MESSAGE_ID = RSP_MEMORY;
-        //memset(pRsp->rspMemory.DATA, 0, pReq->reqReadMemory.BYTE_COUNT);
-        *pSize = (1 + pReq->reqReadMemory.BYTE_COUNT);
+        *pSize = (1 + length);
       }
-      else
+      break;
+    case MEMORY_TYPE_FLASH_PAGE:
+      ICEMKII_LOG(" - Flash: A = 0x%04X S = %d\r\n", address, length);
+      if (FW_TRUE == DWire_GetFlash(address, pData, length))
       {
-        *pSize = 1;
+        pRsp->MESSAGE_ID = RSP_MEMORY;
+        *pSize = (1 + length);
       }
       break;
     case MEMORY_TYPE_IO_SHADOW:
     case MEMORY_TYPE_EEPROM:
     case MEMORY_TYPE_EVENT:
     case MEMORY_TYPE_SPM:
-    case MEMORY_TYPE_FLASH_PAGE:
     case MEMORY_TYPE_EEPROM_PAGE:
     case MEMORY_TYPE_FUSE_BITS:
     case MEMORY_TYPE_LOCK_BITS:
@@ -641,11 +649,10 @@ static void icemkii_ReadMemory
     case MEMORY_TYPE_XMEGA_USER_SIGNATURE:
     case MEMORY_TYPE_XMEGA_CALIBRATION_SIGNATURE:
       pRsp->MESSAGE_ID = RSP_MEMORY;
-      memset(pRsp->rspMemory.DATA, 0, pReq->reqReadMemory.BYTE_COUNT);
-      *pSize = (1 + pReq->reqReadMemory.BYTE_COUNT);
+      memset(pData, 0, length);
+      *pSize = (1 + length);
       break;
     default:
-      *pSize = 1;
       break;
   }
 }
@@ -660,42 +667,42 @@ static void icemkii_WriteMemory
 )
 {
   FW_BOOLEAN result = FW_FALSE;
+  U16 address       = pReq->reqWriteMemory.START_ADDRESS;
+  U8 * pData        = pReq->reqWriteMemory.DATA;
+  U16 length        = pReq->reqWriteMemory.BYTE_COUNT;
 
   ICEMKII_LOG("ICE Rx: Write Memory\r\n");
   pRsp->MESSAGE_ID = RSP_OK;
+  *pSize = 1;
 
   switch (pReq->reqWriteMemory.MEMORY_TYPE)
   {
     case MEMORY_TYPE_SRAM:
+      ICEMKII_LOG(" - SRAM: A = 0x%04X S = %d\r\n", address, length);
       if (0x0020 > pReq->reqWriteMemory.START_ADDRESS)
       {
-        result = DWire_SetRegs
-                 (
-                   pReq->reqWriteMemory.START_ADDRESS,
-                   pReq->reqWriteMemory.DATA,
-                   pReq->reqWriteMemory.BYTE_COUNT
-                 );
+        result = DWire_SetRegs(address, pData, length);
       }
       else
       {
-        result = DWire_SetSRAM
-                 (
-                   pReq->reqWriteMemory.START_ADDRESS,
-                   pReq->reqWriteMemory.DATA,
-                   pReq->reqWriteMemory.BYTE_COUNT
-                 );
+        result = DWire_SetSRAM(address, pData, length);
       }
       if (FW_FALSE == result)
       {
         pRsp->MESSAGE_ID = RSP_FAILED;
       }
-      *pSize = 1;
+      break;
+    case MEMORY_TYPE_FLASH_PAGE:
+      ICEMKII_LOG(" - Flash: A = 0x%04X S = %d\r\n", address, length);
+      if (FW_FALSE == DWire_SetFlash(address, pData, length))
+      {
+        pRsp->MESSAGE_ID = RSP_FAILED;
+      }
       break;
     case MEMORY_TYPE_IO_SHADOW:
     case MEMORY_TYPE_EEPROM:
     case MEMORY_TYPE_EVENT:
     case MEMORY_TYPE_SPM:
-    case MEMORY_TYPE_FLASH_PAGE:
     case MEMORY_TYPE_EEPROM_PAGE:
     case MEMORY_TYPE_FUSE_BITS:
     case MEMORY_TYPE_LOCK_BITS:
@@ -707,10 +714,8 @@ static void icemkii_WriteMemory
     case MEMORY_TYPE_XMEGA_USER_SIGNATURE:
     case MEMORY_TYPE_XMEGA_CALIBRATION_SIGNATURE:
       pRsp->MESSAGE_ID = RSP_OK;
-      *pSize = 1;
       break;
     default:
-      *pSize = 1;
       break;
   }
 }
@@ -729,6 +734,60 @@ static void icemkii_ReadPc
   pRsp->MESSAGE_ID = RSP_PC;
   pRsp->rspPc.PROGRAM_COUNTER = 0;
   *pSize = 5;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void icemkii_ForcedStop
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
+{
+  ICEMKII_LOG("ICE Rx: Forced Stop\r\n");
+
+  DWire_Break();
+
+  pRsp->MESSAGE_ID = RSP_OK;
+  *pSize = 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+static void icemkii_Step
+(
+  ICEMKII_MSG_BODY_p pReq,
+  ICEMKII_MSG_BODY_p pRsp,
+  U32 * pSize
+)
+{
+  FW_BOOLEAN result = FW_FALSE;
+
+  ICEMKII_LOG("ICE Rx: Step\r\n");
+
+  switch (pReq->reqSingleStep.STEP_MODE)
+  {
+    case SINGLE_STEP_OVER:
+      result = DWire_StepOver();
+      break;
+    case SINGLE_STEP_INTO:
+      result = DWire_StepInto();
+      break;
+    case SINGLE_STEP_OUT:
+      result = DWire_StepOut();
+      break;
+  }
+
+  if (FW_TRUE == result)
+  {
+    pRsp->MESSAGE_ID = RSP_OK;
+  }
+  else
+  {
+    pRsp->MESSAGE_ID = RSP_FAILED;
+  }
+  *pSize = 1;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -784,9 +843,13 @@ void ICEMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
       icemkii_WriteMemory(req, rsp, pSize);
       break;
     case CMND_FORCED_STOP:
+      icemkii_ForcedStop(req, rsp, pSize);
+      break;
+    case CMND_SINGLE_STEP:
+      icemkii_Step(req, rsp, pSize);
+      break;
     case CMND_CLEAR_EVENTS:
     case CMND_RESTORE_TARGET:
-    case CMND_SINGLE_STEP:
       pRspBody[0] = RSP_OK;
       *pSize = 1;
       break;
@@ -814,79 +877,90 @@ void ICEMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
 
 /*----------------------------------------------------------------------------*/
 
-static void icemkii_Event
-(
-  ICEMKII_MSG_BODY_p pReq,
-  ICEMKII_MSG_BODY_p pRsp,
-  U32 * pSize
-)
-{
-  ICEMKII_LOG("ICE Rx: Break Event\r\n");
-
-  pRsp->MESSAGE_ID               = EVT_BREAK;
-  pRsp->evtBreak.PROGRAM_COUNTER = 0;
-  pRsp->evtBreak.BREAK_CAUSE     = BREAK_CAUSE_PROGRAM;
-  *pSize = 6;
-}
-
-/*----------------------------------------------------------------------------*/
-
-static FW_BOOLEAN icemkii_ForcedStop
-(
-  ICEMKII_MSG_BODY_p pReq,
-  ICEMKII_MSG_BODY_p pRsp,
-  U32 * pSize
-)
-{
-  if (FW_TRUE == DWire_Sync())
-  {
-    ICEMKII_LOG("ICE Rx: Break Event\r\n");
-
-    pRsp->MESSAGE_ID               = EVT_BREAK;
-    pRsp->evtBreak.PROGRAM_COUNTER = 0;
-    pRsp->evtBreak.BREAK_CAUSE     = BREAK_CAUSE_PROGRAM;
-    *pSize = 6;
-
-    return FW_TRUE;
-  }
-  else
-  {
-    *pSize = 0;
-    return FW_FALSE;
-  }
-}
+//static void icemkii_Event
+//(
+//  ICEMKII_MSG_BODY_p pReq,
+//  ICEMKII_MSG_BODY_p pRsp,
+//  U32 * pSize
+//)
+//{
+//  ICEMKII_LOG("ICE Rx: Break Event\r\n");
+//
+//  pRsp->MESSAGE_ID               = EVT_BREAK;
+//  pRsp->evtBreak.PROGRAM_COUNTER = 0;
+//  pRsp->evtBreak.BREAK_CAUSE     = BREAK_CAUSE_PROGRAM;
+//  *pSize = 6;
+//}
 
 /*----------------------------------------------------------------------------*/
 
-FW_BOOLEAN ICEMKII_CheckForEvents(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
+//static FW_BOOLEAN icemkii_ForcedStop
+//(
+//  ICEMKII_MSG_BODY_p pReq,
+//  ICEMKII_MSG_BODY_p pRsp,
+//  U32 * pSize
+//)
+//{
+//  if (FW_TRUE == DWire_Sync())
+//  {
+//    ICEMKII_LOG("ICE Rx: Break Event\r\n");
+//
+//    pRsp->MESSAGE_ID               = EVT_BREAK;
+//    pRsp->evtBreak.PROGRAM_COUNTER = 0;
+//    pRsp->evtBreak.BREAK_CAUSE     = BREAK_CAUSE_PROGRAM;
+//    *pSize = 6;
+//
+//    return FW_TRUE;
+//  }
+//  else
+//  {
+//    *pSize = 0;
+//    return FW_FALSE;
+//  }
+//}
+
+/*----------------------------------------------------------------------------*/
+
+FW_BOOLEAN ICEMKII_CheckForEvents(U8 * pRspBody, U32 * pSize)
 {
   FW_BOOLEAN result = FW_FALSE;
-  ICEMKII_MSG_BODY_p req = (ICEMKII_MSG_BODY_p)pReqBody;
   ICEMKII_MSG_BODY_p rsp = (ICEMKII_MSG_BODY_p)pRspBody;
   U32 i = 0;
 
-  switch ( ((ICEMKII_MSG_BODY_p)pReqBody)->MESSAGE_ID )
-  {
-    case CMND_FORCED_STOP:
-      result = icemkii_ForcedStop(req, rsp, pSize);
-      break;
-    case CMND_SINGLE_STEP:
-      icemkii_Event(req, rsp, pSize);
-      result = FW_TRUE;
-      break;
-    default:
-      *pSize = 0;
-      break;
-  }
+//  switch ( ((ICEMKII_MSG_BODY_p)pReqBody)->MESSAGE_ID )
+//  {
+//    case CMND_FORCED_STOP:
+//      result = icemkii_ForcedStop(req, rsp, pSize);
+//      break;
+//    case CMND_SINGLE_STEP:
+//      icemkii_Event(req, rsp, pSize);
+//      result = FW_TRUE;
+//      break;
+//    default:
+//      *pSize = 0;
+//      break;
+//  }
 
-  if (0 < *pSize)
+  if (FW_TRUE == DWire_CheckForBreak())
   {
-    ICEMKII_LOG("<-- ");
-    for (i = 0; i < *pSize; i++)
+    ICEMKII_LOG("ICE Rx: Break Event\r\n");
+
+    rsp->MESSAGE_ID               = EVT_BREAK;
+    rsp->evtBreak.PROGRAM_COUNTER = DWire_GetPC();;
+    rsp->evtBreak.BREAK_CAUSE     = BREAK_CAUSE_PROGRAM;
+    *pSize = 6;
+
+    if (0 < *pSize)
     {
-      ICEMKII_LOG("%02X ", pRspBody[i]);
+      ICEMKII_LOG("<-- ");
+      for (i = 0; i < *pSize; i++)
+      {
+        ICEMKII_LOG("%02X ", pRspBody[i]);
+      }
+      ICEMKII_LOG("\r\n");
     }
-    ICEMKII_LOG("\r\n");
+
+    result = FW_TRUE;
   }
 
   return result;

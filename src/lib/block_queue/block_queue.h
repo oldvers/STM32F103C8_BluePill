@@ -15,5 +15,6 @@ FW_RESULT  BlockQueue_Allocate(BlockQueue_p pQueue, U8** ppBlock, U32 * pSize);
 FW_RESULT  BlockQueue_Enqueue             (BlockQueue_p pQueue, U32 aSize);
 FW_RESULT  BlockQueue_Dequeue (BlockQueue_p pQueue, U8** ppBlock, U32 * pSize);
 FW_RESULT  BlockQueue_Release             (BlockQueue_p pQueue);
+void       BlockQueue_SetTimeout          (BlockQueue_p pQueue, U32 timeout);
 
 #endif /* __BLOCKQUEUE_H__ */

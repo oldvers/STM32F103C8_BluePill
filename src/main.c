@@ -19,16 +19,11 @@
 
 #include "fifo.h"
 
+/* -------------------------------------------------------------------------- */
+
 void vLEDTask(void * pvParameters)
 {
   GPIO_Init(GPIOC, 13, GPIO_TYPE_OUT_OD_2MHZ, 0);
-
-//  GPIO_Init(UART2_RTX_PORT, UART2_RTX_PIN, GPIO_TYPE_OUT_OD_2MHZ, 1);
-
-//  GPIO_Lo(UART2_RTX_PORT, UART2_RTX_PIN);
-//  vTaskDelay(50);
-//  GPIO_Hi(UART2_RTX_PORT, UART2_RTX_PIN);
-//  vTaskDelay(2);
 
   while(1)
   {
@@ -44,58 +39,31 @@ void vLEDTask(void * pvParameters)
   //vTaskDelete(NULL);
 }
 
+/* -------------------------------------------------------------------------- */
+
 void vJTAGICEmkIITask(void * pvParameters)
 {
-//  U8  Rx[130];
-//  U16 RxLen = 0;
-//  U32 time;
+  DBG("JTAG ICE mkII Task Started\r\n");
 
-    DBG("JTAG ICE mkII Task Started\r\n");
+  /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
+  GPIO_Init(GPIOB, 2, GPIO_TYPE_OUT_OD_2MHZ, 0);
+  GPIO_Hi(GPIOB, 2);
 
-    /* Init PB2 to OD Hi-Z - Switch-off 1k5 PullUp from USB D+ */
-    GPIO_Init(GPIOB, 2, GPIO_TYPE_OUT_OD_2MHZ, 0);
-    GPIO_Hi(GPIOB, 2);
+  /* Delay */
+  vTaskDelay(200);
 
-    /* Delay */
-    vTaskDelay(200);
+  /* Init USB. Switch-on 1k5 PullUp to USB D+ - connect USB device */
+  USBD_Init();
+  GPIO_Lo(GPIOB, 2);
 
-    /* Init USB. Switch-on 1k5 PullUp to USB D+ - connect USB device */
-    USBD_Init();
-    GPIO_Lo(GPIOB, 2);
-
-//  if (TRUE == VCP_Open())
-//  {
-    while(FW_TRUE)
-    {
-//      RxLen = VCP_Read(Rx, sizeof(Rx), 5000);
-//      if (0 < RxLen)
-//      {
-//        LOG("VCP Rx: len = %d\r\n", RxLen);
-//        LOG("VCP Rx: ");
-//        for (U8 i = 0; i < RxLen; i++) LOG("%02X ", Rx[i]);
-//        LOG("\r\n");
-
-//        time = xTaskGetTickCount();
-//        VCP_Write(Rx, RxLen, 5000);
-//        LOG("VCP Tx: time = %d\r\n", xTaskGetTickCount() - time);
-//      }
-//      else
-//      {
-//        LOG("VCP Rx: Timout\r\n");
-//      }
-        vTaskDelay(5000);
-    }
-//  }
-//  VCP_Close();
-//  vTaskDelete(NULL);
+  while(FW_TRUE)
+  {
+      vTaskDelay(5000);
+  }
+  //vTaskDelete(NULL);
 }
 
-
-
-//U8     FifoBuf[17];
-//FIFO_t Fifo;
-//U8     i, data;
-//extern void ICEMKII_Init(void);
+/* -------------------------------------------------------------------------- */
 
 int main(void)
 {
@@ -139,7 +107,11 @@ int main(void)
   while (FW_TRUE) {};
 }
 
+/* -------------------------------------------------------------------------- */
+
 void on_error(void)
 {
   while (FW_TRUE) {};
 }
+
+/* -------------------------------------------------------------------------- */
