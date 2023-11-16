@@ -17,6 +17,9 @@
 #include "board.h"
 #include "gpio.h"
 
+#include "system.h"
+#include "spi.h"
+
 #include "fifo.h"
 
 /* -------------------------------------------------------------------------- */

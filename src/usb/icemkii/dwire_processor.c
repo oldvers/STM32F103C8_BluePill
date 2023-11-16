@@ -109,6 +109,7 @@ typedef struct
   U16                flashPageSize;
   U16                eepromSize;
   U16                basePC;
+  U16                bootStart;
   /* dWire parameters */
   U16                pc;
   U16                z;
@@ -150,12 +151,6 @@ static FW_BOOLEAN uart_TxComplete(U8 * pByte);
  *  @return True - if all the events were set, False - in case of timeout
  */
 static FW_BOOLEAN uart_WaitFor(U32 eventMask, U32 timeout);
-
-/** @brief Performs the dWire read operation
- *  @param count - Count of bytes expected to be read
- *  @return True - if expected count of bytes were read
- */
-static FW_BOOLEAN uart_Read(U32 count);
 
 /** @brief Performs the dWire write operation
  *  @param None
@@ -239,35 +234,17 @@ static void dwire_Append_I_DWDR(U8 reg);
  */
 static void dwire_Append_O_DWDR(U8 reg);
 
-/** @brief Adds the In SPMCSR sequence to the dWire Tx buffer
- *  @param reg - Destination register
- *  @return None
- */
-static void dwire_Append_I_SPMCSR(U8 reg);
-
 /** @brief Adds the Out SPMCSR sequence to the dWire Tx buffer
  *  @param reg - Source register
  *  @return None
  */
 static void dwire_Append_O_SPMCSR(U8 reg);
 
-/** @brief Adds the LPM instruction to the dWire Tx buffer
- *  @param reg - Destination register
- *  @return None
- */
-static void dwire_Append_LPM(U8 reg);
-
 /** @brief Adds the SPM instruction to the dWire Tx buffer
  *  @param None
  *  @return None
  */
 static void dwire_Append_SPM(void);
-
-/** @brief Adds the SPM Z instruction to the dWire Tx buffer
- *  @param None
- *  @return None
- */
-static void dwire_Append_SPM_Z(void);
 
 /** @brief Adds the LDI instruction to the dWire Tx buffer
  *  @param reg - Register
@@ -324,14 +301,6 @@ static FW_BOOLEAN dwire_Finish_Flash(void);
  */
 static FW_BOOLEAN uart_BreakReceived(U8 * pByte);
 
-/** @brief Waits for Break reception
- *  @param timeout - Timeout
- *  @return TRUE in case of success
- */
-static FW_BOOLEAN uart_WaitForBreak(U32 timeout);
-
-static FW_BOOLEAN uart_WriteBreak(U32 timeout);
-
 /* -------------------------------------------------------------------------- */
 
 void DWire_Init(void)
@@ -357,6 +326,7 @@ void DWire_Init(void)
   gDWire.eepromSize    = 0;
   gDWire.basePC        = 0;
   gDWire.pc            = 0;
+  gDWire.bootStart     = 0;
 
   /* Init the test pins (temporarily) */
   GPIO_Init(GPIOB, 5, GPIO_TYPE_OUT_PP_50MHZ, 0);
@@ -369,11 +339,12 @@ void DWire_Init(void)
 
 /* -------------------------------------------------------------------------- */
 
-void DWire_SetParams(U8 dwdr, U8 spmcsr, U16 basePC)
+void DWire_SetParams(U8 dwdr, U8 spmcsr, U16 basePC, U16 bootStart)
 {
-  gDWire.dwdr   = dwdr;
-  gDWire.spmcsr = spmcsr;
-  gDWire.basePC = basePC;
+  gDWire.dwdr      = dwdr;
+  gDWire.spmcsr    = spmcsr;
+  gDWire.basePC    = basePC;
+  gDWire.bootStart = bootStart;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1111,57 +1082,6 @@ static FW_BOOLEAN uart_WaitFor(U32 eventMask, U32 timeout)
 
 /* -------------------------------------------------------------------------- */
 
-static FW_BOOLEAN uart_WaitForBreak(U32 timeout)
-{
-  FW_BOOLEAN result = FW_TRUE;
-  EventBits_t events = 0;
-  U32 eventMask = (DWIRE_BREAK_RECEIVED | DWIRE_RX_COMPLETE);
-
-  events = xEventGroupWaitBits
-           (
-             gDWire.events,
-             eventMask,
-             pdTRUE, /* Clear bits   */
-             pdTRUE, /* Wait for all */
-             timeout
-           );
-
-  result = (FW_BOOLEAN)(eventMask == (events & eventMask));
-  result &= (FW_BOOLEAN)((1 == gDWire.rxLen) && (0x55 == gDWire.rxBuffer[0]));
-
-  if (0 != (events & DWIRE_RX_COMPLETE)) GPIO_Lo(GPIOA, 8);
-
-  return result;
-}
-
-/* -------------------------------------------------------------------------- */
-
-static FW_BOOLEAN uart_Read(U32 count)
-{
-  FW_BOOLEAN result = FW_FALSE;
-  U32 i = 0;
-
-  gDWire.rxLen = 0;
-
-  UART_RxStart(UART2);
-
-  if (FW_TRUE == uart_WaitFor(DWIRE_RX_COMPLETE, DWIRE_TIMEOUT))
-  {
-    DWIRE_LOG("DWire <-- ");
-    for (i = 0; i < gDWire.rxLen; i++)
-    {
-      DWIRE_LOG("%02X ", gDWire.rxBuffer[i]);
-    }
-    DWIRE_LOG("\r\n");
-
-    result = (FW_BOOLEAN)(gDWire.rxLen == count);
-  }
-
-  return result;
-}
-
-/* -------------------------------------------------------------------------- */
-
 static FW_BOOLEAN uart_Write(void)
 {
   U32 i = 0;
@@ -1217,48 +1137,6 @@ static FW_BOOLEAN uart_WriteRead(U32 count)
   }
 
   result &= (FW_BOOLEAN)(gDWire.rxLen == count);
-
-  return result;
-}
-
-/* -------------------------------------------------------------------------- */
-
-static FW_BOOLEAN uart_WriteBreak(U32 timeout)
-{
-  FW_BOOLEAN result = FW_FALSE;
-  U32 i = 0;
-
-  gDWire.rxLen = 0;
-  gDWire.txCnt = 0;
-  gDWire.txInProgress = FW_TRUE;
-  gDWire.txOk = FW_TRUE;
-
-  DWIRE_LOG("DWire --> ");
-  for (i = 0; i < gDWire.txLen; i++)
-  {
-    DWIRE_LOG("%02X ", gDWire.txBuffer[i]);
-  }
-  DWIRE_LOG("\r\n");
-
-  UART_TxStart(UART2);
-
-  result = uart_WaitFor
-           (
-             (DWIRE_TX_COMPLETE | DWIRE_RX_COMPLETE | DWIRE_BREAK_RECEIVED),
-             timeout
-           );
-
-  if ( (FW_TRUE == result) && (0 < gDWire.rxLen) )
-  {
-    DWIRE_LOG("DWire <-- ");
-    for (i = 0; i < gDWire.rxLen; i++)
-    {
-      DWIRE_LOG("%02X ", gDWire.rxBuffer[i]);
-    }
-    DWIRE_LOG("\r\n");
-  }
-
-  result &= (FW_BOOLEAN)((1 == gDWire.rxLen) && (0x55 == gDWire.rxBuffer[0]));
 
   return result;
 }
@@ -1396,13 +1274,6 @@ static void dwire_Append_O_DWDR(U8 reg)
 
 /* -------------------------------------------------------------------------- */
 
-static void dwire_Append_I_SPMCSR(U8 reg)
-{
-  dwire_Append_I_Instr(reg, gDWire.spmcsr);
-}
-
-/* -------------------------------------------------------------------------- */
-
 static void dwire_Append_O_SPMCSR(U8 reg)
 {
   dwire_Append_O_Instr(gDWire.spmcsr, reg);
@@ -1410,23 +1281,9 @@ static void dwire_Append_O_SPMCSR(U8 reg)
 
 /* -------------------------------------------------------------------------- */
 
-static void dwire_Append_LPM(U8 reg)
-{
-  dwire_Append_Instr(0x9004 | (reg << 4));
-}
-
-/* -------------------------------------------------------------------------- */
-
 static void dwire_Append_SPM(void)
 {
   dwire_Append_Instr(0x95E8);
-}
-
-/* -------------------------------------------------------------------------- */
-
-static void dwire_Append_SPM_Z(void)
-{
-  dwire_Append_Instr(0x95F8);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1569,7 +1426,7 @@ static FW_BOOLEAN dwire_Start_Flash(void)
   /* Erase the page */
   dwire_Clear();
   /* Set PC to the adress of the No-Read-While-Write section - to enable SPM */
-  dwire_Append_SetPC(0);  //TODO - set to Bootloader
+  dwire_Append_SetPC(gDWire.bootStart);
   dwire_Append(DWIRE_FLAG_INST);
   /* ldi r29,0x03 -> SPMCSR -> (PGERS | SELFPRGEN) */
   dwire_Append_LDI(29, 0x03);
@@ -1595,13 +1452,13 @@ static FW_BOOLEAN dwire_Start_Flash(void)
   if (FW_FALSE == result) return result;
 
   dwire_Clear();
-  dwire_Append_SetPC(0);  // 0..2 - TODO - set to Bootloader
+  dwire_Append_SetPC(gDWire.bootStart);  // 0..2 - Set to Bootloader
   /* in r0,DWDR (ll) */
-  dwire_Append_I_DWDR(0); // 3..6
-  dwire_Append(0);        // 7  (ll)
+  dwire_Append_I_DWDR(0);                // 3..6
+  dwire_Append(0);                       // 7  (ll)
   /* in r1,DWDR (hh) */
-  dwire_Append_I_DWDR(1); // 8..11
-  dwire_Append(0);        // 12 (hh)
+  dwire_Append_I_DWDR(1);                // 8..11
+  dwire_Append(0);                       // 12 (hh)
   /* out SPMCSR,r29 -> SPMCSR -> (SELFPRGEN) */
   dwire_Append_O_SPMCSR(29);
   /* spm */
@@ -1630,7 +1487,7 @@ static FW_BOOLEAN dwire_Finish_Flash(void)
 
   /* Program the page */
   dwire_Clear();
-  dwire_Append_SetPC(0); //TODO - set to Bootloader
+  dwire_Append_SetPC(gDWire.bootStart); //Set to Bootloader
   /* ldi r29,0x05 -> SPMCSR -> (PGWRT | SELFPRGEN) */
   dwire_Append_LDI(29, 0x05);
   /* out SPMCSR,r29 -> SPMCSR -> (PGWRT | SELFPRGEN) */
@@ -1647,7 +1504,7 @@ static FW_BOOLEAN dwire_Finish_Flash(void)
 
   /* Read-While-Write section read enable  */
   dwire_Clear();
-  dwire_Append_SetPC(0); //TODO - set to Bootloader
+  dwire_Append_SetPC(gDWire.bootStart); //Set to Bootloader
   /* ldi r29,0x11 -> SPMCSR -> (RWWSRE | SELFPRGEN) */
   dwire_Append_LDI(29, 0x11);
   /* out SPMCSR,r29 -> SPMCSR -> (RWWSRE | SELFPRGEN) */

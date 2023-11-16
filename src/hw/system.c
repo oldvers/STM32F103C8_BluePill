@@ -135,3 +135,31 @@ void SYS_ClockConfig( void )
   APB2Clock = APBDiv[(RCC->CFGR & RCC_CFGR_PPRE2) >> RCC_CFGR_PPRE2_Pos];
   APB2Clock = CPUClock / APB2Clock;
 }
+
+/* -------------------------------------------------------------------------- */
+/** @brief Sets the APB2 prescaler
+ *  @param value - Prescaler value
+ *  @return True - in case of success
+ */
+FW_BOOLEAN SYS_SetAPB2Prescaler(U8 value)
+{
+  FW_BOOLEAN result = FW_FALSE;
+  U32 prescaler = 0;
+
+  if ((0 < value) && (16 >= value) && (0 == (value & (value - 1))))
+  {
+    prescaler = (34 - __CLZ(value));
+
+    RCC->CFGR &= (U32)~(RCC_CFGR_PPRE2);
+    RCC->CFGR |= ((prescaler << RCC_CFGR_PPRE2_Pos) & RCC_CFGR_PPRE2_Msk);
+
+    APB2Clock = APBDiv[(RCC->CFGR & RCC_CFGR_PPRE2) >> RCC_CFGR_PPRE2_Pos];
+    APB2Clock = CPUClock / APB2Clock;
+
+    result = FW_TRUE;
+  }
+
+  return result;
+}
+
+/* -------------------------------------------------------------------------- */

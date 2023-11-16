@@ -569,3 +569,12 @@ FW_BOOLEAN ISPMKII_Process(U8 * pReqBody, U8 * pRspBody, U32 * pSize)
 
   return result;
 }
+
+/*----------------------------------------------------------------------------*/
+
+void ISPMKII_Reset(void)
+{
+  ISP_ResetTarget();
+}
+
+/*----------------------------------------------------------------------------*/

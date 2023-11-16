@@ -39,4 +39,6 @@ void SPI_DeInit     (SPI_t aSPI);
 //void SPI_Exchange(U8 * txData, U8 * rxData, U32 aSize);
 //void nRF24L01P_IrqHandler(void);
 
+FW_BOOLEAN SPI_SetBaudratePrescaler(SPI_t aSPI, U16 value);
+
 #endif /* __SPI_H__ */

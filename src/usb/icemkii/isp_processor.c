@@ -12,6 +12,7 @@
 
 #include "board.h"
 #include "spi.h"
+#include "system.h"
 #include "debug.h"
 
 /* -------------------------------------------------------------------------- */
@@ -38,7 +39,8 @@
 #define ISP_MAX_XFER_SIZE         (4)
 
 #define ISP_POLL_DELAY_MS         (2)
-#define ISP_PULSE_LENGTH_ITERS    (25)
+#define ISP_PULSE_LO_LENGTH_ITERS (255)
+#define ISP_PULSE_HI_LENGTH_ITERS (25)
 
 #define MODE_MASK                 (1 << 0)
 #define MODE_WORD                 (0 << 0) //Word/Page Mode (0 = word, 1 = page)
@@ -65,6 +67,7 @@ static EventGroupHandle_t gEvents                      = NULL;
 static FW_RESULT          gXferResult                  = FW_TIMEOUT;
 static U8                 gTxBuffer[ISP_MAX_XFER_SIZE] = {0};
 static U8                 gRxBuffer[ISP_MAX_XFER_SIZE] = {0};
+static U8                 gIspPulseLength              = 0;
 
 
 
@@ -308,11 +311,11 @@ static void isp_InsertClockPulse(void)
 
   /* Set SCK line */
   GPIO_Hi(SPI1_SCK_PORT, SPI1_SCK_PIN);
-  for (timeout = 0; timeout < ISP_PULSE_LENGTH_ITERS; timeout++) portNOP();
+  for (timeout = 0; timeout < gIspPulseLength; timeout++) portNOP();
 
   /* Clear SCK line */
   GPIO_Lo(SPI1_SCK_PORT, SPI1_SCK_PIN);
-  for (timeout = 0; timeout < ISP_PULSE_LENGTH_ITERS; timeout++) portNOP();
+  for (timeout = 0; timeout < gIspPulseLength; timeout++) portNOP();
 
   /* Reinit the SCK pin as SPI SCK function */
   GPIO_Init(SPI1_SCK_PORT, SPI1_SCK_PIN, GPIO_TYPE_ALT_PP_10MHZ, 0);
@@ -349,6 +352,62 @@ static FW_RESULT isp_WaitUntilReady(U32 msTimeOut)
 
 //-----------------------------------------------------------------------------
 
+static void isp_SetSckDuration(void)
+{
+  U16 spi_psc = 0;
+  U8 apb_psc = 0;
+
+  // 8000000, 4000000, 2000000, 1000000, 500000, 250000, 125000,
+  // 96386, 89888, 84211, 79208, 74767, 70797, 67227, 64000,
+  // 61069, 58395, 55945, 51613, 49690, 47905, 46243, 43244,
+  // 41885, 39409, 38278, 36200, 34335, 32654, 31129, 29740,
+  // 28470, 27304, 25724, 24768, 23461, 22285, 21221, 20254,
+  // 19371, 18562, 17583, 16914, 16097, 15356, 14520, 13914,
+  // 13224, 12599, 12031, 11511, 10944, 10431, 9963, 9468,
+  // 9081, 8612, 8239, 7851, 7498, 7137, 6809, 6478, 6178,
+  // 5879, 5607, 5359, 5093, 4870, 4633, 4418, 4209, 4019,
+  // 3823, 3645, 3474, 3310, 3161, 3011, 2869, 2734, 2611,
+  // 2484, 2369, 2257, 2152, 2052, 1956, 1866, 1779, 1695,
+  // 1615, 1539, 1468, 1398, 1333, 1271, 1212, 1155, 1101,
+  // 1049, 1000, 953, 909, 866, 826, 787, 750, 715, 682,
+  // 650, 619, 590, 563, 536, 511, 487, 465, 443, 422,
+  // 402, 384, 366, 349, 332, 317, 302, 288, 274, 261,
+  // 249, 238, 226, 216, 206, 196, 187, 178, 170, 162,
+  // 154, 147, 140, 134, 128, 122, 116, 111, 105, 100,
+  // 95.4, 90.9, 86.6, 82.6, 78.7, 75.0, 71.5, 68.2,
+  // 65.0, 61.9, 59.0, 56.3, 53.6, 51.1
+
+  gIspPulseLength = ISP_PULSE_LO_LENGTH_ITERS;
+  apb_psc = 16;
+
+  if (8 > gIspParams.sckDuration)
+  {
+    /* In the real mkII:
+       8 MHz, 4 Mz, 2 MHz, 1 MHz, 500 kHz, 250 kHz, 125 kHz, 96.4 kHz */
+    /* In this mkII:
+       9 MHz, 4.5 MHz, 2.25 MHz, 1.13 MHz, 600 kHz, 300 kHz, 150 kHz, etc. */
+    apb_psc = 8;
+    spi_psc = (1 << (gIspParams.sckDuration + 1));
+    gIspPulseLength = ISP_PULSE_HI_LENGTH_ITERS;
+  }
+  else if (16 > gIspParams.sckDuration)
+  {
+    spi_psc = (1 << ((gIspParams.sckDuration & 0x07) + 1));
+  }
+  else
+  {
+    /* 17.6 kHz */
+    spi_psc = 256;
+  }
+
+  SYS_SetAPB2Prescaler(apb_psc);
+  SPI_SetBaudratePrescaler(SPI_1, spi_psc);
+
+  ISP_LOG(" - SPI baud = %d\r\n", APB2Clock / spi_psc);
+}
+
+//-----------------------------------------------------------------------------
+
 static void isp_AttachToDevice(void)
 {
   volatile U8 timeout = 0;
@@ -364,31 +423,7 @@ static void isp_AttachToDevice(void)
 
   vTaskDelay(ISP_POLL_DELAY_MS);
 
-  /* Set the SPI baudrate */
-  if (0 == gIspParams.sckDuration)
-  {
-    /* 1.8 MHz nominal */
-    //ispClockDelay = 0;
-  }
-  else if (1 == gIspParams.sckDuration)
-  {
-    /* 460 kHz nominal */
-    //ispClockDelay = 1;
-  }
-  else if (2 == gIspParams.sckDuration)
-  {
-    /* 115 kHz nominal */
-    //ispClockDelay = 2;
-  }
-  else if (3 == gIspParams.sckDuration)
-  {
-    /* 58 kHz nominal */
-    //ispClockDelay = 3;
-  }
-  else
-  {
-    //ispClockDelay = 1 + gIspParams.sckDuration/4 + gIspParams.sckDuration/16;
-  }
+  isp_SetSckDuration();
 
   /* Clear RESET */
   GPIO_Lo(SPI1_RST_PORT, SPI1_RST_PIN);
@@ -404,7 +439,7 @@ static void isp_AttachToDevice(void)
    */
   /* Give a positive RESET pulse */
   GPIO_Hi(SPI1_RST_PORT, SPI1_RST_PIN);
-  for (timeout = 0; timeout < ISP_PULSE_LENGTH_ITERS; timeout++) portNOP();
+  for (timeout = 0; timeout < gIspPulseLength; timeout++) portNOP();
   GPIO_Lo(SPI1_RST_PORT, SPI1_RST_PIN);
 
   /* Create the event group for synchronization */

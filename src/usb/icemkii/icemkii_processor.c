@@ -51,8 +51,8 @@
 
 #define ICEMKII_COMM_ID     (1)    // Communications protocol version
 #define ICEMKII_BLDR_FW     (255)  // M_MCU boot-loader FW version
-#define ICEMKII_MCU_FW_MIN  (0x33) // M_MCU firmware version (minor)
-#define ICEMKII_MCU_FW_MAJ  (0x06) // M_MCU firmware version (major)
+#define ICEMKII_MCU_FW_MIN  (0x14) // M_MCU firmware version (minor)
+#define ICEMKII_MCU_FW_MAJ  (0x07) // M_MCU firmware version (major)
 #define ICEMKII_SN          {0x40, 0x15, 0x13, 0x03, 0x85, 0x19}
 #define ICEMKII_ID_STR      ("JTAGICEmkII\0")
 
@@ -313,6 +313,10 @@ typedef __packed struct ICEMKII_MSG_BODY_s
 
 /*----------------------------------------------------------------------------*/
 
+static U8 gEmulatorMode = EMULATOR_MODE_SPI;
+
+/*----------------------------------------------------------------------------*/
+
 static void icemkii_SignOn
 (
   ICEMKII_MSG_BODY_p pReq,
@@ -371,21 +375,23 @@ static void icemkii_SetParameter
   {
     case PARAMETER_ID_EMULATOR_MODE:
       ICEMKII_LOG(" - Emulator mode\r\n");
-      if (EMULATOR_MODE_SPI == pReq->reqSetParameter.emulator.mode)
+      gEmulatorMode = pReq->reqSetParameter.emulator.mode;
+      switch (gEmulatorMode)
       {
-        //
-      }
-      else if (EMULATOR_MODE_DBG_WIRE == pReq->reqSetParameter.emulator.mode)
-      {
-        DWire_Init();
-        if (FW_FALSE == DWire_Sync())
-        {
+        case EMULATOR_MODE_SPI:
+          /* no break */
+        case EMULATOR_MODE_UNKNOWN:
+          break;
+        case EMULATOR_MODE_DBG_WIRE:
+          DWire_Init();
+          if (FW_FALSE == DWire_Sync())
+          {
+            pRsp->MESSAGE_ID = RSP_FAILED;
+          }
+          break;
+        default:
           pRsp->MESSAGE_ID = RSP_FAILED;
-        }
-      }
-      else
-      {
-        pRsp->MESSAGE_ID = RSP_FAILED;
+          break;
       }
       break;
     case PARAMETER_ID_RUN_AFTER_PROG:
@@ -488,8 +494,16 @@ static void icemkii_Reset
       (void)DWire_Disable();
     case RESET_FLAG_LOW_LEVEL:
     case RESET_FLAG_HIGH_LEVEL:
-      if (FW_TRUE == DWire_Reset())
+      if (EMULATOR_MODE_DBG_WIRE == gEmulatorMode)
       {
+        if (FW_TRUE == DWire_Reset())
+        {
+          pRsp->MESSAGE_ID = RSP_OK;
+        }
+      }
+      else if (EMULATOR_MODE_SPI == gEmulatorMode)
+      {
+        ISPMKII_Reset();
         pRsp->MESSAGE_ID = RSP_OK;
       }
       break;
@@ -511,13 +525,18 @@ static void icemkii_Go
 {
   ICEMKII_LOG("ICE Rx: Go\r\n");
 
-  if (FW_TRUE == DWire_Run())
+  pRsp->MESSAGE_ID = RSP_OK;
+
+  if (EMULATOR_MODE_DBG_WIRE == gEmulatorMode)
   {
-    pRsp->MESSAGE_ID = RSP_OK;
+    if (FW_FALSE == DWire_Run())
+    {
+      pRsp->MESSAGE_ID = RSP_FAILED;
+    }
   }
-  else
+  else if (EMULATOR_MODE_SPI == gEmulatorMode)
   {
-    pRsp->MESSAGE_ID = RSP_FAILED;
+    //
   }
   *pSize = 1;
 }
@@ -575,7 +594,8 @@ static void icemkii_SetDvcDescr
   (
     dsc->ucDWDRAddress,
     0x37,
-    (dsc->ucDWBasePC << 8)
+    (dsc->ucDWBasePC << 8),
+    dsc->uiStartSmallestBootLoaderSection
   );
 
   DWire_SetMemParams

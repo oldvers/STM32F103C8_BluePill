@@ -15,7 +15,7 @@ void DWire_Init(void);
  *  @param basePC - Base address of the PC register
  *  @return None
  */
-void DWire_SetParams(U8 dwdr, U8 spmcsr, U16 basePC);
+void DWire_SetParams(U8 dwdr, U8 spmcsr, U16 basePC, U16 bootStart);
 
 /** @brief Sets the dWire target memory parameters
  *  @param rSize - SRAM size

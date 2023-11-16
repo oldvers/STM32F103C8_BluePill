@@ -74,6 +74,9 @@ void SPI_Init(SPI_t aSPI, SPI_CbComplete_t pCbComplete)
 
   if (SPI_1 == aSPI)
   {
+    /* PCLK2 = HCLK */
+    RCC->CFGR |= (U32)RCC_CFGR_PPRE2_DIV8;
+
     /* Enable SPI clock */
     RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
 
@@ -89,8 +92,8 @@ void SPI_Init(SPI_t aSPI, SPI_CbComplete_t pCbComplete)
              SPI_CR1_SSI  |       //Internal Slave select
          //  SPI_CR1_LSBFIRST |   //LSB First
              SPI_CR1_BR_0 |       //Prescaller
-//             SPI_CR1_BR_1 |
-             SPI_CR1_BR_2 |
+             SPI_CR1_BR_1 |
+         //  SPI_CR1_BR_2 |
              SPI_CR1_MSTR |       //Master mode
          //  SPI_CR1_CPOL |
          //  SPI_CR1_CPHA |
@@ -289,6 +292,30 @@ U8 SPI_GetLatestXferValue(SPI_t aSPI)
 {
   SPI_Context_p SPI = &gSPICtx[aSPI];
   return SPI->Dummy;
+}
+
+//-----------------------------------------------------------------------------
+/** @brief Sets the SPI prescaler
+ *  @param aSPI - A number of the SPI peripheral
+ *  @param value - Prescaler value
+ *  @return True - in case of success
+ */
+FW_BOOLEAN SPI_SetBaudratePrescaler(SPI_t aSPI, U16 value)
+{
+  FW_BOOLEAN result = FW_FALSE;
+  SPI_Context_p SPI = &gSPICtx[aSPI];
+  U32 prescaler = 0;
+
+  if ((2 <= value) && (256 >= value) && (0 == (value & (value - 1))))
+  {
+    prescaler = (30 - __CLZ(value));
+
+    SPI->HW->CR1 &= (U32)~(SPI_CR1_BR);
+    SPI->HW->CR1 |= ((prescaler << SPI_CR1_BR_Pos) & SPI_CR1_BR_Msk);
+    result = FW_TRUE;
+  }
+
+  return result;
 }
 
 //-----------------------------------------------------------------------------
